@@ -1,0 +1,116 @@
+{
+  "id": "f2",
+  "name": "F1 Standard Top - Die Slotted Flower Box",
+  "title": "STANDARD TOP DIE SLOT KEYLINE",
+  "inputs": [
+    {
+      "id": "gap",
+      "label": "Flap clearance",
+      "default": 5,
+      "min": 0
+    },
+    {
+      "id": "slotD",
+      "label": "Slot depth",
+      "default": 36,
+      "min": 0
+    },
+    {
+      "id": "slotL",
+      "label": "Slot length",
+      "default": 100.6,
+      "min": 0
+    }
+  ],
+  "params": {
+    "refL": "996.4",
+    "refW": "341.8",
+    "refH": "200",
+    "kL": "L / refL",
+    "kW": "W / refW",
+    "kH": "H / refH",
+    "xl": "H",
+    "xr": "H + L",
+    "bl": "L + 2*H",
+    "bw": "W + 2*H",
+    "wt": "H + gap",
+    "wb": "H + W - gap",
+    "fb": "H + W",
+    "slotRx": "min(19.5*kH, slotD)",
+    "slotRy": "min(14*kH, slotL / 2)",
+    "lead": "slotD - slotRx",
+    "hs": "slotL / 2",
+    "cyT": "H / 2",
+    "cyB": "bw - H / 2",
+    "holeX": "25*kH",
+    "holeW": "90*kH",
+    "holeH": "70*kW",
+    "holeY": "H + 130*kW",
+    "holeRx": "12.5*kH",
+    "holeRy": "20*kW",
+    "holeRX": "bl - holeX - holeW"
+  },
+  "require": [
+    {
+      "expr": "gap < 130*kW",
+      "message": "The flap clearance is too large for this width."
+    },
+    {
+      "expr": "slotD < H",
+      "message": "The slot is too deep for this height."
+    },
+    {
+      "expr": "slotL < H",
+      "message": "The slot is too long for this height."
+    }
+  ],
+  "cuts": [
+    {
+      "id": "outline",
+      "d": "M0 0 L{bl} 0 L{bl} {cyT - hs} L{bl - lead} {cyT - hs} A{slotRx} {slotRy} 0 0 0 {bl - slotD} {cyT - hs + slotRy} L{bl - slotD} {cyT + hs - slotRy} A{slotRx} {slotRy} 0 0 0 {bl - lead} {cyT + hs} L{bl} {cyT + hs} L{bl} {H} L{xr} {H} L{xr} {wt} L{bl} {wt} L{bl} {wb} L{xr} {wb} L{xr} {fb} L{bl} {fb} L{bl} {cyB - hs} L{bl - lead} {cyB - hs} A{slotRx} {slotRy} 0 0 0 {bl - slotD} {cyB - hs + slotRy} L{bl - slotD} {cyB + hs - slotRy} A{slotRx} {slotRy} 0 0 0 {bl - lead} {cyB + hs} L{bl} {cyB + hs} L{bl} {bw} L0 {bw} L0 {cyB + hs} L{lead} {cyB + hs} A{slotRx} {slotRy} 0 0 0 {slotD} {cyB + hs - slotRy} L{slotD} {cyB - hs + slotRy} A{slotRx} {slotRy} 0 0 0 {lead} {cyB - hs} L0 {cyB - hs} L0 {fb} L{xl} {fb} L{xl} {wb} L0 {wb} L0 {wt} L{xl} {wt} L{xl} {H} L0 {H} L0 {cyT + hs} L{lead} {cyT + hs} A{slotRx} {slotRy} 0 0 0 {slotD} {cyT + hs - slotRy} L{slotD} {cyT - hs + slotRy} A{slotRx} {slotRy} 0 0 0 {lead} {cyT - hs} L0 {cyT - hs} Z"
+    },
+    {
+      "id": "side-hole-left",
+      "d": "M{holeX + holeRx} {holeY} L{holeX + holeW - holeRx} {holeY} A{holeRx} {holeRy} 0 0 1 {holeX + holeW} {holeY + holeRy} L{holeX + holeW} {holeY + holeH - holeRy} A{holeRx} {holeRy} 0 0 1 {holeX + holeW - holeRx} {holeY + holeH} L{holeX + holeRx} {holeY + holeH} A{holeRx} {holeRy} 0 0 1 {holeX} {holeY + holeH - holeRy} L{holeX} {holeY + holeRy} A{holeRx} {holeRy} 0 0 1 {holeX + holeRx} {holeY} Z"
+    },
+    {
+      "id": "side-hole-right",
+      "d": "M{holeRX + holeRx} {holeY} L{holeRX + holeW - holeRx} {holeY} A{holeRx} {holeRy} 0 0 1 {holeRX + holeW} {holeY + holeRy} L{holeRX + holeW} {holeY + holeH - holeRy} A{holeRx} {holeRy} 0 0 1 {holeRX + holeW - holeRx} {holeY + holeH} L{holeRX + holeRx} {holeY + holeH} A{holeRx} {holeRy} 0 0 1 {holeRX} {holeY + holeH - holeRy} L{holeRX} {holeY + holeRy} A{holeRx} {holeRy} 0 0 1 {holeRX + holeRx} {holeY} Z"
+    }
+  ],
+  "creases": [
+    {
+      "d": "M{xl} {H} L{xr} {H}"
+    },
+    {
+      "d": "M{xl} {fb} L{xr} {fb}"
+    },
+    {
+      "d": "M{xl} 0 L{xl} {H}"
+    },
+    {
+      "d": "M{xl} {wt} L{xl} {wb}"
+    },
+    {
+      "d": "M{xl} {fb} L{xl} {bw}"
+    },
+    {
+      "d": "M{xr} 0 L{xr} {H}"
+    },
+    {
+      "d": "M{xr} {wt} L{xr} {wb}"
+    },
+    {
+      "d": "M{xr} {fb} L{xr} {bw}"
+    }
+  ],
+  "details": {
+    "creasing": [
+      "H",
+      "W",
+      "H"
+    ],
+    "boardLength": "bl",
+    "boardWidth": "bw"
+  }
+}

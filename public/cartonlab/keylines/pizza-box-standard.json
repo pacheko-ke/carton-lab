@@ -1,0 +1,78 @@
+{
+  "id": "pizza-box-standard",
+  "name": "Standard Pizza Box - Adjustable Closure",
+  "title": "PIZZA BOX KEYLINE",
+  "inputs": [
+    {
+      "id": "clearance",
+      "label": "Closure clearance",
+      "default": 2,
+      "min": 0
+    },
+    {
+      "id": "tab",
+      "label": "Front tuck depth",
+      "default": 24,
+      "min": 10
+    }
+  ],
+  "params": {
+    "refL": "300",
+    "refW": "290",
+    "refH": "38",
+    "s": "clearance",
+    "x0": "H",
+    "x1": "H + L",
+    "x2": "2*H + L",
+    "x3": "2*H + 2*L",
+    "y0": "H",
+    "y1": "H + W",
+    "y2": "2*H + W",
+    "y3": "2*H + 2*W",
+    "y4": "3*H + 2*W",
+    "boardLength": "2*L + 2*H",
+    "boardWidth": "2*W + 3*H + tab"
+  },
+  "require": [
+    {
+      "expr": "clearance < H / 4",
+      "message": "Closure clearance must be less than one quarter of the box depth."
+    },
+    {
+      "expr": "tab < L / 2",
+      "message": "The front tuck flap is too deep for this box length."
+    }
+  ],
+  "cuts": [
+    {
+      "id": "outline",
+      "d": "M{H} 0 L{H + L} 0 L{H + L} {H} L{2*H + L} {H} L{2*H + L} 0 L{2*H + 2*L} 0 L{2*H + 2*L} {H + W} L{2*H + L} {H + W} L{2*H + L} {2*H + W} L{2*H + L - s} {2*H + W} L{2*H + L - s} {2*H + 2*W - s} L{2*H + L - s - tab} {2*H + 2*W - s} L{2*H + L - s - tab} {2*H + 2*W} L{H + s + tab} {2*H + 2*W} L{H + s + tab} {2*H + 2*W - s} L{H + s} {2*H + 2*W - s} L{H + s} {2*H + W} L{H} {2*H + W} L{H} {H + W} L0 {H + W} L0 {H} L{H} {H} Z"
+    },
+    {
+      "id": "side-relief-left-front",
+      "d": "M0 {H + W} L{H - s} {H + W} L{H - s} {2*H + W} L0 {2*H + W} Z"
+    },
+    {
+      "id": "side-relief-right-front",
+      "d": "M{H + L + s} {H + W} L{2*H + L} {H + W} L{2*H + L} {2*H + W} L{H + L + s} {2*H + W} Z"
+    }
+  ],
+  "creases": [
+    { "d": "M{H} {H} L{H + L} {H}" },
+    { "d": "M{H} {H + W} L{H + L} {H + W}" },
+    { "d": "M{H} {H} L{H} {H + W}" },
+    { "d": "M{H + L} {H} L{H + L} {H + W}" },
+    { "d": "M{H + L} {H + W} L{H + L} {2*H + W}" },
+    { "d": "M{H} {H + W} L{H} {2*H + W}" },
+    { "d": "M{H} {2*H + W} L{H + L} {2*H + W}" },
+    { "d": "M{H} {2*H + W} L{H} {2*H + 2*W}" },
+    { "d": "M{H + L} {2*H + W} L{H + L} {2*H + 2*W}" },
+    { "d": "M{H} {2*H + 2*W} L{H + L} {2*H + 2*W}" }
+  ],
+  "details": {
+    "creasing": ["H", "W", "H", "L", "H", "W", "H"],
+    "boardLength": "boardLength",
+    "boardWidth": "boardWidth",
+    "closure": "Tuck flap is shortened by the adjustable clearance on both sides; corner reliefs prevent wall collisions during folding."
+  }
+}

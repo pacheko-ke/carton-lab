@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CartonLab Lightweight 2.0</title>
+  <link rel="stylesheet" href="app.css" />
+</head>
+<body class="min-h-screen bg-slate-100 font-sans text-slate-900 antialiased dark:bg-slate-900 dark:text-slate-100">
+  <header class="flex items-center gap-3 px-6 pt-5">
+    <img src="icons/icon48.png" alt="" class="h-9 w-9" />
+    <h1 class="text-xl font-semibold tracking-tight">CartonLab Lightweight 2.0</h1>
+  </header>
+
+  <main class="grid items-start gap-5 px-6 py-5 lg:grid-cols-[340px_minmax(0,1fr)]">
+    <aside class="flex flex-col gap-3">
+
+      <section class="card">
+        <h2 class="card-title">Box type</h2>
+        <div id="keylineTabs" class="keyline-tabs" role="tablist" aria-label="Keyline categories"></div>
+        <div id="keylineChoices" class="keyline-choices" role="tabpanel" aria-live="polite"></div>
+        <select id="boxType" hidden aria-hidden="true" tabindex="-1">
+          <option value="rsc" selected>RSC</option>
+        </select>
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">Job</h2>
+        <label class="field">Job name
+          <input id="job" type="text" maxlength="80" placeholder="Optional, blank uses default title" autocomplete="off" class="input" />
+        </label>
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">Box size (OD)</h2>
+        <div class="flex flex-col gap-3">
+          <div class="grid grid-cols-3 gap-2">
+            <label class="field">Length (L)<input id="L" type="number" step="any" min="0" value="300" class="input" /></label>
+            <label class="field">Width (W)<input id="W" type="number" step="any" min="0" value="200" class="input" /></label>
+            <label class="field">Height (H)<input id="H" type="number" step="any" min="0" value="150" class="input" /></label>
+          </div>
+          <label class="field">Units
+            <select id="unit" class="input">
+              <option value="mm" selected>mm</option>
+              <option value="in">inches</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">Board</h2>
+        <div class="flex flex-col gap-3">
+          <div class="grid grid-cols-2 gap-2">
+            <label class="field">Plies
+              <select id="ply" class="input">
+                <option value="3" selected>3 ply</option>
+                <option value="5">5 ply</option>
+              </select>
+            </label>
+            <label class="field">Date<input id="date" type="date" class="input" /></label>
+            <label class="field rsc-only">Creasing allowance
+              <input id="crease" type="number" step="any" value="2" class="input" />
+            </label>
+            <label class="field rsc-only">Board width allowance
+              <input id="bwadd" type="number" step="any" value="4" class="input" />
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">Keyline</h2>
+        <div class="flex flex-col gap-3">
+          <div class="rsc-only grid grid-cols-2 gap-2">
+            <label class="field">Glue flap<input id="glue" type="number" step="any" min="0" value="40" class="input" /></label>
+            <label class="field">Slot width<input id="slot" type="number" step="any" min="0" value="10" class="input" /></label>
+          </div>
+          <div id="kInputs" class="grid grid-cols-2 gap-2 empty:hidden"></div>
+          <label class="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
+            <input id="dims" type="checkbox" checked class="h-4 w-4 rounded accent-brand" />
+            Show dimension marking around artwork
+          </label>
+          <label class="field">Carton colour
+            <select id="color" class="input">
+              <option value="brown" selected>Brown</option>
+              <option value="white">White</option>
+            </select>
+          </label>
+          <label class="field">Dimension marking precision
+            <select id="prec" class="input">
+              <option value="0">0 decimal places</option>
+              <option value="1" selected>1 decimal place</option>
+              <option value="2">2 decimal places</option>
+              <option value="3">3 decimal places</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <div class="grid grid-cols-2 gap-2">
+        <button id="dlPdf" class="btn btn-primary col-span-2">
+          <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+          Download PDF
+        </button>
+        <button id="openFoldPreview" type="button" class="btn btn-secondary col-span-2" hidden>
+          <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="M3 12l9 5 9-5"/><path d="M3 16l9 5 9-5"/><path d="M12 13v8"/></svg>
+          3D preview
+        </button>
+        <button id="dlSvg" class="btn btn-secondary">
+          <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+          SVG
+        </button>
+        <button id="dlDxf" class="btn btn-secondary">
+          <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z"/><path d="m14.5 12.5 2-2"/><path d="m11.5 9.5 2-2"/><path d="m8.5 6.5 2-2"/><path d="m17.5 15.5 2-2"/></svg>
+          DXF
+        </button>
+        <button id="print" type="button" class="btn btn-secondary">
+          <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/></svg>
+          Print
+        </button>
+        <button id="share" type="button" class="btn btn-secondary">
+          <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 10.5 6.8-4"/><path d="m8.6 13.5 6.8 4"/></svg>
+          Share
+        </button>
+      </div>
+      <p id="shareStatus" role="status" aria-live="polite" class="text-xs text-slate-500 dark:text-slate-400"></p>
+
+      <p class="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
+        <span class="inline-flex items-center gap-1.5"><span class="inline-block w-6 border-t-2 border-slate-900 dark:border-slate-100"></span>Cut</span>
+        <span class="inline-flex items-center gap-1.5"><span class="inline-block w-6 border-t-2 border-dashed border-red-600"></span>Crease</span>
+      </p>
+
+      <footer class="border-t border-slate-200 pt-3 text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">
+        Developed by
+        <a href="https://wa.me/254769869064" target="_blank" rel="noopener noreferrer" class="font-semibold text-brand hover:underline dark:text-sky-300">Patrick Oluoch</a>
+        <a href="https://buymeacoffee.com/pacheko" target="_blank" rel="noopener noreferrer" class="coffee-link rounded-sm">&#9749; Buy me a coffee</a>
+      </footer>
+    </aside>
+
+    <section class="min-w-0 lg:sticky lg:top-4">
+      <div id="error" hidden class="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-red-200"></div>
+      <div class="relative">
+        <div class="absolute bottom-3 right-3 z-10 flex items-center gap-0.5 rounded-lg border border-slate-200 bg-white/95 p-1 text-slate-700 shadow-sm">
+          <button id="zoomOut" type="button" class="tool" title="Zoom out (-)" aria-label="Zoom out">
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/><line x1="8" x2="14" y1="11" y2="11"/></svg>
+          </button>
+          <span id="zoomPct" class="w-11 text-center text-xs tabular-nums" title="Zoom (100% = real size on screen)">100%</span>
+          <button id="zoomIn" type="button" class="tool" title="Zoom in (+)" aria-label="Zoom in">
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/><line x1="11" x2="11" y1="8" y2="14"/><line x1="8" x2="14" y1="11" y2="11"/></svg>
+          </button>
+          <span class="mx-1 h-4 w-px bg-slate-200"></span>
+          <button id="zoomFit" type="button" class="tool" title="Fit to window (0 or double-click)" aria-label="Fit to window">
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+          </button>
+          <button id="zoomActual" type="button" class="tool !w-auto px-1.5 text-xs font-semibold" title="Actual size, 1:1 (1)" aria-label="Actual size">1:1</button>
+        </div>
+        <div class="absolute bottom-11 left-3 z-10 flex items-center gap-2 rounded-lg border border-slate-200 bg-white/95 px-2 py-1 text-xs text-slate-700 shadow-sm">
+          <button id="undoEdit" type="button" class="tool !w-auto px-1.5 text-xs" title="Undo geometry edit (Ctrl+Z)" aria-label="Undo geometry edit" disabled>Undo</button>
+          <button id="redoEdit" type="button" class="tool !w-auto px-1.5 text-xs" title="Redo geometry edit (Ctrl+Y)" aria-label="Redo geometry edit" disabled>Redo</button>
+          <span class="mx-1 h-4 w-px bg-slate-200"></span>
+          <label class="inline-flex items-center gap-1" title="Show or hide the drawing grid"><input id="showGrid" type="checkbox" class="accent-brand" checked> Grid</label>
+          <label class="inline-flex items-center gap-1" title="Snap dragged nodes and dimension marks to the grid"><input id="snapGrid" type="checkbox" class="accent-brand" checked> Snap</label>
+          <label class="inline-flex items-center gap-1" title="Grid spacing in the selected unit">Step <input id="gridSpacing" type="number" min="0.01" step="any" value="1" style="width:4.25rem" class="input !px-1.5 !py-1 text-xs"></label>
+        </div>
+        <p class="pointer-events-none absolute bottom-3 left-3 z-10 text-[11px] text-slate-400">T text &middot; I image &middot; Ctrl+V paste image &middot; select overlay and press Delete to remove</p>
+        <div id="preview" tabindex="0" aria-label="Keyline preview" class="relative h-[calc(100vh-7rem)] min-h-[420px] cursor-grab touch-none select-none overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-brand/40 active:cursor-grabbing dark:border-slate-700 [&_svg]:block [&_svg]:h-full [&_svg]:w-full"></div>
+      </div>
+    </section>
+  </main>
+
+  <div id="printArea" hidden aria-hidden="true"></div>
+  <dialog id="foldPreviewDialog" class="fold-preview-dialog" aria-labelledby="foldPreviewTitle">
+    <div class="fold-preview-content">
+      <header class="fold-preview-header">
+        <div>
+          <h2 id="foldPreviewTitle">3D fold preview</h2>
+          <p id="foldPreviewDimensions"></p>
+        </div>
+        <button id="closeFoldPreview" type="button" class="artwork-dialog-close" aria-label="Close 3D preview" title="Close">&times;</button>
+      </header>
+      <svg id="foldPreviewSvg" viewBox="0 0 800 420" role="img" aria-label="Carton folding from flat net into a box">
+        <g id="foldPreviewFaces"></g>
+      </svg>
+      <p class="fold-preview-note">Illustrative rectangular carton based on the entered size. Flaps and closure details may differ from the selected keyline.</p>
+      <footer class="fold-preview-actions">
+        <button id="foldToggle" type="button" class="btn btn-primary">Fold carton</button>
+      </footer>
+    </div>
+  </dialog>
+  <input id="artworkImageFile" type="file" accept="image/*" hidden />
+  <dialog id="artworkTextDialog" class="artwork-dialog" aria-labelledby="artworkTextTitle">
+    <form id="artworkTextForm" class="artwork-dialog-form">
+      <header class="artwork-dialog-header">
+        <div>
+          <h2 id="artworkTextTitle">Add artwork text</h2>
+          <p>Choose the text style, then position it on the keyline.</p>
+        </div>
+        <button id="closeArtworkText" type="button" class="artwork-dialog-close" aria-label="Close text editor" title="Close">&times;</button>
+      </header>
+      <label class="field">Text
+        <input id="artworkTextValue" type="text" maxlength="200" placeholder="Enter artwork text" required class="input" />
+      </label>
+      <label class="field">Font
+        <select id="artworkFont" class="input">
+          <option value="Arial, Helvetica, sans-serif">Arial</option>
+          <option value="Arial Black, Gadget, sans-serif">Arial Black</option>
+          <option value="Verdana, Geneva, sans-serif">Verdana</option>
+          <option value="Tahoma, Geneva, sans-serif">Tahoma</option>
+          <option value="Trebuchet MS, sans-serif">Trebuchet MS</option>
+          <option value="Georgia, serif">Georgia</option>
+          <option value="Times New Roman, Times, serif">Times New Roman</option>
+          <option value="Courier New, Courier, monospace">Courier New</option>
+          <option value="Impact, Haettenschweiler, sans-serif">Impact</option>
+          <option value="system-ui, sans-serif">System UI</option>
+        </select>
+      </label>
+      <div class="grid grid-cols-2 gap-2">
+        <label class="field">Font size (<span id="artworkSizeUnit">mm</span>)
+          <input id="artworkTextSize" type="number" min="0.01" step="any" value="24" required class="input" />
+        </label>
+        <label class="field">Text colour
+          <input id="artworkTextColor" type="color" value="#111827" class="input artwork-color-input" />
+        </label>
+      </div>
+      <footer class="artwork-dialog-actions">
+        <button id="cancelArtworkText" type="button" class="btn btn-secondary">Cancel</button>
+        <button id="saveArtworkText" type="submit" class="btn btn-primary">Add text</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <script src="core.js"></script>
+  <script src="engine.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,155 @@
+{
+  "id": "hangerbox",
+  "name": "Ashton JC Hanger Box",
+  "title": "HANGER JC BOX KEYLINE",
+  "inputs": [
+    {
+      "id": "tab",
+      "label": "Tab depth",
+      "default": 50.8,
+      "min": 0
+    },
+    {
+      "id": "gap",
+      "label": "Flap clearance",
+      "default": 5,
+      "min": 0
+    },
+    {
+      "id": "glue",
+      "label": "Glue flap width",
+      "default": 29.7,
+      "min": 0
+    },
+    {
+      "id": "chamfer",
+      "label": "Glue flap corner cut",
+      "default": 10,
+      "min": 0
+    },
+    {
+      "id": "slotW",
+      "label": "Hang slot width",
+      "default": 9.9,
+      "min": 0
+    },
+    {
+      "id": "slotR",
+      "label": "Hang slot hole radius",
+      "default": 22.8,
+      "min": 0
+    }
+  ],
+  "params": {
+    "refL": "584.2",
+    "refW": "406.1",
+    "refH": "203.2",
+    "xb": "glue + L",
+    "xc": "glue + L + W",
+    "xd": "glue + 2*L + W",
+    "bl": "glue + 2*L + 2*W",
+    "yg": "tab + H - gap",
+    "yb": "yg + tab",
+    "ya": "yb - H",
+    "yt": "yb + H",
+    "bw": "yb + 2*H",
+    "cxB": "(xb + xc) / 2",
+    "cxD": "(xd + bl) / 2",
+    "slotJ": "sqrt(slotR*slotR - slotW*slotW/4)"
+  },
+  "require": [
+    {
+      "expr": "tab > gap",
+      "message": "The tab depth must be larger than the flap clearance."
+    },
+    {
+      "expr": "gap < H",
+      "message": "The flap clearance is too large for this height."
+    },
+    {
+      "expr": "2*gap < W",
+      "message": "The flap clearance is too large for this width."
+    },
+    {
+      "expr": "glue < L",
+      "message": "The glue flap is too wide for this length."
+    },
+    {
+      "expr": "2*chamfer < H",
+      "message": "The glue flap corner cut is too large for this height."
+    },
+    {
+      "expr": "slotR < tab",
+      "message": "The hang slot hole is too large for this tab depth."
+    },
+    {
+      "expr": "slotW < 2*slotR",
+      "message": "The hang slot is wider than its hole."
+    },
+    {
+      "expr": "2*slotR < W - 2*gap",
+      "message": "The hang slot hole is too wide for this width."
+    }
+  ],
+  "cuts": [
+    {
+      "id": "outline",
+      "d": "M{glue} {ya} L{xb} {ya} L{xb} {yb} L{xb + gap} {yb} L{xb + gap} 0 L{xc - gap} 0 L{xc - gap} {yb} L{xc} {yb} L{xc} {ya} L{xd} {ya} L{xd} {yb} L{xd + gap} {yb} L{xd + gap} 0 L{bl} 0 L{bl} {bw} L{xd + gap} {bw} L{xd + gap} {yt} L{xd} {yt} L{xd} {bw} L{xc} {bw} L{xc} {yt} L{xc - gap} {yt} L{xc - gap} {bw} L{xb + gap} {bw} L{xb + gap} {yt} L{xb} {yt} L{xb} {bw} L{glue} {bw} L{glue} {yt} L0 {yt - chamfer} L0 {yb + chamfer} L{glue} {yb} Z"
+    },
+    {
+      "id": "hang-slot-1",
+      "d": "M{cxB - slotW / 2} {ya} L{cxB + slotW / 2} {ya} L{cxB + slotW / 2} {yg - slotJ} A{slotR} {slotR} 0 1 1 {cxB - slotW / 2} {yg - slotJ} Z"
+    },
+    {
+      "id": "hang-slot-2",
+      "d": "M{cxD - slotW / 2} {ya} L{cxD + slotW / 2} {ya} L{cxD + slotW / 2} {yg - slotJ} A{slotR} {slotR} 0 1 1 {cxD - slotW / 2} {yg - slotJ} Z"
+    }
+  ],
+  "creases": [
+    {
+      "d": "M{glue} {yb} L{bl} {yb}"
+    },
+    {
+      "d": "M{glue} {yt} L{bl} {yt}"
+    },
+    {
+      "d": "M{glue} {yb} L{glue} {yt}"
+    },
+    {
+      "d": "M{xb} {yb} L{xb} {yt}"
+    },
+    {
+      "d": "M{xc} {yb} L{xc} {yt}"
+    },
+    {
+      "d": "M{xd} {yb} L{xd} {yt}"
+    },
+    {
+      "d": "M{xb + gap} {tab} L{xc - gap} {tab}"
+    },
+    {
+      "d": "M{xd + gap} {tab} L{bl} {tab}"
+    },
+    {
+      "d": "M{xb + gap} {yg} L{cxB - slotR} {yg}"
+    },
+    {
+      "d": "M{cxB + slotR} {yg} L{xc - gap} {yg}"
+    },
+    {
+      "d": "M{xd + gap} {yg} L{cxD - slotR} {yg}"
+    },
+    {
+      "d": "M{cxD + slotR} {yg} L{bl} {yg}"
+    }
+  ],
+  "details": {
+    "creasing": [
+      "yb",
+      "H",
+      "H"
+    ],
+    "boardLength": "bl",
+    "boardWidth": "bw"
+  }
+}

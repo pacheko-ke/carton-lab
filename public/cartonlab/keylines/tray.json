@@ -1,0 +1,124 @@
+{
+  "id": "tray",
+  "name": "Regular Tray",
+  "title": "TRAY KEYLINE",
+  "inputs": [
+    {
+      "id": "gap",
+      "label": "Flap clearance",
+      "default": 3,
+      "min": 0
+    }
+  ],
+  "params": {
+    "refL": "324",
+    "refW": "274",
+    "refH": "65",
+    "xl": "H",
+    "xr": "H + L",
+    "yf": "H + W",
+    "bl": "L + 2*H",
+    "bw": "W + 2*H"
+  },
+  "require": [
+    {
+      "expr": "gap < H",
+      "message": "The gap is too large for this height."
+    },
+    {
+      "expr": "2*gap < L",
+      "message": "The gap is too large for this length."
+    }
+  ],
+  "cuts": [
+    {
+      "id": "outline",
+      "d": "M0 0 L{xl - gap} 0 L{xl - gap} {H} L{xl + gap} {H} L{xl + gap} 0 L{xr - gap} 0 L{xr - gap} {H} L{xr + gap} {H} L{xr + gap} 0 L{bl} 0 L{bl} {bw} L{xr + gap} {bw} L{xr + gap} {yf} L{xr - gap} {yf} L{xr - gap} {bw} L{xl + gap} {bw} L{xl + gap} {yf} L{xl - gap} {yf} L{xl - gap} {bw} L0 {bw} Z"
+    }
+  ],
+  "creases": [
+    {
+      "d": "M{xl + gap} {H} L{xr - gap} {H}"
+    },
+    {
+      "d": "M{xl + gap} {yf} L{xr - gap} {yf}"
+    },
+    {
+      "d": "M{xl} {H} L{xl} {yf}"
+    },
+    {
+      "d": "M{xr} {H} L{xr} {yf}"
+    },
+    {
+      "d": "M0 {H} L{xl - gap} {H}"
+    },
+    {
+      "d": "M0 {yf} L{xl - gap} {yf}"
+    },
+    {
+      "d": "M{xr + gap} {H} L{bl} {H}"
+    },
+    {
+      "d": "M{xr + gap} {yf} L{bl} {yf}"
+    }
+  ],
+  "dimensions": [
+    {
+      "id": "length",
+      "value": "L",
+      "x1": "xl",
+      "y1": "bw + 30",
+      "x2": "xr",
+      "y2": "bw + 30"
+    },
+    {
+      "id": "width",
+      "value": "W",
+      "x1": "xr + H + 30",
+      "y1": "H",
+      "x2": "xr + H + 30",
+      "y2": "yf"
+    },
+    {
+      "id": "height",
+      "value": "H",
+      "x1": "xr - 40",
+      "y1": "0",
+      "x2": "xr - 40",
+      "y2": "H"
+    },
+    {
+      "id": "wing-width",
+      "value": "H",
+      "x1": "xr",
+      "y1": "yf + H + 30",
+      "x2": "bl",
+      "y2": "yf + H + 30"
+    },
+    {
+      "id": "ear-width",
+      "value": "H - gap",
+      "x1": "xr + gap",
+      "y1": "-30",
+      "x2": "bl",
+      "y2": "-30"
+    },
+    {
+      "id": "flap-length",
+      "value": "L - 2*gap",
+      "x1": "xl + gap",
+      "y1": "-30",
+      "x2": "xr - gap",
+      "y2": "-30"
+    }
+  ],
+  "details": {
+    "creasing": [
+      "H",
+      "W",
+      "H"
+    ],
+    "boardLength": "bl",
+    "boardWidth": "bw"
+  }
+}

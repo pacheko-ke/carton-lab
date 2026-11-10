@@ -1,0 +1,147 @@
+{
+  "id": "flower",
+  "name": "F1 Zim Bottom - Machine Slotted Flower Box",
+  "title": "ZIM BOTTOM DIE SLOT KEYLINE",
+  "inputs": [
+    {
+      "id": "notch",
+      "label": "Notch size",
+      "default": 10,
+      "min": 0
+    }
+  ],
+  "params": {
+    "refL": "1040",
+    "refW": "310",
+    "refH": "200",
+    "kL": "L / refL",
+    "kW": "W / refW",
+    "kH": "H / refH",
+    "s2": "notch / 2",
+    "ec": "H + s2",
+    "xl": "ec",
+    "xr": "ec + L",
+    "bl": "L + 2*ec",
+    "bw": "W + 2*H",
+    "holeX": "50*kH",
+    "holeW": "100*kH",
+    "holeH": "50*kW",
+    "holeR": "20*min(kH, kW)",
+    "hole1Y": "H + 50*kW",
+    "hole2Y": "H + 200*kW",
+    "strapR": "25*kH"
+  },
+  "require": [
+    {
+      "expr": "notch / 2 + strapR < 225*kL",
+      "message": "The notch is too wide for this length."
+    }
+  ],
+  "cuts": [
+    {
+      "id": "outline",
+      "d": "M0 0 L{xl - s2} 0 L{xl - s2} {H} L{xl + s2} {H} L{xl + s2} 0 L{xr - s2} 0 L{xr - s2} {H} L{xr + s2} {H} L{xr + s2} 0 L{bl} 0 L{bl} {bw} L{xr + s2} {bw} L{xr + s2} {bw - H} L{xr - s2} {bw - H} L{xr - s2} {bw} L{xl + s2} {bw} L{xl + s2} {bw - H} L{xl - s2} {bw - H} L{xl - s2} {bw} L0 {bw} Z"
+    },
+    {
+      "id": "side-hole-left-1",
+      "type": "rect",
+      "x": "holeX",
+      "y": "hole1Y",
+      "width": "holeW",
+      "height": "holeH",
+      "rx": "holeR"
+    },
+    {
+      "id": "side-hole-left-2",
+      "type": "rect",
+      "x": "holeX",
+      "y": "hole2Y",
+      "width": "holeW",
+      "height": "holeH",
+      "rx": "holeR"
+    },
+    {
+      "id": "side-hole-right-1",
+      "type": "rect",
+      "x": "bl - holeX - holeW",
+      "y": "hole1Y",
+      "width": "holeW",
+      "height": "holeH",
+      "rx": "holeR"
+    },
+    {
+      "id": "side-hole-right-2",
+      "type": "rect",
+      "x": "bl - holeX - holeW",
+      "y": "hole2Y",
+      "width": "holeW",
+      "height": "holeH",
+      "rx": "holeR"
+    },
+    {
+      "id": "strap-top-1",
+      "type": "circle",
+      "cx": "xl + 225*kL",
+      "cy": "H / 2",
+      "r": "strapR"
+    },
+    {
+      "id": "strap-top-2",
+      "type": "circle",
+      "cx": "xl + 525*kL",
+      "cy": "H / 2",
+      "r": "strapR"
+    },
+    {
+      "id": "strap-top-3",
+      "type": "circle",
+      "cx": "xl + 825*kL",
+      "cy": "H / 2",
+      "r": "strapR"
+    },
+    {
+      "id": "strap-bottom-1",
+      "type": "circle",
+      "cx": "xl + 225*kL",
+      "cy": "bw - H / 2",
+      "r": "strapR"
+    },
+    {
+      "id": "strap-bottom-2",
+      "type": "circle",
+      "cx": "xl + 525*kL",
+      "cy": "bw - H / 2",
+      "r": "strapR"
+    },
+    {
+      "id": "strap-bottom-3",
+      "type": "circle",
+      "cx": "xl + 825*kL",
+      "cy": "bw - H / 2",
+      "r": "strapR"
+    }
+  ],
+  "creases": [
+    {
+      "d": "M0 {H} L{bl} {H}"
+    },
+    {
+      "d": "M0 {H + W} L{bl} {H + W}"
+    },
+    {
+      "d": "M{xl} {H} L{xl} {H + W}"
+    },
+    {
+      "d": "M{xr} {H} L{xr} {H + W}"
+    }
+  ],
+  "details": {
+    "creasing": [
+      "H",
+      "W",
+      "H"
+    ],
+    "boardLength": "bl",
+    "boardWidth": "bw"
+  }
+}

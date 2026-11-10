@@ -1,0 +1,282 @@
+{
+  "id": "pizzaboxstandard",
+  "name": "Pizza Box Standard",
+  "title": "PIZZA BOX STANDARD KEYLINE",
+  "inputs": [
+    {
+      "id": "band",
+      "label": "Hinge band",
+      "default": 5,
+      "min": 0
+    },
+    {
+      "id": "slit",
+      "label": "Ear slit",
+      "default": 1,
+      "min": 0
+    }
+  ],
+  "params": {
+    "refL": "310",
+    "refW": "310",
+    "refH": "45",
+    "kL": "L / refL",
+    "kW": "W / refW",
+    "kH": "H / refH",
+    "pr": "min(kL, kW)",
+    "flapW": "63*kH",
+    "tabD": "10",
+    "earH": "40",
+    "earW": "110.4*kH",
+    "neckW": "9.5",
+    "backW": "44*kH",
+    "frontW": "48.5*kH",
+    "sideEnd": "40*kL",
+    "recD": "15.6",
+    "fIn": "7",
+    "fChX": "10.3",
+    "stripOv": "4",
+    "xflap": "tabD",
+    "xwall0": "flapW + tabD",
+    "xwall1": "xwall0 + H",
+    "xlid": "xwall1 + band",
+    "xlr": "xlid + L",
+    "xs1": "xlr + band",
+    "xs2": "xs1 + backW",
+    "xbl": "xs2 + slit + band",
+    "xbr": "xbl + L",
+    "xf1": "xbr + band",
+    "xf2": "xf1 + frontW",
+    "bl": "xf2",
+    "yp0": "earH",
+    "yp1": "yp0 + W",
+    "bw": "yp1 + earH",
+    "nA": "38.5*kW",
+    "nD": "18.9",
+    "tA": "48*kW",
+    "tB": "54*kW",
+    "tC": "104.5*kW",
+    "tD": "110*kW",
+    "stripHoleR": "13.3*pr",
+    "stripHoleGap": "131.7*kW",
+    "fingerR": "11.5*pr",
+    "fingerX": "xwall0 - 6.45"
+  },
+  "require": [
+    {
+      "expr": "band < H",
+      "message": "The band is too wide for this size."
+    },
+    {
+      "expr": "slit < band",
+      "message": "The slit is too wide for the band."
+    },
+    {
+      "expr": "2*sideEnd < L",
+      "message": "The side wall ends do not fit this width."
+    },
+    {
+      "expr": "recD < earH",
+      "message": "The side wall recess is too deep."
+    },
+    {
+      "expr": "2*nA + 20 < W",
+      "message": "The front wall notch does not fit this length."
+    },
+    {
+      "expr": "nD < frontW",
+      "message": "The front wall notch is too deep."
+    },
+    {
+      "expr": "tD < W / 2",
+      "message": "The flap tabs do not fit this length."
+    },
+    {
+      "expr": "earW < xwall1",
+      "message": "The ears do not fit this size."
+    },
+    {
+      "expr": "stripHoleGap / 2 + stripHoleR < W / 2",
+      "message": "The back strip holes do not fit this length."
+    },
+    {
+      "expr": "2*stripHoleR < backW",
+      "message": "The back strip holes do not fit this width."
+    }
+  ],
+  "cuts": [
+    {
+      "id": "outline",
+      "d": "M{xflap} {yp0 + fIn} L{xwall0 - fChX} {yp0 + fIn} L{xwall0} {yp0} L{xwall1 - neckW} {yp0} L{xwall1 - neckW} {yp0 - band} L{xwall1 - earW} {yp0 - band} L{xwall1 - earW} 0 L{xwall1} 0 L{xwall1} {yp0} L{xs1} {yp0} L{xs1} 0 L{xs2} 0 L{xs2} {yp0} L{xs2 + slit} {yp0} L{xs2 + slit} 0 L{xs2 + slit + sideEnd} 0 L{xs2 + slit + sideEnd} {recD} L{xf1 - sideEnd} {recD} L{xf1 - sideEnd} 0 L{xf1} 0 L{xf1} {yp0} L{xf2} {yp0} L{xf2} {yp0 + nA} L{xf2 - nD} {yp0 + nA} L{xf2 - nD} {yp1 - nA} L{xf2} {yp1 - nA} L{xf2} {yp1} L{xf1} {yp1} L{xf1} {bw} L{xf1 - sideEnd} {bw} L{xf1 - sideEnd} {bw - recD} L{xs2 + slit + sideEnd} {bw - recD} L{xs2 + slit + sideEnd} {bw} L{xs2 + slit} {bw} L{xs2 + slit} {yp1} L{xs2} {yp1} L{xs2} {bw} L{xs1} {bw} L{xs1} {yp1} L{xwall1} {yp1} L{xwall1} {bw} L{xwall1 - earW} {bw} L{xwall1 - earW} {yp1 + band} L{xwall1 - neckW} {yp1 + band} L{xwall1 - neckW} {yp1} L{xwall0} {yp1} L{xwall0 - fChX} {yp1 - fIn} L{xflap} {yp1 - fIn} L{xflap} {yp1 - tA} L0 {yp1 - tB} L0 {yp1 - tC} L{xflap} {yp1 - tD} L{xflap} {yp0 + tD} L0 {yp0 + tC} L0 {yp0 + tB} L{xflap} {yp0 + tA} Z"
+    },
+    {
+      "id": "strip-hole-1",
+      "type": "circle",
+      "cx": "(xs1 + xs2) / 2",
+      "cy": "yp0 + W / 2 - stripHoleGap / 2",
+      "r": "stripHoleR"
+    },
+    {
+      "id": "strip-hole-2",
+      "type": "circle",
+      "cx": "(xs1 + xs2) / 2",
+      "cy": "yp0 + W / 2 + stripHoleGap / 2",
+      "r": "stripHoleR"
+    },
+    {
+      "id": "finger-hole",
+      "type": "circle",
+      "cx": "fingerX",
+      "cy": "yp0 + W / 2",
+      "r": "fingerR"
+    }
+  ],
+  "creases": [
+    {
+      "d": "M{xlid} {yp0} L{xlid} {yp1}"
+    },
+  
+    {
+      "d": "M{xwall0 - 1} {yp0} L{xwall0 - 1} {yp1}"
+    },
+    {
+      "d": "M{xwall0 - 11.9} {yp0 + fIn} L{xwall0 - 11.9} {yp1 - fIn}"
+    },
+    {
+      "d": "M{xwall1 - neckW} {yp0} L{xwall1} {yp0}"
+    },
+    {
+      "d": "M{xwall1 - neckW} {yp1} L{xwall1} {yp1}"
+    },
+  
+    {
+      "d": "M{xs1} {yp0} L{xs1} {yp1}"
+    },
+   
+    {
+      "d": "M{xbl} {yp0} L{xbl} {yp1}"
+    },
+    {
+      "d": "M{xs1} {yp0 - stripOv} L{xs2} {yp0 - stripOv}"
+    },
+    {
+      "d": "M{xs1} {yp1 + stripOv} L{xs2} {yp1 + stripOv}"
+    },
+    {
+      "d": "M{xs2 + slit} {yp0} L{xf1} {yp0}"
+    },
+    {
+      "d": "M{xs2 + slit} {yp1} L{xf1} {yp1}"
+    },
+    {
+      "d": "M{xbr} {yp0} L{xbr} {yp1}"
+    }
+  ],
+  "dimensions": [
+    {
+      "id": "lid-width",
+      "value": "L",
+      "x1": "xlid",
+      "y1": "yp0 + W / 2 - 60*kW",
+      "x2": "xlr",
+      "y2": "yp0 + W / 2 - 60*kW"
+    },
+    {
+      "id": "lid-length",
+      "value": "W",
+      "x1": "xlid + 30*kL",
+      "y1": "yp0",
+      "x2": "xlid + 30*kL",
+      "y2": "yp1"
+    },
+    {
+      "id": "wall-width",
+      "value": "H",
+      "x1": "xwall0",
+      "y1": "yp0 + 30*kW",
+      "x2": "xwall1",
+      "y2": "yp0 + 30*kW"
+    },
+    {
+      "id": "band",
+      "value": "band",
+      "x1": "xwall1",
+      "y1": "yp0 + 60*kW",
+      "x2": "xlid",
+      "y2": "yp0 + 60*kW"
+    },
+    {
+      "id": "flap-width",
+      "value": "flapW",
+      "x1": "xflap",
+      "y1": "yp0 + 130*kW",
+      "x2": "xwall0",
+      "y2": "yp0 + 130*kW"
+    },
+    {
+      "id": "back-strip-width",
+      "value": "backW",
+      "x1": "xs1",
+      "y1": "yp0 + 30*kW",
+      "x2": "xs2",
+      "y2": "yp0 + 30*kW"
+    },
+    {
+      "id": "base-width",
+      "value": "L",
+      "x1": "xbl",
+      "y1": "yp0 + W / 2 - 60*kW",
+      "x2": "xbr",
+      "y2": "yp0 + W / 2 - 60*kW"
+    },
+    {
+      "id": "front-wall-width",
+      "value": "frontW",
+      "x1": "xf1",
+      "y1": "yp0 + 30*kW",
+      "x2": "xf2",
+      "y2": "yp0 + 30*kW"
+    },
+    {
+      "id": "side-wall-height",
+      "value": "earH",
+      "x1": "xbl + 30*kL",
+      "y1": "0",
+      "x2": "xbl + 30*kL",
+      "y2": "yp0"
+    },
+    {
+      "id": "strip-hole-spacing",
+      "value": "stripHoleGap",
+      "x1": "xs1 + 8",
+      "y1": "yp0 + W / 2 - stripHoleGap / 2",
+      "x2": "xs1 + 8",
+      "y2": "yp0 + W / 2 + stripHoleGap / 2"
+    },
+    {
+      "id": "strip-hole-diameter",
+      "type": "diameter",
+      "value": "2*stripHoleR",
+      "cx": "(xs1 + xs2) / 2",
+      "cy": "yp0 + W / 2 - stripHoleGap / 2",
+      "r": "stripHoleR"
+    },
+    {
+      "id": "finger-hole-diameter",
+      "type": "diameter",
+      "value": "2*fingerR",
+      "cx": "fingerX",
+      "cy": "yp0 + W / 2",
+      "r": "fingerR"
+    }
+  ],
+  "details": {
+    "creasing": [
+      "earH",
+      "W",
+      "earH"
+    ],
+    "boardLength": "bl",
+    "boardWidth": "bw"
+  }
+}

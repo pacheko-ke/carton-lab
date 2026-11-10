@@ -1,0 +1,521 @@
+{
+  "id": "chickenbox",
+  "name": "Chicken Box s/f",
+  "title": "CHICKEN BOX KEYLINE",
+  "inputs": [
+    {
+      "id": "slit",
+      "label": "Center slit width",
+      "default": 4,
+      "min": 0
+    },
+    {
+      "id": "perfGap",
+      "label": "Tear line spacing",
+      "default": 2,
+      "min": 0
+    }
+  ],
+  "params": {
+    "refL": "445.5",
+    "refW": "330",
+    "refH": "30",
+    "kL": "L / refL",
+    "kW": "W / refW",
+    "kH": "H / refH",
+    "pr": "min(kL, kW)",
+    "lugW": "29.3",
+    "sl": "slit / 2",
+    "chOut": "20.3",
+    "chIn": "30.6",
+    "slitD": "123.6",
+    "bl": "L + 2*lugW",
+    "bw": "W + 2*H",
+    "cx": "bl / 2",
+    "yc": "bw / 2",
+    "lugTop": "51.9",
+    "lugBot": "119",
+    "lugIn": "19.5",
+    "lugInY": "54",
+    "lugEdge": "22.8",
+    "lugEdgeY": "72.6",
+    "lugGapY": "73",
+    "lugR": "9.8",
+    "stepY": "158.8",
+    "stepX": "lugW + 40",
+    "mR": "6",
+    "mH": "1.8",
+    "mEnd": "79.7",
+    "wW": "85.2",
+    "wH": "83.2",
+    "tipL": "15.4",
+    "tipB": "6.5",
+    "tipX": "cx - wW / 2 - tipL",
+    "holeR": "7*pr",
+    "holeP": "39*kL",
+    "holeS": "20.5*kL",
+    "holeX": "74*kL",
+    "holeY1": "71.9*kW",
+    "holeY2": "112.1*kW"
+  },
+  "require": [
+    {
+      "expr": "2*lugW + 2*(chOut) < L",
+      "message": "The flaps do not fit this length."
+    },
+    {
+      "expr": "slitD > H",
+      "message": "The center slit is too short for this height."
+    },
+    {
+      "expr": "holeX + 3*holeP + holeS + holeR < cx - sl",
+      "message": "The holes do not fit this length."
+    },
+    {
+      "expr": "holeY2 + holeR < yc - 20",
+      "message": "The holes do not fit this height."
+    },
+    {
+      "expr": "wH < W - 2*30",
+      "message": "The window is too tall for this height."
+    },
+    {
+      "expr": "wW / 2 + tipL < cx - mEnd",
+      "message": "The window does not fit this length."
+    }
+  ],
+  "cuts": [
+    {
+      "id": "outline",
+      "d": "M{lugW + chOut} {0} L{lugW} {H} L{lugW} {lugGapY} L{lugEdge} {lugEdgeY} L{lugIn} {lugInY} A{lugR} {lugR} 0 0 0 {0} {lugTop} L{0} {lugBot} L{lugW} {lugBot} L{lugW} {stepY} L{stepX} {stepY} L{stepX} {yc - mH - mR} A{mR} {mR} 0 0 0 {stepX + mR} {yc - mH} L{mEnd} {yc - mH} L{mEnd} {yc + mH} L{stepX + mR} {yc + mH} A{mR} {mR} 0 0 0 {stepX} {yc + mH + mR} L{stepX} {bw - (yc + mH + mR)} A{mR} {mR} 0 0 0 {stepX + mR} {bw - (yc + mH)} L{mEnd} {bw - (yc + mH)} L{mEnd} {bw - (yc - mH)} L{stepX + mR} {bw - (yc - mH)} A{mR} {mR} 0 0 0 {stepX} {bw - (yc - mH - mR)} L{stepX} {bw - (stepY)} L{lugW} {bw - (stepY)} L{lugW} {bw - (lugBot)} L{0} {bw - (lugBot)} L{0} {bw - (lugTop)} A{lugR} {lugR} 0 0 0 {lugIn} {bw - (lugInY)} L{lugEdge} {bw - (lugEdgeY)} L{lugW} {bw - (lugGapY)} L{lugW} {bw - (H)} L{lugW + chOut} {bw - (0)} L{lugW} {bw - H} L{lugW + chOut} {bw} L{cx - sl - chIn} {bw} L{cx - sl} {bw - H} L{cx - sl} {bw - slitD + sl} A{sl} {sl} 0 0 1 {cx + sl} {bw - slitD + sl} L{cx + sl} {bw - H} L{cx + sl + chIn} {bw} L{bl - (lugW + chOut)} {bw} L{bl - (lugW)} {bw - H} L{bl - (lugW + chOut)} {bw - (0)} L{bl - (lugW)} {bw - (H)} L{bl - (lugW)} {bw - (lugGapY)} L{bl - (lugEdge)} {bw - (lugEdgeY)} L{bl - (lugIn)} {bw - (lugInY)} A{lugR} {lugR} 0 0 0 {bl - (0)} {bw - (lugTop)} L{bl - (0)} {bw - (lugBot)} L{bl - (lugW)} {bw - (lugBot)} L{bl - (lugW)} {bw - (stepY)} L{bl - (stepX)} {bw - (stepY)} L{bl - (stepX)} {bw - (yc - mH - mR)} A{mR} {mR} 0 0 0 {bl - (stepX + mR)} {bw - (yc - mH)} L{bl - (mEnd)} {bw - (yc - mH)} L{bl - (mEnd)} {bw - (yc + mH)} L{bl - (stepX + mR)} {bw - (yc + mH)} A{mR} {mR} 0 0 0 {bl - (stepX)} {bw - (yc + mH + mR)} L{bl - (stepX)} {yc + mH + mR} A{mR} {mR} 0 0 0 {bl - (stepX + mR)} {yc + mH} L{bl - (mEnd)} {yc + mH} L{bl - (mEnd)} {yc - mH} L{bl - (stepX + mR)} {yc - mH} A{mR} {mR} 0 0 0 {bl - (stepX)} {yc - mH - mR} L{bl - (stepX)} {stepY} L{bl - (lugW)} {stepY} L{bl - (lugW)} {lugBot} L{bl - (0)} {lugBot} L{bl - (0)} {lugTop} A{lugR} {lugR} 0 0 0 {bl - (lugIn)} {lugInY} L{bl - (lugEdge)} {lugEdgeY} L{bl - (lugW)} {lugGapY} L{bl - (lugW)} {H} L{bl - (lugW + chOut)} {0} L{cx + sl + chIn} {0} L{cx + sl} {H} L{cx + sl} {slitD - sl} A{sl} {sl} 0 0 1 {cx - sl} {slitD - sl} L{cx - sl} {H} L{cx - sl - chIn} {0} Z"
+    },
+    {
+      "id": "window",
+      "d": "M{cx - wW / 2} {yc - wH / 2} L{cx + wW / 2} {yc - wH / 2} L{cx + wW / 2} {yc - tipB} L{cx + wW / 2 + tipL} {yc} L{cx + wW / 2} {yc + tipB} L{cx + wW / 2} {yc + wH / 2} L{cx - wW / 2} {yc + wH / 2} L{cx - wW / 2} {yc + tipB} L{tipX} {yc} L{cx - wW / 2} {yc - tipB} Z"
+    },
+    {
+      "id": "hole-top-left-1-1",
+      "type": "circle",
+      "cx": "holeX + 0*holeP",
+      "cy": "holeY1",
+      "r": "holeR"
+    },
+    {
+      "id": "hole-top-left-2-1",
+      "type": "circle",
+      "cx": "holeX + holeS + 0*holeP",
+      "cy": "holeY2",
+      "r": "holeR"
+    },
+    {
+      "id": "hole-top-right-1-1",
+      "type": "circle",
+      "cx": "bl - (holeX + 0*holeP)",
+      "cy": "holeY1",
+      "r": "holeR"
+    },
+    {
+      "id": "hole-top-right-2-1",
+      "type": "circle",
+      "cx": "bl - (holeX + holeS + 0*holeP)",
+      "cy": "holeY2",
+      "r": "holeR"
+    },
+    {
+      "id": "hole-bottom-left-1-1",
+      "type": "circle",
+      "cx": "holeX + 0*holeP",
+      "cy": "bw - holeY1",
+      "r": "holeR"
+    },
+    {
+      "id": "hole-bottom-left-2-1",
+      "type": "circle",
+      "cx": "holeX + holeS + 0*holeP",
+      "cy": "bw - holeY2",
+      "r": "holeR"
+    },
+    {
+      "id": "hole-bottom-right-1-1",
+      "type": "circle",
+      "cx": "bl - (holeX + 0*holeP)",
+      "cy": "bw - holeY1",
+      "r": "holeR"
+    },
+    {
+      "id": "hole-bottom-right-2-1",
+      "type": "circle",
+      "cx": "bl - (holeX + holeS + 0*holeP)",
+      "cy": "bw - holeY2",
+      "r": "holeR"
+    },
+    {
+      "id": "hole-top-left-1-2",
+      "type": "circle",
+      "cx": "holeX + 1*holeP",
+      "cy": "holeY1",
+      "r": "holeR"
+    },
+    {
+      "id": "hole-top-left-2-2",
+      "type": "circle",
+      "cx": "holeX + holeS + 1*holeP",
+      "cy": "holeY2",
+      "r": "holeR"
+    },
+    {
+      "id": "hole-top-right-1-2",
+      "type": "circle",
+      "cx": "bl - (holeX + 1*holeP)",
+      "cy": "holeY1",
+      "r": "holeR"
+    },
+    {
+      "id": "hole-top-right-2-2",
+      "type": "circle",
+      "cx": "bl - (holeX + holeS + 1*holeP)",
+      "cy": "holeY2",
+      "r": "holeR"
+    },
+    {
+      "id": "hole-bottom-left-1-2",
+      "type": "circle",
+      "cx": "holeX + 1*holeP",
+      "cy": "bw - holeY1",
+      "r": "holeR"
+    },
+    {
+      "id": "hole-bottom-left-2-2",
+      "type": "circle",
+      "cx": "holeX + holeS + 1*holeP",
+      "cy": "bw - holeY2",
+      "r": "holeR"
+    },
+    {
+      "id": "hole-bottom-right-1-2",
+      "type": "circle",
+      "cx": "bl - (holeX + 1*holeP)",
+      "cy": "bw - holeY1",
+      "r": "holeR"
+    },
+    {
+      "id": "hole-bottom-right-2-2",
+      "type": "circle",
+      "cx": "bl - (holeX + holeS + 1*holeP)",
+      "cy": "bw - holeY2",
+      "r": "holeR"
+    },
+    {
+      "id": "hole-top-left-1-3",
+      "type": "circle",
+      "cx": "holeX + 2*holeP",
+      "cy": "holeY1",
+      "r": "holeR"
+    },
+    {
+      "id": "hole-top-left-2-3",
+      "type": "circle",
+      "cx": "holeX + holeS + 2*holeP",
+      "cy": "holeY2",
+      "r": "holeR"
+    },
+    {
+      "id": "hole-top-right-1-3",
+      "type": "circle",
+      "cx": "bl - (holeX + 2*holeP)",
+      "cy": "holeY1",
+      "r": "holeR"
+    },
+    {
+      "id": "hole-top-right-2-3",
+      "type": "circle",
+      "cx": "bl - (holeX + holeS + 2*holeP)",
+      "cy": "holeY2",
+      "r": "holeR"
+    },
+    {
+      "id": "hole-bottom-left-1-3",
+      "type": "circle",
+      "cx": "holeX + 2*holeP",
+      "cy": "bw - holeY1",
+      "r": "holeR"
+    },
+    {
+      "id": "hole-bottom-left-2-3",
+      "type": "circle",
+      "cx": "holeX + holeS + 2*holeP",
+      "cy": "bw - holeY2",
+      "r": "holeR"
+    },
+    {
+      "id": "hole-bottom-right-1-3",
+      "type": "circle",
+      "cx": "bl - (holeX + 2*holeP)",
+      "cy": "bw - holeY1",
+      "r": "holeR"
+    },
+    {
+      "id": "hole-bottom-right-2-3",
+      "type": "circle",
+      "cx": "bl - (holeX + holeS + 2*holeP)",
+      "cy": "bw - holeY2",
+      "r": "holeR"
+    },
+    {
+      "id": "hole-top-left-1-4",
+      "type": "circle",
+      "cx": "holeX + 3*holeP",
+      "cy": "holeY1",
+      "r": "holeR"
+    },
+    {
+      "id": "hole-top-left-2-4",
+      "type": "circle",
+      "cx": "holeX + holeS + 3*holeP",
+      "cy": "holeY2",
+      "r": "holeR"
+    },
+    {
+      "id": "hole-top-right-1-4",
+      "type": "circle",
+      "cx": "bl - (holeX + 3*holeP)",
+      "cy": "holeY1",
+      "r": "holeR"
+    },
+    {
+      "id": "hole-top-right-2-4",
+      "type": "circle",
+      "cx": "bl - (holeX + holeS + 3*holeP)",
+      "cy": "holeY2",
+      "r": "holeR"
+    },
+    {
+      "id": "hole-bottom-left-1-4",
+      "type": "circle",
+      "cx": "holeX + 3*holeP",
+      "cy": "bw - holeY1",
+      "r": "holeR"
+    },
+    {
+      "id": "hole-bottom-left-2-4",
+      "type": "circle",
+      "cx": "holeX + holeS + 3*holeP",
+      "cy": "bw - holeY2",
+      "r": "holeR"
+    },
+    {
+      "id": "hole-bottom-right-1-4",
+      "type": "circle",
+      "cx": "bl - (holeX + 3*holeP)",
+      "cy": "bw - holeY1",
+      "r": "holeR"
+    },
+    {
+      "id": "hole-bottom-right-2-4",
+      "type": "circle",
+      "cx": "bl - (holeX + holeS + 3*holeP)",
+      "cy": "bw - holeY2",
+      "r": "holeR"
+    }
+  ],
+  "creases": [
+    {
+      "d": "M{lugW} {H} L{cx - sl} {H}"
+    },
+    {
+      "d": "M{cx + sl} {H} L{bl - lugW} {H}"
+    },
+    {
+      "d": "M{lugW} {bw - H} L{cx - sl} {bw - H}"
+    },
+    {
+      "d": "M{cx + sl} {bw - H} L{bl - lugW} {bw - H}"
+    },
+    {
+      "d": "M{mEnd} {yc - perfGap / 2} L{tipX} {yc - perfGap / 2}"
+    },
+    {
+      "d": "M{mEnd} {yc + perfGap / 2} L{tipX} {yc + perfGap / 2}"
+    },
+    {
+      "d": "M{bl - mEnd} {yc - perfGap / 2} L{bl - tipX} {yc - perfGap / 2}"
+    },
+    {
+      "d": "M{bl - mEnd} {yc + perfGap / 2} L{bl - tipX} {yc + perfGap / 2}"
+    }
+  ],
+  "dimensions": [
+    {
+      "id": "board-length",
+      "label": "Board length",
+      "value": "bl",
+      "x1": "0",
+      "y1": "bw + 30",
+      "x2": "bl",
+      "y2": "bw + 30"
+    },
+    {
+      "id": "board-width",
+      "label": "Board width",
+      "value": "bw",
+      "x1": "bl + 30",
+      "y1": "0",
+      "x2": "bl + 30",
+      "y2": "bw"
+    },
+    {
+      "id": "length",
+      "label": "Panel length (L)",
+      "value": "L",
+      "x1": "lugW",
+      "y1": "bw + 60",
+      "x2": "bl - lugW",
+      "y2": "bw + 60"
+    },
+    {
+      "id": "width",
+      "label": "Panel height (W)",
+      "value": "W",
+      "x1": "-30",
+      "y1": "H",
+      "x2": "-30",
+      "y2": "bw - H"
+    },
+    {
+      "id": "flap-height",
+      "label": "Flap height (H)",
+      "value": "H",
+      "x1": "lugW + 40",
+      "y1": "0",
+      "x2": "lugW + 40",
+      "y2": "H"
+    },
+    {
+      "id": "lug-width",
+      "label": "Lug width",
+      "value": "lugW",
+      "x1": "0",
+      "y1": "lugBot + 20",
+      "x2": "lugW",
+      "y2": "lugBot + 20"
+    },
+    {
+      "id": "lug-length",
+      "label": "Lug length",
+      "value": "lugBot - lugTop",
+      "x1": "-12",
+      "y1": "lugTop",
+      "x2": "-12",
+      "y2": "lugBot"
+    },
+    {
+      "id": "panel-width",
+      "label": "Panel width",
+      "value": "cx - sl - lugW",
+      "x1": "lugW",
+      "y1": "-30",
+      "x2": "cx - sl",
+      "y2": "-30"
+    },
+    {
+      "id": "center-slit-width",
+      "label": "Center slit width",
+      "value": "2*sl",
+      "x1": "cx - sl",
+      "y1": "slitD + 12",
+      "x2": "cx + sl",
+      "y2": "slitD + 12"
+    },
+    {
+      "id": "center-slit-length",
+      "label": "Center slit length",
+      "value": "slitD - H",
+      "x1": "cx + 25",
+      "y1": "H",
+      "x2": "cx + 25",
+      "y2": "slitD"
+    },
+    {
+      "id": "window-width",
+      "label": "Window width",
+      "value": "wW",
+      "x1": "cx - wW / 2",
+      "y1": "yc - wH / 2 - 14",
+      "x2": "cx + wW / 2",
+      "y2": "yc - wH / 2 - 14"
+    },
+    {
+      "id": "window-height",
+      "label": "Window height",
+      "value": "wH",
+      "x1": "cx + wW / 2 + 14",
+      "y1": "yc - wH / 2",
+      "x2": "cx + wW / 2 + 14",
+      "y2": "yc + wH / 2"
+    },
+    {
+      "id": "tear-line-gap",
+      "label": "Tear line spacing",
+      "value": "perfGap",
+      "x1": "mEnd + 20",
+      "y1": "yc - perfGap / 2",
+      "x2": "mEnd + 20",
+      "y2": "yc + perfGap / 2"
+    },
+    {
+      "id": "hole-diameter",
+      "label": "Hole diameter",
+      "type": "diameter",
+      "value": "2*holeR",
+      "cx": "holeX",
+      "cy": "holeY1",
+      "r": "holeR"
+    },
+    {
+      "id": "hole-edge-offset",
+      "label": "First hole from edge",
+      "value": "holeX",
+      "x1": "0",
+      "y1": "holeY1",
+      "x2": "holeX",
+      "y2": "holeY1"
+    },
+    {
+      "id": "hole-pitch",
+      "label": "Hole pitch",
+      "value": "holeP",
+      "x1": "holeX",
+      "y1": "holeY1 - 20",
+      "x2": "holeX + holeP",
+      "y2": "holeY1 - 20"
+    },
+    {
+      "id": "hole-row-stagger",
+      "label": "Row stagger",
+      "value": "holeS",
+      "x1": "holeX",
+      "y1": "holeY2 + 20",
+      "x2": "holeX + holeS",
+      "y2": "holeY2 + 20"
+    },
+    {
+      "id": "hole-row-spacing",
+      "label": "Hole row spacing",
+      "value": "holeY2 - holeY1",
+      "x1": "holeX + 3*holeP + holeS + 20",
+      "y1": "holeY1",
+      "x2": "holeX + 3*holeP + holeS + 20",
+      "y2": "holeY2"
+    }
+  ],
+  "details": {
+    "creasing": [
+      "H",
+      "W",
+      "H"
+    ],
+    "boardLength": "bl",
+    "boardWidth": "bw"
+  },
+  "category": "Chicken Box"
+}

@@ -1,0 +1,381 @@
+{
+  "id": "selflocktray",
+  "name": "Self-lock Tray",
+  "title": "SELF-LOCK TRAY KEYLINE",
+  "inputs": [
+    {
+      "id": "band",
+      "label": "Hinge band",
+      "default": 14,
+      "min": 0
+    },
+    {
+      "id": "tabD",
+      "label": "Lock tab depth",
+      "default": 7.9,
+      "min": 0
+    }
+  ],
+  "params": {
+    "refL": "490",
+    "refW": "257",
+    "refH": "60",
+    "kL": "L / refL",
+    "kW": "W / refW",
+    "kH": "H / refH",
+    "outerW": "55*kH",
+    "slotW": "20",
+    "slotH": "50",
+    "slotY": "37.5*kW",
+    "tabS": "3.3",
+    "cB": "5.5",
+    "cO": "13.7",
+    "extSl": "6",
+    "xO": "tabD",
+    "xB1": "tabD + outerW",
+    "xB2": "xB1 + band",
+    "xl": "xB2 + H",
+    "xr": "xl + L",
+    "xB2r": "xr + H",
+    "xB1r": "xB2r + band",
+    "xOr": "xB1r + outerW",
+    "bl": "xOr + tabD",
+    "yt": "H",
+    "yb": "H + W",
+    "bw": "W + 2*H",
+    "ys1": "yt + slotY",
+    "ys2": "yb - slotY - slotH"
+  },
+  "require": [
+    {
+      "expr": "band < H",
+      "message": "The band is too wide for this height."
+    },
+    {
+      "expr": "2*slotY + 2*slotH < W",
+      "message": "The lock slots do not fit this width."
+    },
+    {
+      "expr": "slotW < L / 2",
+      "message": "The lock slots do not fit this length."
+    },
+    {
+      "expr": "outerW > 2*tabD",
+      "message": "The outer panel is too narrow for the lock tab."
+    },
+    {
+      "expr": "cO < slotY",
+      "message": "The lock tab is too close to the panel corner."
+    }
+  ],
+  "cuts": [
+    {
+      "id": "outline",
+      "d": "M{xO} 0 L{xOr} 0 L{xOr} {yt - extSl} L{xB2r} {yt} L{xr} {yt} L{xB2r} {yt} L{xB1r} {yt + cB} L{xOr} {yt + cO} L{xOr} {ys1} L{bl} {ys1 + tabS} L{bl} {ys1 + slotH - tabS} L{xOr} {ys1 + slotH} L{xOr} {ys2} L{bl} {ys2 + tabS} L{bl} {ys2 + slotH - tabS} L{xOr} {ys2 + slotH} L{xOr} {yb - cO} L{xB1r} {yb - cB} L{xB2r} {yb} L{xr} {yb} L{xB2r} {yb} L{xOr} {yb + extSl} L{xOr} {bw} L{xO} {bw} L{xO} {yb + extSl} L{xB2} {yb} L{xl} {yb} L{xB2} {yb} L{xB1} {yb - cB} L{xO} {yb - cO} L{xO} {ys2 + slotH} L0 {ys2 + slotH - tabS} L0 {ys2 + tabS} L{xO} {ys2} L{xO} {ys1 + slotH} L0 {ys1 + slotH - tabS} L0 {ys1 + tabS} L{xO} {ys1} L{xO} {yt + cO} L{xB1} {yt + cB} L{xB2} {yt} L{xl} {yt} L{xB2} {yt} L{xO} {yt - extSl} Z"
+    },
+    {
+      "id": "lock-slot-left-1",
+      "type": "rect",
+      "x": "xl",
+      "y": "ys1",
+      "width": "slotW",
+      "height": "slotH",
+      "rx": "0"
+    },
+    {
+      "id": "lock-slot-left-2",
+      "type": "rect",
+      "x": "xl",
+      "y": "ys2",
+      "width": "slotW",
+      "height": "slotH",
+      "rx": "0"
+    },
+    {
+      "id": "lock-slot-right-1",
+      "type": "rect",
+      "x": "xr - slotW",
+      "y": "ys1",
+      "width": "slotW",
+      "height": "slotH",
+      "rx": "0"
+    },
+    {
+      "id": "lock-slot-right-2",
+      "type": "rect",
+      "x": "xr - slotW",
+      "y": "ys2",
+      "width": "slotW",
+      "height": "slotH",
+      "rx": "0"
+    }
+  ],
+  "creases": [
+    {
+      "d": "M{xl} {yt} L{xr} {yt}"
+    },
+    {
+      "d": "M{xl} {yb} L{xr} {yb}"
+    },
+    {
+      "d": "M{xl} {yt} L{xl} {ys1}"
+    },
+    {
+      "d": "M{xl} {ys1 + slotH} L{xl} {ys2}"
+    },
+    {
+      "d": "M{xl} {ys2 + slotH} L{xl} {yb}"
+    },
+    {
+      "d": "M{xl} 0 L{xl} {yt}"
+    },
+    {
+      "d": "M{xl} {yb} L{xl} {bw}"
+    },
+    {
+      "d": "M{xr} {yt} L{xr} {ys1}"
+    },
+    {
+      "d": "M{xr} {ys1 + slotH} L{xr} {ys2}"
+    },
+    {
+      "d": "M{xr} {ys2 + slotH} L{xr} {yb}"
+    },
+    {
+      "d": "M{xr} 0 L{xr} {yt}"
+    },
+    {
+      "d": "M{xr} {yb} L{xr} {bw}"
+    },
+    {
+      "d": "M{xB1} {yt + cB} L{xB1} {yb - cB}"
+    },
+    {
+      "d": "M{xB2} {yt + cB} L{xB2} {yb - cB}"
+    },
+    {
+      "d": "M{xB1r} {yt + cB} L{xB1r} {yb - cB}"
+    },
+    {
+      "d": "M{xB2r} {yt + cB} L{xB2r} {yb - cB}"
+    }
+  ],
+  "dimensions": [
+    {
+      "id": "board-length",
+      "label": "Board length",
+      "value": "bl",
+      "x1": "0",
+      "y1": "bw + 60",
+      "x2": "bl",
+      "y2": "bw + 60"
+    },
+    {
+      "id": "board-width",
+      "label": "Board width",
+      "value": "bw",
+      "x1": "bl + 30",
+      "y1": "0",
+      "x2": "bl + 30",
+      "y2": "bw"
+    },
+    {
+      "id": "length",
+      "label": "Floor length (L)",
+      "value": "L",
+      "x1": "xl",
+      "y1": "bw + 30",
+      "x2": "xr",
+      "y2": "bw + 30"
+    },
+    {
+      "id": "width",
+      "label": "Floor width (W)",
+      "value": "W",
+      "x1": "xl - 40",
+      "y1": "yt",
+      "x2": "xl - 40",
+      "y2": "yb"
+    },
+    {
+      "id": "wall-height",
+      "label": "Wall height (H)",
+      "value": "H",
+      "x1": "xl + 40",
+      "y1": "0",
+      "x2": "xl + 40",
+      "y2": "yt"
+    },
+    {
+      "id": "long-wall-length",
+      "label": "Long wall length",
+      "value": "L",
+      "x1": "xl",
+      "y1": "-30",
+      "x2": "xr",
+      "y2": "-30"
+    },
+    {
+      "id": "corner-flap-width",
+      "label": "Corner flap width",
+      "value": "xl - xO",
+      "x1": "xO",
+      "y1": "-30",
+      "x2": "xl",
+      "y2": "-30"
+    },
+    {
+      "id": "corner-flap-height",
+      "label": "Corner flap height",
+      "value": "H",
+      "x1": "xO + 30",
+      "y1": "0",
+      "x2": "xO + 30",
+      "y2": "yt"
+    },
+    {
+      "id": "corner-flap-relief",
+      "label": "Corner flap relief",
+      "value": "extSl",
+      "x1": "xO + 12",
+      "y1": "yt - extSl",
+      "x2": "xO + 12",
+      "y2": "yt"
+    },
+    {
+      "id": "inner-wall-width",
+      "label": "Inner wall width",
+      "value": "H",
+      "x1": "xB2",
+      "y1": "yb + 30",
+      "x2": "xl",
+      "y2": "yb + 30"
+    },
+    {
+      "id": "outer-panel-width",
+      "label": "Outer lock panel width",
+      "value": "outerW",
+      "x1": "xO",
+      "y1": "yb + 30",
+      "x2": "xB1",
+      "y2": "yb + 30"
+    },
+    {
+      "id": "band-left",
+      "label": "Hinge band (left)",
+      "value": "band",
+      "x1": "xB1",
+      "y1": "-60",
+      "x2": "xB2",
+      "y2": "-60"
+    },
+    {
+      "id": "band-right",
+      "label": "Hinge band (right)",
+      "value": "band",
+      "x1": "xB2r",
+      "y1": "-60",
+      "x2": "xB1r",
+      "y2": "-60"
+    },
+    {
+      "id": "band-chamfer",
+      "label": "Band corner cut",
+      "value": "cB",
+      "x1": "xB1 - 8",
+      "y1": "yt",
+      "x2": "xB1 - 8",
+      "y2": "yt + cB"
+    },
+    {
+      "id": "outer-panel-corner",
+      "label": "Outer panel corner cut",
+      "value": "cO",
+      "x1": "xO + 12",
+      "y1": "yt",
+      "x2": "xO + 12",
+      "y2": "yt + cO"
+    },
+    {
+      "id": "lock-tab-depth",
+      "label": "Lock tab depth",
+      "value": "tabD",
+      "x1": "0",
+      "y1": "ys1 + slotH / 2",
+      "x2": "xO",
+      "y2": "ys1 + slotH / 2"
+    },
+    {
+      "id": "lock-tab-length",
+      "label": "Lock tab length",
+      "value": "slotH",
+      "x1": "-12",
+      "y1": "ys1",
+      "x2": "-12",
+      "y2": "ys1 + slotH"
+    },
+    {
+      "id": "lock-tab-taper",
+      "label": "Lock tab taper",
+      "value": "tabS",
+      "x1": "-24",
+      "y1": "ys1",
+      "x2": "-24",
+      "y2": "ys1 + tabS"
+    },
+    {
+      "id": "lock-tab-offset",
+      "label": "Lock tab offset from corner",
+      "value": "slotY",
+      "x1": "xO + 36",
+      "y1": "yt",
+      "x2": "xO + 36",
+      "y2": "ys1"
+    },
+    {
+      "id": "lock-slot-width",
+      "label": "Lock slot width",
+      "value": "slotW",
+      "x1": "xl",
+      "y1": "ys1 - 12",
+      "x2": "xl + slotW",
+      "y2": "ys1 - 12"
+    },
+    {
+      "id": "lock-slot-length",
+      "label": "Lock slot length",
+      "value": "slotH",
+      "x1": "xl + slotW + 14",
+      "y1": "ys1",
+      "x2": "xl + slotW + 14",
+      "y2": "ys1 + slotH"
+    },
+    {
+      "id": "lock-slot-offset",
+      "label": "Lock slot offset from corner",
+      "value": "slotY",
+      "x1": "xl + slotW + 36",
+      "y1": "yt",
+      "x2": "xl + slotW + 36",
+      "y2": "ys1"
+    },
+    {
+      "id": "lock-slot-spacing",
+      "label": "Lock slot spacing",
+      "value": "ys2 - ys1 - slotH",
+      "x1": "xl + slotW + 58",
+      "y1": "ys1 + slotH",
+      "x2": "xl + slotW + 58",
+      "y2": "ys2"
+    }
+  ],
+  "details": {
+    "creasing": [
+      "H",
+      "W",
+      "H"
+    ],
+    "boardLength": "bl",
+    "boardWidth": "bw"
+  }
+}

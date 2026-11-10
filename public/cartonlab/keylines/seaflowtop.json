@@ -1,0 +1,615 @@
+{
+  "id": "seaflowtop",
+  "name": "F1 Sea Flow Top",
+  "title": "SEA FLOW TOP KEYLINE",
+  "inputs": [
+    {
+      "id": "ex",
+      "label": "Wing overhang",
+      "default": 5,
+      "min": 0
+    },
+    {
+      "id": "lug",
+      "label": "Glue lug width",
+      "default": 56,
+      "min": 0
+    },
+    {
+      "id": "notch",
+      "label": "Ear notch width",
+      "default": 20,
+      "min": 0
+    }
+  ],
+  "params": {
+    "refL": "850",
+    "refW": "354",
+    "refH": "174",
+    "kL": "L / refL",
+    "kW": "W / refW",
+    "kH": "H / refH",
+    "pr": "min(kW, kH)",
+    "ec": "ex + lug + H",
+    "xl": "ec",
+    "xr": "ec + L",
+    "xwr": "xr + H",
+    "bl": "xwr + lug + ex",
+    "bw": "W + 2*H",
+    "yf": "H + W",
+    "yw": "H - ex",
+    "ywb": "yf + ex",
+    "yc": "H + W / 2",
+    "chX": "ex + lug + 15",
+    "chH": "18",
+    "lugIn": "6",
+    "nd": "3.5",
+    "nOff": "28",
+    "holeD": "87*kH",
+    "holeZ": "71*kH",
+    "earR": "30.5*pr",
+    "flapR": "30.5*pr",
+    "wingR": "28*pr",
+    "wingHx": "90*kH",
+    "wingGap": "185*kW",
+    "bodyR": "28*pr",
+    "bodyM": "61*kL",
+    "colStep": "(L - 2*bodyM) / 3",
+    "rowGap": "145*kW"
+  },
+  "require": [
+    {
+      "expr": "ex < H",
+      "message": "The wing overhang is too large for this height."
+    },
+    {
+      "expr": "chX < ec",
+      "message": "The corner cut is too wide for this height."
+    },
+    {
+      "expr": "nOff + notch < ec",
+      "message": "The notch does not fit this height."
+    },
+    {
+      "expr": "holeD + earR < H - ex",
+      "message": "The ear hole does not fit this height."
+    },
+    {
+      "expr": "holeZ + earR < ec",
+      "message": "The ear hole does not fit the ear width."
+    },
+    {
+      "expr": "holeD + flapR < L / 2",
+      "message": "The flap holes do not fit this length."
+    },
+    {
+      "expr": "holeZ + flapR < H",
+      "message": "The flap holes do not fit this height."
+    },
+    {
+      "expr": "wingHx + wingR < H",
+      "message": "The wing holes do not fit this height."
+    },
+    {
+      "expr": "wingGap + 2*wingR < W + 2*ex",
+      "message": "The wing holes do not fit this width."
+    },
+    {
+      "expr": "2*bodyR < colStep",
+      "message": "The body holes overlap at this length."
+    },
+    {
+      "expr": "rowGap + 2*bodyR < W",
+      "message": "The body holes do not fit this width."
+    }
+  ],
+  "cuts": [
+    {
+      "id": "outline",
+      "d": "M0 0 L{xl - nOff - notch} 0 L{xl - nOff - notch} {nd} L{xl - nOff} {nd} L{xl - nOff} 0 L{xr + nOff} 0 L{xr + nOff} {nd} L{xr + nOff + notch} {nd} L{xr + nOff + notch} 0 L{bl} 0 L{bl} {yw - chH} L{bl - chX} {yw} L{xwr} {yw} L{xwr} {yw + lugIn} L{xwr + lug} {yw + lugIn} L{xwr + lug} {ywb - lugIn} L{xwr} {ywb - lugIn} L{xwr} {ywb} L{bl - chX} {ywb} L{bl} {ywb + chH} L{bl} {bw} L{xr + nOff + notch} {bw} L{xr + nOff + notch} {bw - nd} L{xr + nOff} {bw - nd} L{xr + nOff} {bw} L{xl - nOff} {bw} L{xl - nOff} {bw - nd} L{xl - nOff - notch} {bw - nd} L{xl - nOff - notch} {bw} L0 {bw} L0 {ywb + chH} L{chX} {ywb} L{ex + lug} {ywb} L{ex + lug} {ywb - lugIn} L{ex} {ywb - lugIn} L{ex} {yw + lugIn} L{ex + lug} {yw + lugIn} L{ex + lug} {yw} L{chX} {yw} L0 {yw - chH} Z"
+    },
+    {
+      "id": "slit-left-top",
+      "d": "M{xl} 0 L{xl} {H}"
+    },
+    {
+      "id": "slit-left-bottom",
+      "d": "M{xl} {yf} L{xl} {bw}"
+    },
+    {
+      "id": "slit-right-top",
+      "d": "M{xr} 0 L{xr} {H}"
+    },
+    {
+      "id": "slit-right-bottom",
+      "d": "M{xr} {yf} L{xr} {bw}"
+    },
+    {
+      "id": "body-hole-1-1",
+      "type": "circle",
+      "cx": "xl + bodyM + 0*colStep",
+      "cy": "yc - rowGap / 2",
+      "r": "bodyR"
+    },
+    {
+      "id": "body-hole-1-2",
+      "type": "circle",
+      "cx": "xl + bodyM + 1*colStep",
+      "cy": "yc - rowGap / 2",
+      "r": "bodyR"
+    },
+    {
+      "id": "body-hole-1-3",
+      "type": "circle",
+      "cx": "xl + bodyM + 2*colStep",
+      "cy": "yc - rowGap / 2",
+      "r": "bodyR"
+    },
+    {
+      "id": "body-hole-1-4",
+      "type": "circle",
+      "cx": "xl + bodyM + 3*colStep",
+      "cy": "yc - rowGap / 2",
+      "r": "bodyR"
+    },
+    {
+      "id": "body-hole-2-1",
+      "type": "circle",
+      "cx": "xl + bodyM + 0*colStep",
+      "cy": "yc + rowGap / 2",
+      "r": "bodyR"
+    },
+    {
+      "id": "body-hole-2-2",
+      "type": "circle",
+      "cx": "xl + bodyM + 1*colStep",
+      "cy": "yc + rowGap / 2",
+      "r": "bodyR"
+    },
+    {
+      "id": "body-hole-2-3",
+      "type": "circle",
+      "cx": "xl + bodyM + 2*colStep",
+      "cy": "yc + rowGap / 2",
+      "r": "bodyR"
+    },
+    {
+      "id": "body-hole-2-4",
+      "type": "circle",
+      "cx": "xl + bodyM + 3*colStep",
+      "cy": "yc + rowGap / 2",
+      "r": "bodyR"
+    },
+    {
+      "id": "flap-hole-top-left",
+      "type": "circle",
+      "cx": "xl + holeD",
+      "cy": "H - holeZ",
+      "r": "flapR"
+    },
+    {
+      "id": "flap-hole-top-right",
+      "type": "circle",
+      "cx": "xr - holeD",
+      "cy": "H - holeZ",
+      "r": "flapR"
+    },
+    {
+      "id": "flap-hole-bottom-left",
+      "type": "circle",
+      "cx": "xl + holeD",
+      "cy": "yf + holeZ",
+      "r": "flapR"
+    },
+    {
+      "id": "flap-hole-bottom-right",
+      "type": "circle",
+      "cx": "xr - holeD",
+      "cy": "yf + holeZ",
+      "r": "flapR"
+    },
+    {
+      "id": "wing-hole-left-1",
+      "type": "circle",
+      "cx": "xl - wingHx",
+      "cy": "yc - wingGap / 2",
+      "r": "wingR"
+    },
+    {
+      "id": "wing-hole-left-2",
+      "type": "circle",
+      "cx": "xl - wingHx",
+      "cy": "yc + wingGap / 2",
+      "r": "wingR"
+    },
+    {
+      "id": "wing-hole-right-1",
+      "type": "circle",
+      "cx": "xr + wingHx",
+      "cy": "yc - wingGap / 2",
+      "r": "wingR"
+    },
+    {
+      "id": "wing-hole-right-2",
+      "type": "circle",
+      "cx": "xr + wingHx",
+      "cy": "yc + wingGap / 2",
+      "r": "wingR"
+    },
+    {
+      "id": "ear-hole-top-left",
+      "type": "circle",
+      "cx": "xl - holeZ",
+      "cy": "yw - holeD",
+      "r": "earR"
+    },
+    {
+      "id": "ear-hole-top-right",
+      "type": "circle",
+      "cx": "xr + holeZ",
+      "cy": "yw - holeD",
+      "r": "earR"
+    },
+    {
+      "id": "ear-hole-bottom-left",
+      "type": "circle",
+      "cx": "xl - holeZ",
+      "cy": "ywb + holeD",
+      "r": "earR"
+    },
+    {
+      "id": "ear-hole-bottom-right",
+      "type": "circle",
+      "cx": "xr + holeZ",
+      "cy": "ywb + holeD",
+      "r": "earR"
+    }
+  ],
+  "creases": [
+    {
+      "d": "M{xl} {H} L{xr} {H}"
+    },
+    {
+      "d": "M{xl} {yf} L{xr} {yf}"
+    },
+    {
+      "d": "M{xl} {H} L{xl} {yf}"
+    },
+    {
+      "d": "M{xr} {H} L{xr} {yf}"
+    },
+    {
+      "d": "M{chX} {yw} L{xl} {yw}"
+    },
+    {
+      "d": "M{chX} {ywb} L{xl} {ywb}"
+    },
+    {
+      "d": "M{xr} {yw} L{bl - chX} {yw}"
+    },
+    {
+      "d": "M{xr} {ywb} L{bl - chX} {ywb}"
+    },
+    {
+      "d": "M{ex + lug} {yw + lugIn} L{ex + lug} {ywb - lugIn}"
+    },
+    {
+      "d": "M{xwr} {yw + lugIn} L{xwr} {ywb - lugIn}"
+    }
+  ],
+  "dimensions": [
+    {
+      "id": "length",
+      "value": "L",
+      "x1": "xl",
+      "y1": "bw + 40",
+      "x2": "xr",
+      "y2": "bw + 40"
+    },
+    {
+      "id": "flap-height",
+      "value": "H",
+      "x1": "xr - 140*kL",
+      "y1": "0",
+      "x2": "xr - 140*kL",
+      "y2": "H"
+    },
+    {
+      "id": "width",
+      "value": "W",
+      "x1": "xr + 40",
+      "y1": "H",
+      "x2": "xr + 40",
+      "y2": "yf"
+    },
+    {
+      "id": "wing-length",
+      "value": "W + 2*ex",
+      "x1": "bl + 40",
+      "y1": "yw",
+      "x2": "bl + 40",
+      "y2": "ywb"
+    },
+    {
+      "id": "wing-width",
+      "value": "H",
+      "x1": "xr",
+      "y1": "yf + ex + 25",
+      "x2": "xwr",
+      "y2": "yf + ex + 25"
+    },
+    {
+      "id": "lug-width",
+      "value": "lug",
+      "x1": "ex",
+      "y1": "yc",
+      "x2": "ex + lug",
+      "y2": "yc"
+    },
+    {
+      "id": "ear-notch",
+      "value": "notch",
+      "x1": "xl - nOff - notch",
+      "y1": "-20",
+      "x2": "xl - nOff",
+      "y2": "-20"
+    },
+    {
+      "id": "ear-hole-x",
+      "value": "holeZ",
+      "x1": "xl - holeZ",
+      "y1": "yw - holeD",
+      "x2": "xl",
+      "y2": "yw - holeD"
+    },
+    {
+      "id": "ear-hole-y",
+      "value": "holeD",
+      "x1": "xl - holeZ",
+      "y1": "yw - holeD",
+      "x2": "xl - holeZ",
+      "y2": "yw"
+    },
+    {
+      "id": "ear-hole-diameter",
+      "value": "2*earR",
+      "x1": "(xl - holeZ) - earR*0.7071",
+      "y1": "(yw - holeD) - earR*0.7071",
+      "x2": "(xl - holeZ) + earR*0.7071",
+      "y2": "(yw - holeD) + earR*0.7071"
+    },
+    {
+      "id": "ear-hole-top-right-diameter",
+      "value": "2*earR",
+      "x1": "(xr + holeZ) - earR",
+      "y1": "yw - holeD",
+      "x2": "(xr + holeZ) + earR",
+      "y2": "yw - holeD"
+    },
+    {
+      "id": "ear-hole-bottom-left-diameter",
+      "value": "2*earR",
+      "x1": "(xl - holeZ) - earR",
+      "y1": "ywb + holeD",
+      "x2": "(xl - holeZ) + earR",
+      "y2": "ywb + holeD"
+    },
+    {
+      "id": "ear-hole-bottom-right-diameter",
+      "value": "2*earR",
+      "x1": "(xr + holeZ) - earR",
+      "y1": "ywb + holeD",
+      "x2": "(xr + holeZ) + earR",
+      "y2": "ywb + holeD"
+    },
+    {
+      "id": "flap-hole-x",
+      "value": "holeD",
+      "x1": "xl",
+      "y1": "H - holeZ",
+      "x2": "xl + holeD",
+      "y2": "H - holeZ"
+    },
+    {
+      "id": "flap-hole-y",
+      "value": "holeZ",
+      "x1": "xl + holeD",
+      "y1": "H - holeZ",
+      "x2": "xl + holeD",
+      "y2": "H"
+    },
+    {
+      "id": "flap-hole-diameter",
+      "value": "2*flapR",
+      "x1": "(xl + holeD) - flapR*0.7071",
+      "y1": "(H - holeZ) - flapR*0.7071",
+      "x2": "(xl + holeD) + flapR*0.7071",
+      "y2": "(H - holeZ) + flapR*0.7071"
+    },
+    {
+      "id": "flap-hole-top-right-diameter",
+      "value": "2*flapR",
+      "x1": "(xr - holeD) - flapR",
+      "y1": "H - holeZ",
+      "x2": "(xr - holeD) + flapR",
+      "y2": "H - holeZ"
+    },
+    {
+      "id": "flap-hole-bottom-left-diameter",
+      "value": "2*flapR",
+      "x1": "(xl + holeD) - flapR",
+      "y1": "yf + holeZ",
+      "x2": "(xl + holeD) + flapR",
+      "y2": "yf + holeZ"
+    },
+    {
+      "id": "flap-hole-bottom-right-diameter",
+      "value": "2*flapR",
+      "x1": "(xr - holeD) - flapR",
+      "y1": "yf + holeZ",
+      "x2": "(xr - holeD) + flapR",
+      "y2": "yf + holeZ"
+    },
+    {
+      "id": "wing-hole-spacing",
+      "value": "wingGap",
+      "x1": "xl - wingHx - 40*kH",
+      "y1": "yc - wingGap / 2",
+      "x2": "xl - wingHx - 40*kH",
+      "y2": "yc + wingGap / 2"
+    },
+    {
+      "id": "wing-hole-x",
+      "value": "wingHx",
+      "x1": "xl - wingHx",
+      "y1": "yc - wingGap / 2",
+      "x2": "xl",
+      "y2": "yc - wingGap / 2"
+    },
+    {
+      "id": "wing-hole-edge",
+      "value": "W/2 + ex - wingGap/2",
+      "x1": "xl - wingHx - 40*kH",
+      "y1": "yw",
+      "x2": "xl - wingHx - 40*kH",
+      "y2": "yc - wingGap / 2"
+    },
+    {
+      "id": "wing-hole-diameter",
+      "value": "2*wingR",
+      "x1": "xl - wingHx",
+      "y1": "(yc - wingGap / 2) - wingR",
+      "x2": "xl - wingHx",
+      "y2": "(yc - wingGap / 2) + wingR"
+    },
+    {
+      "id": "wing-hole-left-2-diameter",
+      "value": "2*wingR",
+      "x1": "(xl - wingHx) - wingR",
+      "y1": "yc + wingGap / 2",
+      "x2": "(xl - wingHx) + wingR",
+      "y2": "yc + wingGap / 2"
+    },
+    {
+      "id": "wing-hole-right-1-diameter",
+      "value": "2*wingR",
+      "x1": "(xr + wingHx) - wingR",
+      "y1": "yc - wingGap / 2",
+      "x2": "(xr + wingHx) + wingR",
+      "y2": "yc - wingGap / 2"
+    },
+    {
+      "id": "wing-hole-right-2-diameter",
+      "value": "2*wingR",
+      "x1": "(xr + wingHx) - wingR",
+      "y1": "yc + wingGap / 2",
+      "x2": "(xr + wingHx) + wingR",
+      "y2": "yc + wingGap / 2"
+    },
+    {
+      "id": "body-hole-margin",
+      "value": "bodyM",
+      "x1": "xr - bodyM",
+      "y1": "yc - rowGap / 2",
+      "x2": "xr",
+      "y2": "yc - rowGap / 2"
+    },
+    {
+      "id": "body-hole-spacing",
+      "value": "rowGap",
+      "x1": "xl + bodyM + colStep",
+      "y1": "yc - rowGap / 2",
+      "x2": "xl + bodyM + colStep",
+      "y2": "yc + rowGap / 2"
+    },
+    {
+      "id": "body-hole-pitch",
+      "value": "colStep",
+      "x1": "xl + bodyM",
+      "y1": "yc - rowGap / 2",
+      "x2": "xl + bodyM + colStep",
+      "y2": "yc - rowGap / 2"
+    },
+    {
+      "id": "body-hole-edge",
+      "value": "W/2 - rowGap/2",
+      "x1": "xl + bodyM",
+      "y1": "H",
+      "x2": "xl + bodyM",
+      "y2": "yc - rowGap / 2"
+    },
+    {
+      "id": "body-hole-1-1-diameter",
+      "value": "2*bodyR",
+      "x1": "(xl + bodyM + 0*colStep) - bodyR*0.7071",
+      "y1": "(yc - rowGap / 2) - bodyR*0.7071",
+      "x2": "(xl + bodyM + 0*colStep) + bodyR*0.7071",
+      "y2": "(yc - rowGap / 2) + bodyR*0.7071"
+    },
+    {
+      "id": "body-hole-1-2-diameter",
+      "value": "2*bodyR",
+      "x1": "(xl + bodyM + 1*colStep) - bodyR*0.7071",
+      "y1": "(yc - rowGap / 2) - bodyR*0.7071",
+      "x2": "(xl + bodyM + 1*colStep) + bodyR*0.7071",
+      "y2": "(yc - rowGap / 2) + bodyR*0.7071"
+    },
+    {
+      "id": "body-hole-1-3-diameter",
+      "value": "2*bodyR",
+      "x1": "(xl + bodyM + 2*colStep) - bodyR",
+      "y1": "yc - rowGap / 2",
+      "x2": "(xl + bodyM + 2*colStep) + bodyR",
+      "y2": "yc - rowGap / 2"
+    },
+    {
+      "id": "body-hole-1-4-diameter",
+      "value": "2*bodyR",
+      "x1": "xl + bodyM + 3*colStep",
+      "y1": "(yc - rowGap / 2) - bodyR",
+      "x2": "xl + bodyM + 3*colStep",
+      "y2": "(yc - rowGap / 2) + bodyR"
+    },
+    {
+      "id": "body-hole-2-1-diameter",
+      "value": "2*bodyR",
+      "x1": "(xl + bodyM + 0*colStep) - bodyR",
+      "y1": "yc + rowGap / 2",
+      "x2": "(xl + bodyM + 0*colStep) + bodyR",
+      "y2": "yc + rowGap / 2"
+    },
+    {
+      "id": "body-hole-2-2-diameter",
+      "value": "2*bodyR",
+      "x1": "(xl + bodyM + 1*colStep) - bodyR",
+      "y1": "yc + rowGap / 2",
+      "x2": "(xl + bodyM + 1*colStep) + bodyR",
+      "y2": "yc + rowGap / 2"
+    },
+    {
+      "id": "body-hole-diameter",
+      "value": "2*bodyR",
+      "x1": "(xl + bodyM + 2*colStep) - bodyR",
+      "y1": "yc + rowGap / 2",
+      "x2": "(xl + bodyM + 2*colStep) + bodyR",
+      "y2": "yc + rowGap / 2"
+    },
+    {
+      "id": "body-hole-2-4-diameter",
+      "value": "2*bodyR",
+      "x1": "(xl + bodyM + 3*colStep) - bodyR",
+      "y1": "yc + rowGap / 2",
+      "x2": "(xl + bodyM + 3*colStep) + bodyR",
+      "y2": "yc + rowGap / 2"
+    }
+  ],
+  "details": {
+    "creasing": [
+      "H",
+      "W",
+      "H"
+    ],
+    "boardLength": "bl",
+    "boardWidth": "bw"
+  }
+}

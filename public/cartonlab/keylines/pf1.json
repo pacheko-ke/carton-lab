@@ -1,0 +1,200 @@
+{
+  "id": "pf1",
+  "name": "JP1 Flora Zim Bottom - Machine Slot Flower Box",
+  "title": "ZIM BOTTOM FLOWER BOX KEYLINE",
+  "inputs": [
+    {
+      "id": "gap",
+      "label": "Flap clearance",
+      "default": 9,
+      "min": 0
+    }
+  ],
+  "params": {
+    "refL": "1000",
+    "refW": "375",
+    "refH": "250",
+    "kL": "L / refL",
+    "kW": "W / refW",
+    "kH": "H / refH",
+    "pr": "min(kW, kH)",
+    "ec": "H",
+    "xl": "ec",
+    "xr": "ec + L",
+    "bl": "L + 2*ec",
+    "bw": "W + 2*H",
+    "yf": "H + W",
+    "holeR": "31.5*pr",
+    "strapStep": "367*kL",
+    "strapY": "H - 135*kH",
+    "earY": "H - 145*kH",
+    "wingDX": "145*kH",
+    "wingDY": "120*kW",
+    "earDX": "120*kW"
+  },
+  "require": [
+    {
+      "expr": "gap < H",
+      "message": "The flap clearance is too large for this height."
+    },
+    {
+      "expr": "2*gap < W",
+      "message": "The flap clearance is too large for this width."
+    },
+    {
+      "expr": "wingDY - holeR > gap",
+      "message": "The end wall holes do not fit this width or clearance."
+    },
+    {
+      "expr": "wingDX + holeR < H",
+      "message": "The end wall holes do not fit this height."
+    },
+    {
+      "expr": "earDX + holeR < ec",
+      "message": "The ear holes do not fit this height."
+    },
+    {
+      "expr": "strapStep + holeR < L / 2",
+      "message": "The strap holes do not fit this length."
+    }
+  ],
+  "cuts": [
+    {
+      "id": "outline",
+      "d": "M0 0 L{bl} 0 L{bl} {H - gap} L{xr} {H - gap} L{xr} {H + gap} L{bl} {H + gap} L{bl} {yf - gap} L{xr} {yf - gap} L{xr} {yf + gap} L{bl} {yf + gap} L{bl} {bw} L0 {bw} L0 {yf + gap} L{xl} {yf + gap} L{xl} {yf - gap} L0 {yf - gap} L0 {H + gap} L{xl} {H + gap} L{xl} {H - gap} L0 {H - gap} Z"
+    },
+    {
+      "id": "strap-top-1",
+      "type": "circle",
+      "cx": "xl + L / 2 - strapStep",
+      "cy": "strapY",
+      "r": "holeR"
+    },
+    {
+      "id": "strap-bottom-1",
+      "type": "circle",
+      "cx": "xl + L / 2 - strapStep",
+      "cy": "bw - strapY",
+      "r": "holeR"
+    },
+    {
+      "id": "strap-top-2",
+      "type": "circle",
+      "cx": "xl + L / 2",
+      "cy": "strapY",
+      "r": "holeR"
+    },
+    {
+      "id": "strap-bottom-2",
+      "type": "circle",
+      "cx": "xl + L / 2",
+      "cy": "bw - strapY",
+      "r": "holeR"
+    },
+    {
+      "id": "strap-top-3",
+      "type": "circle",
+      "cx": "xl + L / 2 + strapStep",
+      "cy": "strapY",
+      "r": "holeR"
+    },
+    {
+      "id": "strap-bottom-3",
+      "type": "circle",
+      "cx": "xl + L / 2 + strapStep",
+      "cy": "bw - strapY",
+      "r": "holeR"
+    },
+    {
+      "id": "wing-hole-left-1",
+      "type": "circle",
+      "cx": "xl - wingDX",
+      "cy": "H + wingDY",
+      "r": "holeR"
+    },
+    {
+      "id": "wing-hole-left-2",
+      "type": "circle",
+      "cx": "xl - wingDX",
+      "cy": "yf - wingDY",
+      "r": "holeR"
+    },
+    {
+      "id": "wing-hole-right-1",
+      "type": "circle",
+      "cx": "xr + wingDX",
+      "cy": "H + wingDY",
+      "r": "holeR"
+    },
+    {
+      "id": "wing-hole-right-2",
+      "type": "circle",
+      "cx": "xr + wingDX",
+      "cy": "yf - wingDY",
+      "r": "holeR"
+    },
+    {
+      "id": "ear-hole-top-left",
+      "type": "circle",
+      "cx": "xl - earDX",
+      "cy": "earY",
+      "r": "holeR"
+    },
+    {
+      "id": "ear-hole-bottom-left",
+      "type": "circle",
+      "cx": "xl - earDX",
+      "cy": "bw - earY",
+      "r": "holeR"
+    },
+    {
+      "id": "ear-hole-top-right",
+      "type": "circle",
+      "cx": "xr + earDX",
+      "cy": "earY",
+      "r": "holeR"
+    },
+    {
+      "id": "ear-hole-bottom-right",
+      "type": "circle",
+      "cx": "xr + earDX",
+      "cy": "bw - earY",
+      "r": "holeR"
+    }
+  ],
+  "creases": [
+    {
+      "d": "M{xl} {H} L{xr} {H}"
+    },
+    {
+      "d": "M{xl} {yf} L{xr} {yf}"
+    },
+    {
+      "d": "M{xl} {H + gap} L{xl} {yf - gap}"
+    },
+    {
+      "d": "M{xr} {H + gap} L{xr} {yf - gap}"
+    },
+    {
+      "d": "M{xl} 0 L{xl} {H - gap}"
+    },
+    {
+      "d": "M{xr} 0 L{xr} {H - gap}"
+    },
+    {
+      "d": "M{xl} {yf + gap} L{xl} {bw}"
+    },
+    {
+      "d": "M{xr} {yf + gap} L{xr} {bw}"
+    }
+  ],
+  "details": {
+    "creasing": [
+      "H",
+      "W",
+      "H"
+    ],
+    "boardLength": "bl",
+    "boardWidth": "bw"
+  }
+}

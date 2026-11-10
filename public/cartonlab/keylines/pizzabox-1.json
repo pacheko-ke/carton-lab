@@ -1,0 +1,371 @@
+{
+  "id": "pizzabox",
+  "name": "Generic Pizza Box",
+  "title": "PIZZA BOX KEYLINE",
+  "inputs": [
+    {
+      "id": "band",
+      "label": "Hinge band",
+      "default": 0.197,
+      "min": 0
+    },
+    {
+      "id": "clr",
+      "label": "Base width clearance",
+      "default": 0.059,
+      "min": 0
+    },
+    {
+      "id": "lenClr",
+      "label": "Base length clearance",
+      "default": 0.217,
+      "min": 0
+    }
+  ],
+  "params": {
+    "refL": "12",
+    "refW": "12",
+    "refH": "2",
+    "kL": "L / refL",
+    "kW": "W / refW",
+    "kH": "H / refH",
+    "pr": "min(kL, kW)",
+    "tabD": "0.193",
+    "tabB": "1.484",
+    "tabS": "0.051",
+    "tabPX": "2.579*kL",
+    "tabPY": "2.579*kW",
+    "slotD": "0.118",
+    "flapH": "1.937*kH",
+    "ftop": "H + band + flapH",
+    "xl": "ftop + tabD",
+    "yl": "ftop + tabD",
+    "xr": "xl + L",
+    "bw": "L + 2*xl",
+    "hA": "0.118",
+    "earA": "xl - 0.437",
+    "earB": "xl - 0.378",
+    "aTop": "0.177",
+    "aBot": "0.126",
+    "bTop": "0.11",
+    "bBot": "0.114",
+    "rE": "0.11",
+    "rc": "0.126",
+    "topIn": "0.244",
+    "topCut": "0.039",
+    "cB": "0.157",
+    "cC": "0.161",
+    "cCy": "0.114",
+    "yc": "W + H",
+    "Lb": "W - lenClr",
+    "yfr": "yc + Lb",
+    "fH": "1.594*kH",
+    "fIn": "0.118",
+    "bx": "clr / 2",
+    "sfW": "H - 0.22",
+    "sfX": "0.197",
+    "sfY": "0.083",
+    "sfT": "0.177",
+    "sfB": "0.118",
+    "yend": "yfr + fH",
+    "bl": "yl + yend",
+    "holeR": "0.295*pr",
+    "holeX": "1.858*kL",
+    "holeY": "1.575*kW"
+  },
+  "require": [
+    {
+      "expr": "band < H",
+      "message": "The band is too wide for this height."
+    },
+    {
+      "expr": "2*clr < L",
+      "message": "The clearance is too large for this width."
+    },
+    {
+      "expr": "lenClr < W / 2",
+      "message": "The length clearance is too large for this length."
+    },
+    {
+      "expr": "tabPX + tabB < L / 2",
+      "message": "The locking tabs do not fit this width."
+    },
+    {
+      "expr": "tabPY + tabB < W / 2",
+      "message": "The locking tabs do not fit this length."
+    },
+    {
+      "expr": "sfW + sfX < H + band + flapH",
+      "message": "The base side flaps are too wide for this height."
+    },
+    {
+      "expr": "holeX + holeR < L / 2",
+      "message": "The base holes do not fit this width."
+    },
+    {
+      "expr": "holeY + holeR < Lb / 2",
+      "message": "The base holes do not fit this length."
+    }
+  ],
+  "cuts": [
+    {
+      "id": "outline",
+      "d": "M{yl - ftop} {bw - (xl + L / 2)} L{yl + -ftop} {bw - (xl + tabPX + tabB)} L{yl + -ftop - tabD} {bw - (xl + tabPX + tabB - tabS)} L{yl + -ftop - tabD} {bw - (xl + tabPX + tabS)} L{yl + -ftop} {bw - (xl + tabPX)} L{yl + -ftop} {bw - (xl + topIn)} L{yl + -ftop + aTop} {bw - (xl + -topCut)} L{yl + -ftop + aTop} {bw - (xl + -earA + rE)} A{rE} {rE} 0 0 0 {yl + -ftop + aTop + rE} {bw - (xl + -earA)} L{yl + -(H + band + aBot) - rE} {bw - (xl + -earA)} A{rE} {rE} 0 0 0 {yl + -(H + band + aBot)} {bw - (xl + -earA + rE)} L{yl + -(H + band + aBot)} {bw - (xl + hA)} L{yl + -(H + band)} {bw - (xl + hA)} L{yl + -H} {bw - (xl + 0)} L{yl + -H + bTop} {bw - (xl + 0)} L{yl + -H + bTop} {bw - (xl + -earB + rE)} A{rE} {rE} 0 0 0 {yl + -H + bTop + rE} {bw - (xl + -earB)} L{yl + -bBot - rE} {bw - (xl + -earB)} A{rE} {rE} 0 0 0 {yl + -bBot} {bw - (xl + -earB + rE)} L{yl + -bBot} {bw - (xl + -cB)} L{yl + 0} {bw - (xl + 0)} L{yl + 0} {bw - (xl + -H)} L{yl + band} {bw - (xl + -(H + band))} L{yl + band} {bw - (xl + -(H + band + flapH) + rc)} A{rc} {rc} 0 0 0 {yl + band + rc} {bw - (xl + -(H + band + flapH))} L{yl + tabPY} {bw - (xl + -(H + band + flapH))} L{yl + tabPY + tabS} {bw - (xl + -(H + band + flapH) - tabD)} L{yl + tabPY + tabB - tabS} {bw - (xl + -(H + band + flapH) - tabD)} L{yl + tabPY + tabB} {bw - (xl + -(H + band + flapH))} L{yl + W - tabPY - tabB} {bw - (xl + -(H + band + flapH))} L{yl + W - tabPY - tabB + tabS} {bw - (xl + -(H + band + flapH) - tabD)} L{yl + W - tabPY - tabS} {bw - (xl + -(H + band + flapH) - tabD)} L{yl + W - tabPY} {bw - (xl + -(H + band + flapH))} L{yl + W - band - rc} {bw - (xl + -(H + band + flapH))} A{rc} {rc} 0 0 0 {yl + W - band} {bw - (xl + -(H + band + flapH) + rc)} L{yl + W - band} {bw - (xl + -(H + band))} L{yl + W} {bw - (xl + -H)} L{yl + W} {bw - (xl + 0)} L{yl + W + cCy} {bw - (xl + -cC)} L{yl + W + cCy} {bw - (xl + -earB + rE)} A{rE} {rE} 0 0 0 {yl + W + cCy + rE} {bw - (xl + -earB)} L{yl + yc - rE} {bw - (xl + -earB)} A{rE} {rE} 0 0 0 {yl + yc} {bw - (xl + -earB + rE)} L{yl + yc} {bw - (xl + 0)} L{yl + yc + sfY} {bw - (xl + -sfX)} L{yl + yc + sfT} {bw - (xl + -sfW)} L{yl + yfr - sfB} {bw - (xl + -sfW)} L{yl + yfr} {bw - (xl + bx)} L{yl + yfr + fH} {bw - (xl + bx + fIn)} L{yl + yfr + fH} {bw - (xl + L - (bx + fIn))} L{yl + yfr} {bw - (xl + L - (bx))} L{yl + yfr - sfB} {bw - (xl + L - (-sfW))} L{yl + yc + sfT} {bw - (xl + L - (-sfW))} L{yl + yc + sfY} {bw - (xl + L - (-sfX))} L{yl + yc} {bw - (xl + L - (0))} L{yl + yc} {bw - (xl + L - (-earB + rE))} A{rE} {rE} 0 0 0 {yl + yc - rE} {bw - (xl + L - (-earB))} L{yl + W + cCy + rE} {bw - (xl + L - (-earB))} A{rE} {rE} 0 0 0 {yl + W + cCy} {bw - (xl + L - (-earB + rE))} L{yl + W + cCy} {bw - (xl + L - (-cC))} L{yl + W} {bw - (xl + L - (0))} L{yl + W} {bw - (xl + L - (-H))} L{yl + W - band} {bw - (xl + L - (-(H + band)))} L{yl + W - band} {bw - (xl + L - (-(H + band + flapH) + rc))} A{rc} {rc} 0 0 0 {yl + W - band - rc} {bw - (xl + L - (-(H + band + flapH)))} L{yl + W - tabPY} {bw - (xl + L - (-(H + band + flapH)))} L{yl + W - tabPY - tabS} {bw - (xl + L - (-(H + band + flapH) - tabD))} L{yl + W - tabPY - tabB + tabS} {bw - (xl + L - (-(H + band + flapH) - tabD))} L{yl + W - tabPY - tabB} {bw - (xl + L - (-(H + band + flapH)))} L{yl + tabPY + tabB} {bw - (xl + L - (-(H + band + flapH)))} L{yl + tabPY + tabB - tabS} {bw - (xl + L - (-(H + band + flapH) - tabD))} L{yl + tabPY + tabS} {bw - (xl + L - (-(H + band + flapH) - tabD))} L{yl + tabPY} {bw - (xl + L - (-(H + band + flapH)))} L{yl + band + rc} {bw - (xl + L - (-(H + band + flapH)))} A{rc} {rc} 0 0 0 {yl + band} {bw - (xl + L - (-(H + band + flapH) + rc))} L{yl + band} {bw - (xl + L - (-(H + band)))} L{yl + 0} {bw - (xl + L - (-H))} L{yl + 0} {bw - (xl + L - (0))} L{yl + -bBot} {bw - (xl + L - (-cB))} L{yl + -bBot} {bw - (xl + L - (-earB + rE))} A{rE} {rE} 0 0 0 {yl + -bBot - rE} {bw - (xl + L - (-earB))} L{yl + -H + bTop + rE} {bw - (xl + L - (-earB))} A{rE} {rE} 0 0 0 {yl + -H + bTop} {bw - (xl + L - (-earB + rE))} L{yl + -H + bTop} {bw - (xl + L - (0))} L{yl + -H} {bw - (xl + L - (0))} L{yl + -(H + band)} {bw - (xl + L - (hA))} L{yl + -(H + band + aBot)} {bw - (xl + L - (hA))} L{yl + -(H + band + aBot)} {bw - (xl + L - (-earA + rE))} A{rE} {rE} 0 0 0 {yl + -(H + band + aBot) - rE} {bw - (xl + L - (-earA))} L{yl + -ftop + aTop + rE} {bw - (xl + L - (-earA))} A{rE} {rE} 0 0 0 {yl + -ftop + aTop} {bw - (xl + L - (-earA + rE))} L{yl + -ftop + aTop} {bw - (xl + L - (-topCut))} L{yl + -ftop} {bw - (xl + L - (topIn))} L{yl + -ftop} {bw - (xl + L - (tabPX))} L{yl + -ftop - tabD} {bw - (xl + L - (tabPX + tabS))} L{yl + -ftop - tabD} {bw - (xl + L - (tabPX + tabB - tabS))} L{yl + -ftop} {bw - (xl + L - (tabPX + tabB))} Z"
+    },
+    {
+      "id": "lock-slot-front-1",
+      "d": "M{yl} {bw - (xl + tabPX)} L{yl + slotD} {bw - (xl + tabPX + tabS)} L{yl + slotD} {bw - (xl + tabPX + tabB - tabS)} L{yl} {bw - (xl + tabPX + tabB)}"
+    },
+    {
+      "id": "lock-slot-front-2",
+      "d": "M{yl} {bw - (xl + L - tabPX - tabB)} L{yl + slotD} {bw - (xl + L - tabPX - tabB + tabS)} L{yl + slotD} {bw - (xl + L - tabPX - tabS)} L{yl} {bw - (xl + L - tabPX)}"
+    },
+    {
+      "id": "lock-slot-left-1",
+      "d": "M{yl + tabPY} {bw - (xl)} L{yl + tabPY + tabS} {bw - (xl + slotD)} L{yl + tabPY + tabB - tabS} {bw - (xl + slotD)} L{yl + tabPY + tabB} {bw - (xl)}"
+    },
+    {
+      "id": "lock-slot-right-1",
+      "d": "M{yl + tabPY} {bw - (xr)} L{yl + tabPY + tabS} {bw - (xr - slotD)} L{yl + tabPY + tabB - tabS} {bw - (xr - slotD)} L{yl + tabPY + tabB} {bw - (xr)}"
+    },
+    {
+      "id": "lock-slot-left-2",
+      "d": "M{yl + W - tabPY - tabB} {bw - (xl)} L{yl + W - tabPY - tabB + tabS} {bw - (xl + slotD)} L{yl + W - tabPY - tabS} {bw - (xl + slotD)} L{yl + W - tabPY} {bw - (xl)}"
+    },
+    {
+      "id": "lock-slot-right-2",
+      "d": "M{yl + W - tabPY - tabB} {bw - (xr)} L{yl + W - tabPY - tabB + tabS} {bw - (xr - slotD)} L{yl + W - tabPY - tabS} {bw - (xr - slotD)} L{yl + W - tabPY} {bw - (xr)}"
+    },
+    {
+      "id": "base-hole-1",
+      "type": "circle",
+      "cx": "yl + yc + holeY",
+      "cy": "bw - (xl + holeX)",
+      "r": "holeR"
+    },
+    {
+      "id": "base-hole-2",
+      "type": "circle",
+      "cx": "yl + yc + holeY",
+      "cy": "bw - (xr - holeX)",
+      "r": "holeR"
+    },
+    {
+      "id": "base-hole-3",
+      "type": "circle",
+      "cx": "yl + yfr - holeY",
+      "cy": "bw - (xl + holeX)",
+      "r": "holeR"
+    },
+    {
+      "id": "base-hole-4",
+      "type": "circle",
+      "cx": "yl + yfr - holeY",
+      "cy": "bw - (xr - holeX)",
+      "r": "holeR"
+    }
+  ],
+  "creases": [
+    {
+      "d": "M{yl - H - band} {bw - (xl + hA)} L{yl - H - band} {bw - (xr - hA)}"
+    },
+    {
+      "d": "M{yl - H} {bw - (xl)} L{yl - H} {bw - (xr)}"
+    },
+    {
+      "d": "M{yl} {bw - (xl + 0)} L{yl} {bw - (xl + tabPX)}"
+    },
+    {
+      "d": "M{yl} {bw - (xl + tabPX + tabB)} L{yl} {bw - (xl + L - tabPX - tabB)}"
+    },
+    {
+      "d": "M{yl} {bw - (xl + L - tabPX)} L{yl} {bw - (xl + L)}"
+    },
+    {
+      "d": "M{yl + 0} {bw - (xl)} L{yl + tabPY} {bw - (xl)}"
+    },
+    {
+      "d": "M{yl + tabPY + tabB} {bw - (xl)} L{yl + W - tabPY - tabB} {bw - (xl)}"
+    },
+    {
+      "d": "M{yl + W - tabPY} {bw - (xl)} L{yl + W} {bw - (xl)}"
+    },
+    {
+      "d": "M{yl + 0} {bw - (xr)} L{yl + tabPY} {bw - (xr)}"
+    },
+    {
+      "d": "M{yl + tabPY + tabB} {bw - (xr)} L{yl + W - tabPY - tabB} {bw - (xr)}"
+    },
+    {
+      "d": "M{yl + W - tabPY} {bw - (xr)} L{yl + W} {bw - (xr)}"
+    },
+    {
+      "d": "M{yl} {bw - (xl - H)} L{yl + W} {bw - (xl - H)}"
+    },
+    {
+      "d": "M{yl + band} {bw - (xl - H - band)} L{yl + W - band} {bw - (xl - H - band)}"
+    },
+    {
+      "d": "M{yl} {bw - (xr + H)} L{yl + W} {bw - (xr + H)}"
+    },
+    {
+      "d": "M{yl + band} {bw - (xr + H + band)} L{yl + W - band} {bw - (xr + H + band)}"
+    },
+    {
+      "d": "M{yl - ftop + aTop} {bw - (xl + hA)} L{yl - H - band - aBot} {bw - (xl + hA)}"
+    },
+    {
+      "d": "M{yl - ftop + aTop} {bw - (xr - hA)} L{yl - H - band - aBot} {bw - (xr - hA)}"
+    },
+    {
+      "d": "M{yl - H} {bw - (xl)} L{yl} {bw - (xl)}"
+    },
+    {
+      "d": "M{yl - H} {bw - (xr)} L{yl} {bw - (xr)}"
+    },
+    {
+      "d": "M{yl + W} {bw - (xl)} L{yl + W} {bw - (xr)}"
+    },
+    {
+      "d": "M{yl + yc} {bw - (xl)} L{yl + yc} {bw - (xr)}"
+    },
+    {
+      "d": "M{yl + W} {bw - (xl)} L{yl + yc} {bw - (xl)}"
+    },
+    {
+      "d": "M{yl + W} {bw - (xr)} L{yl + yc} {bw - (xr)}"
+    },
+    {
+      "d": "M{yl + yc} {bw - (xl + bx)} L{yl + yfr} {bw - (xl + bx)}"
+    },
+    {
+      "d": "M{yl + yc} {bw - (xr - bx)} L{yl + yfr} {bw - (xr - bx)}"
+    },
+    {
+      "d": "M{yl + yfr} {bw - (xl)} L{yl + yfr} {bw - (xr)}"
+    }
+  ],
+  "dimensions": [
+    {
+      "id": "lid-width",
+      "value": "L",
+      "x1": "yl - ftop - tabD - 0.984",
+      "y1": "bw - (xl)",
+      "x2": "yl - ftop - tabD - 0.984",
+      "y2": "bw - (xr)"
+    },
+    {
+      "id": "lid-length",
+      "value": "W",
+      "x1": "yl",
+      "y1": "bw - (xr + H + band + flapH + tabD + 0.984)",
+      "x2": "yl + W",
+      "y2": "bw - (xr + H + band + flapH + tabD + 0.984)"
+    },
+    {
+      "id": "wall-height",
+      "value": "H",
+      "x1": "yl + W / 2",
+      "y1": "bw - (xl - H)",
+      "x2": "yl + W / 2",
+      "y2": "bw - (xl)"
+    },
+    {
+      "id": "band",
+      "value": "band",
+      "x1": "yl + W / 2 + 1.181",
+      "y1": "bw - (xl - H - band)",
+      "x2": "yl + W / 2 + 1.181",
+      "y2": "bw - (xl - H)"
+    },
+    {
+      "id": "outer-flap-width",
+      "value": "flapH",
+      "x1": "yl + W / 2 - 1.181",
+      "y1": "bw - (xl - H - band - flapH)",
+      "x2": "yl + W / 2 - 1.181",
+      "y2": "bw - (xl - H - band)"
+    },
+    {
+      "id": "tab-depth",
+      "value": "tabD",
+      "x1": "yl - ftop - tabD",
+      "y1": "bw - (xl + tabPX + tabB / 2 + 1.575)",
+      "x2": "yl - ftop",
+      "y2": "bw - (xl + tabPX + tabB / 2 + 1.575)"
+    },
+    {
+      "id": "tab-width",
+      "value": "tabB",
+      "x1": "yl - ftop - tabD - 0.394",
+      "y1": "bw - (xl + tabPX)",
+      "x2": "yl - ftop - tabD - 0.394",
+      "y2": "bw - (xl + tabPX + tabB)"
+    },
+    {
+      "id": "base-length",
+      "value": "Lb",
+      "x1": "yl + yc",
+      "y1": "bw - (xl - sfW - 0.984)",
+      "x2": "yl + yfr",
+      "y2": "bw - (xl - sfW - 0.984)"
+    },
+    {
+      "id": "base-width",
+      "value": "L - clr",
+      "x1": "yl + yc + Lb / 2",
+      "y1": "bw - (xl + bx)",
+      "x2": "yl + yc + Lb / 2",
+      "y2": "bw - (xr - bx)"
+    },
+    {
+      "id": "side-flap-width",
+      "value": "sfW",
+      "x1": "yl + yc + Lb / 2 + 1.575",
+      "y1": "bw - (xl - sfW)",
+      "x2": "yl + yc + Lb / 2 + 1.575",
+      "y2": "bw - (xl)"
+    },
+    {
+      "id": "front-wall-height",
+      "value": "fH",
+      "x1": "yl + yfr",
+      "y1": "bw - (xr + 0.984)",
+      "x2": "yl + yfr + fH",
+      "y2": "bw - (xr + 0.984)"
+    },
+    {
+      "id": "base-hole-diameter",
+      "type": "diameter",
+      "value": "2*holeR",
+      "cx": "yl + yc + holeY",
+      "cy": "bw - (xl + holeX)",
+      "r": "holeR"
+    },
+    {
+      "id": "base-hole-x",
+      "value": "holeX",
+      "x1": "yl + yc + holeY",
+      "y1": "bw - (xl)",
+      "x2": "yl + yc + holeY",
+      "y2": "bw - (xl + holeX)"
+    },
+    {
+      "id": "base-hole-y",
+      "value": "holeY",
+      "x1": "yl + yc",
+      "y1": "bw - (xl + holeX)",
+      "x2": "yl + yc + holeY",
+      "y2": "bw - (xl + holeX)"
+    }
+  ],
+  "details": {
+    "creasing": [
+      "H",
+      "W",
+      "H"
+    ],
+    "boardLength": "bl",
+    "boardWidth": "bw"
+  }
+}

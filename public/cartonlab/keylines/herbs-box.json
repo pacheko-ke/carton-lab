@@ -1,0 +1,448 @@
+{
+  "id": "herbsbox",
+  "name": "Herbs Box",
+  "title": "HERBS BOX KEYLINE",
+  "category":"Other",
+  "inputs": [
+    {
+      "id": "band",
+      "label": "Hinge band",
+      "default": 4.9,
+      "min": 0
+    }
+  ],
+  "params": {
+    "refL": "210",
+    "refW": "294.9",
+    "refH": "114.7",
+    "kL": "L / refL",
+    "kW": "W / refW",
+    "kH": "H / refH",
+    "pr": "min(kL, kW)",
+    "tabD": "4.8",
+    "wH": "H - band",
+    "fH": "H - band",
+    "of": "94.7*kH",
+    "sw": "H",
+    "yb1": "tabD + fH",
+    "yb2": "yb1 + band",
+    "yf0": "yb2 + wH",
+    "yf1": "yf0 + W",
+    "bw": "2*yf0 + W",
+    "xf0": "of + sw",
+    "xf1": "xf0 + L",
+    "bl": "xf1 + sw + of",
+    "xc": "bl / 2",
+    "tc": "54.4",
+    "tw1": "14.95",
+    "tw2": "11.95",
+    "earF": "H + 10.3",
+    "hh": "104.8",
+    "hookW": "71.7",
+    "hn1": "69.2",
+    "hn2": "44.4",
+    "slotC": "60.5",
+    "hr": "12.4",
+    "fcx": "3.6",
+    "fcy": "1.7",
+    "t2W": "39.7",
+    "t2H": "34.9",
+    "t2R": "14.3",
+    "t2In": "1.8",
+    "fhR": "12.45",
+    "fhW": "24.9",
+    "fhH": "35",
+    "whW": "19.7",
+    "whH": "29.7",
+    "shW": "29.7",
+    "shH": "19.7",
+    "shR": "9.85"
+  },
+  "require": [
+    {
+      "expr": "band < H / 2",
+      "message": "The band is too wide for this depth."
+    },
+    {
+      "expr": "tc + tw1 < L / 2",
+      "message": "The flap tabs do not fit this width."
+    },
+    {
+      "expr": "hh < wH + band + fH",
+      "message": "The corner ears do not fit this depth."
+    },
+    {
+      "expr": "94.5*kW + shH / 2 < W / 2",
+      "message": "The side slots do not fit this length."
+    },
+    {
+      "expr": "45.3*kL + whW / 2 < L / 2 + band",
+      "message": "The wall slots do not fit this width."
+    },
+    {
+      "expr": "153.1*kL + fhW / 2 < earF + L / 2",
+      "message": "The flap slots do not fit this width."
+    }
+  ],
+  "cuts": [
+    {
+      "id": "outline",
+      "d": "M{xc} {tabD} L{xc + tc - tw1} {tabD} L{xc + tc - tw2} {0} L{xc + tc + tw2} {0} L{xc + tc + tw1} {tabD} L{xf1 + earF} {tabD} L{xf1 + earF} {yb1} L{xf1} {yb1} L{xf1 + band} {yb2} L{xf1 + band} {yf0 - hh} L{xf1 + band} {yf0} L{xf1 + band} {yf0 - hh} L{xf1 + hookW} {yf0 - hh} L{xf1 + hookW} {yf0 - hn1} L{xf1 + slotC} {yf0 - hn1} A{hr} {hr} 0 0 0 {xf1 + slotC} {yf0 - hn2} L{xf1 + sw} {yf0 - hn2} L{xf1 + sw} {yf0} L{xf1 + sw} {yf0 + fcy} L{xf1 + sw + fcx} {yf0} L{bl - t2W - t2In} {yf0} L{bl - t2W - t2In} {yf0 - t2H} L{bl - t2In - t2R} {yf0 - t2H} A{t2R} {t2R} 0 0 1 {bl - t2In} {yf0 - t2H + t2R} L{bl - t2In} {yf0} L{bl} {yf0} L{bl} {bw - (yf0)} L{bl - t2In} {bw - (yf0)} L{bl - t2In} {bw - (yf0 - t2H + t2R)} A{t2R} {t2R} 0 0 1 {bl - t2In - t2R} {bw - (yf0 - t2H)} L{bl - t2W - t2In} {bw - (yf0 - t2H)} L{bl - t2W - t2In} {bw - (yf0)} L{xf1 + sw + fcx} {bw - (yf0)} L{xf1 + sw} {bw - (yf0 + fcy)} L{xf1 + sw} {bw - (yf0)} L{xf1 + sw} {bw - (yf0 - hn2)} L{xf1 + slotC} {bw - (yf0 - hn2)} A{hr} {hr} 0 0 0 {xf1 + slotC} {bw - (yf0 - hn1)} L{xf1 + hookW} {bw - (yf0 - hn1)} L{xf1 + hookW} {bw - (yf0 - hh)} L{xf1 + band} {bw - (yf0 - hh)} L{xf1 + band} {bw - (yf0)} L{xf1 + band} {bw - (yf0 - hh)} L{xf1 + band} {bw - (yb2)} L{xf1} {bw - (yb1)} L{xf1 + earF} {bw - (yb1)} L{xf1 + earF} {bw - (tabD)} L{xc + tc + tw1} {bw - (tabD)} L{xc + tc + tw2} {bw - (0)} L{xc + tc - tw2} {bw - (0)} L{xc + tc - tw1} {bw - (tabD)} L{xc} {bw - (tabD)} L{bl - (xc)} {bw - (tabD)} L{bl - (xc + tc - tw1)} {bw - (tabD)} L{bl - (xc + tc - tw2)} {bw - (0)} L{bl - (xc + tc + tw2)} {bw - (0)} L{bl - (xc + tc + tw1)} {bw - (tabD)} L{bl - (xf1 + earF)} {bw - (tabD)} L{bl - (xf1 + earF)} {bw - (yb1)} L{bl - (xf1)} {bw - (yb1)} L{bl - (xf1 + band)} {bw - (yb2)} L{bl - (xf1 + band)} {bw - (yf0 - hh)} L{bl - (xf1 + band)} {bw - (yf0)} L{bl - (xf1 + band)} {bw - (yf0 - hh)} L{bl - (xf1 + hookW)} {bw - (yf0 - hh)} L{bl - (xf1 + hookW)} {bw - (yf0 - hn1)} L{bl - (xf1 + slotC)} {bw - (yf0 - hn1)} A{hr} {hr} 0 0 0 {bl - (xf1 + slotC)} {bw - (yf0 - hn2)} L{bl - (xf1 + sw)} {bw - (yf0 - hn2)} L{bl - (xf1 + sw)} {bw - (yf0)} L{bl - (xf1 + sw)} {bw - (yf0 + fcy)} L{bl - (xf1 + sw + fcx)} {bw - (yf0)} L{bl - (bl - t2W - t2In)} {bw - (yf0)} L{bl - (bl - t2W - t2In)} {bw - (yf0 - t2H)} L{bl - (bl - t2In - t2R)} {bw - (yf0 - t2H)} A{t2R} {t2R} 0 0 1 {bl - (bl - t2In)} {bw - (yf0 - t2H + t2R)} L{bl - (bl - t2In)} {bw - (yf0)} L{bl - (bl)} {bw - (yf0)} L{bl - (bl)} {yf0} L{bl - (bl - t2In)} {yf0} L{bl - (bl - t2In)} {yf0 - t2H + t2R} A{t2R} {t2R} 0 0 1 {bl - (bl - t2In - t2R)} {yf0 - t2H} L{bl - (bl - t2W - t2In)} {yf0 - t2H} L{bl - (bl - t2W - t2In)} {yf0} L{bl - (xf1 + sw + fcx)} {yf0} L{bl - (xf1 + sw)} {yf0 + fcy} L{bl - (xf1 + sw)} {yf0} L{bl - (xf1 + sw)} {yf0 - hn2} L{bl - (xf1 + slotC)} {yf0 - hn2} A{hr} {hr} 0 0 0 {bl - (xf1 + slotC)} {yf0 - hn1} L{bl - (xf1 + hookW)} {yf0 - hn1} L{bl - (xf1 + hookW)} {yf0 - hh} L{bl - (xf1 + band)} {yf0 - hh} L{bl - (xf1 + band)} {yf0} L{bl - (xf1 + band)} {yf0 - hh} L{bl - (xf1 + band)} {yb2} L{bl - (xf1)} {yb1} L{bl - (xf1 + earF)} {yb1} L{bl - (xf1 + earF)} {tabD} L{bl - (xc + tc + tw1)} {tabD} L{bl - (xc + tc + tw2)} {0} L{bl - (xc + tc - tw2)} {0} L{bl - (xc + tc - tw1)} {tabD} L{bl - (xc)} {tabD} Z"
+    },
+    {
+      "id": "flap-hole-top-left-1",
+      "type": "rect",
+      "x": "xc - 51.5*kL - fhW / 2",
+      "y": "tabD + 57.2*kH - fhH / 2",
+      "width": "fhW",
+      "height": "fhH",
+      "rx": "fhR"
+    },
+    {
+      "id": "flap-hole-top-left-2",
+      "type": "rect",
+      "x": "xc - 153.1*kL - fhW / 2",
+      "y": "tabD + 57.2*kH - fhH / 2",
+      "width": "fhW",
+      "height": "fhH",
+      "rx": "fhR"
+    },
+    {
+      "id": "flap-hole-bottom-left-1",
+      "type": "rect",
+      "x": "xc - 51.5*kL - fhW / 2",
+      "y": "bw - tabD - 57.2*kH - fhH / 2",
+      "width": "fhW",
+      "height": "fhH",
+      "rx": "fhR"
+    },
+    {
+      "id": "flap-hole-bottom-left-2",
+      "type": "rect",
+      "x": "xc - 153.1*kL - fhW / 2",
+      "y": "bw - tabD - 57.2*kH - fhH / 2",
+      "width": "fhW",
+      "height": "fhH",
+      "rx": "fhR"
+    },
+    {
+      "id": "flap-hole-top-right-1",
+      "type": "rect",
+      "x": "xc + 51.5*kL - fhW / 2",
+      "y": "tabD + 57.2*kH - fhH / 2",
+      "width": "fhW",
+      "height": "fhH",
+      "rx": "fhR"
+    },
+    {
+      "id": "flap-hole-top-right-2",
+      "type": "rect",
+      "x": "xc + 153.1*kL - fhW / 2",
+      "y": "tabD + 57.2*kH - fhH / 2",
+      "width": "fhW",
+      "height": "fhH",
+      "rx": "fhR"
+    },
+    {
+      "id": "flap-hole-bottom-right-1",
+      "type": "rect",
+      "x": "xc + 51.5*kL - fhW / 2",
+      "y": "bw - tabD - 57.2*kH - fhH / 2",
+      "width": "fhW",
+      "height": "fhH",
+      "rx": "fhR"
+    },
+    {
+      "id": "flap-hole-bottom-right-2",
+      "type": "rect",
+      "x": "xc + 153.1*kL - fhW / 2",
+      "y": "bw - tabD - 57.2*kH - fhH / 2",
+      "width": "fhW",
+      "height": "fhH",
+      "rx": "fhR"
+    },
+    {
+      "id": "wall-hole-top-left",
+      "type": "rect",
+      "x": "xc - 45.3*kL - whW / 2",
+      "y": "(yb2 + yf0) / 2 - whH / 2",
+      "width": "whW",
+      "height": "whH",
+      "rx": "shR"
+    },
+    {
+      "id": "wall-hole-top-right",
+      "type": "rect",
+      "x": "xc + 45.3*kL - whW / 2",
+      "y": "(yb2 + yf0) / 2 - whH / 2",
+      "width": "whW",
+      "height": "whH",
+      "rx": "shR"
+    },
+    {
+      "id": "wall-hole-bottom-left",
+      "type": "rect",
+      "x": "xc - 45.3*kL - whW / 2",
+      "y": "bw - (yb2 + yf0) / 2 - whH / 2",
+      "width": "whW",
+      "height": "whH",
+      "rx": "shR"
+    },
+    {
+      "id": "wall-hole-bottom-right",
+      "type": "rect",
+      "x": "xc + 45.3*kL - whW / 2",
+      "y": "bw - (yb2 + yf0) / 2 - whH / 2",
+      "width": "whW",
+      "height": "whH",
+      "rx": "shR"
+    },
+    {
+      "id": "side-hole-left-1",
+      "type": "rect",
+      "x": "xf0 - sw / 2 - shW / 2",
+      "y": "yf0 + W / 2 - 94.5*kW - shH / 2",
+      "width": "shW",
+      "height": "shH",
+      "rx": "shR"
+    },
+    {
+      "id": "side-hole-left-2",
+      "type": "rect",
+      "x": "xf0 - sw / 2 - shW / 2",
+      "y": "yf0 + W / 2  - shH / 2",
+      "width": "shW",
+      "height": "shH",
+      "rx": "shR"
+    },
+    {
+      "id": "side-hole-left-3",
+      "type": "rect",
+      "x": "xf0 - sw / 2 - shW / 2",
+      "y": "yf0 + W / 2 + 94.5*kW - shH / 2",
+      "width": "shW",
+      "height": "shH",
+      "rx": "shR"
+    },
+    {
+      "id": "side-hole-right-1",
+      "type": "rect",
+      "x": "xf1 + sw / 2 - shW / 2",
+      "y": "yf0 + W / 2 - 94.5*kW - shH / 2",
+      "width": "shW",
+      "height": "shH",
+      "rx": "shR"
+    },
+    {
+      "id": "side-hole-right-2",
+      "type": "rect",
+      "x": "xf1 + sw / 2 - shW / 2",
+      "y": "yf0 + W / 2  - shH / 2",
+      "width": "shW",
+      "height": "shH",
+      "rx": "shR"
+    },
+    {
+      "id": "side-hole-right-3",
+      "type": "rect",
+      "x": "xf1 + sw / 2 - shW / 2",
+      "y": "yf0 + W / 2 + 94.5*kW - shH / 2",
+      "width": "shW",
+      "height": "shH",
+      "rx": "shR"
+    }
+  ],
+  "creases": [
+    {
+      "d": "M{xf0} {yf0} L{xf0} {yf1}"
+    },
+    {
+      "d": "M{xf1} {yf0} L{xf1} {yf1}"
+    },
+    {
+      "d": "M{xf0} {yf0} L{xf1} {yf0}"
+    },
+    {
+      "d": "M{xf0} {yf1} L{xf1} {yf1}"
+    },
+    {
+      "d": "M{xf0} {yb1} L{xf1} {yb1}"
+    },
+    {
+      "d": "M{xf0 - band} {yb2} L{xf1 + band} {yb2}"
+    },
+    {
+      "d": "M{xf0} {tabD + 2.1} L{xf0} {yb1 - 2.1}"
+    },
+    {
+      "d": "M{xf1} {tabD + 2.1} L{xf1} {yb1 - 2.1}"
+    },
+    {
+      "d": "M{xf1 + band} {yf0} L{xf1 + sw} {yf0}"
+    },
+    {
+      "d": "M{xf0 - band} {yf0} L{xf0 - sw} {yf0}"
+    },
+    {
+      "d": "M{xf0} {bw - (yb1)} L{xf1} {bw - (yb1)}"
+    },
+    {
+      "d": "M{xf0 - band} {bw - (yb2)} L{xf1 + band} {bw - (yb2)}"
+    },
+    {
+      "d": "M{xf0} {bw - (tabD + 2.1)} L{xf0} {bw - (yb1 - 2.1)}"
+    },
+    {
+      "d": "M{xf1} {bw - (tabD + 2.1)} L{xf1} {bw - (yb1 - 2.1)}"
+    },
+    {
+      "d": "M{xf1 + band} {bw - (yf0)} L{xf1 + sw} {bw - (yf0)}"
+    },
+    {
+      "d": "M{xf0 - band} {bw - (yf0)} L{xf0 - sw} {bw - (yf0)}"
+    },
+    {
+      "d": "M{xf1 + sw} {yf0 + fcy} L{xf1 + sw} {yf1 - fcy}"
+    },
+    {
+      "d": "M{xf0 - sw} {yf0 + fcy} L{xf0 - sw} {yf1 - fcy}"
+    }
+  ],
+  "dimensions": [
+    {
+      "id": "board-length",
+      "label": "Board length",
+      "value": "bl",
+      "x1": "0",
+      "y1": "bw + 30",
+      "x2": "bl",
+      "y2": "bw + 30"
+    },
+    {
+      "id": "board-width",
+      "label": "Board width",
+      "value": "bw",
+      "x1": "bl + 30",
+      "y1": "0",
+      "x2": "bl + 30",
+      "y2": "bw"
+    },
+    {
+      "id": "floor-length",
+      "label": "Floor width (L)",
+      "value": "L",
+      "x1": "xf0",
+      "y1": "yf1 + 30",
+      "x2": "xf1",
+      "y2": "yf1 + 30"
+    },
+    {
+      "id": "floor-width",
+      "label": "Floor length (W)",
+      "value": "W",
+      "x1": "xf0 + 30",
+      "y1": "yf0",
+      "x2": "xf0 + 30",
+      "y2": "yf1"
+    },
+    {
+      "id": "wall-depth",
+      "label": "Wall depth (H)",
+      "value": "H",
+      "x1": "xf1",
+      "y1": "yf0 + 20",
+      "x2": "xf1 + sw",
+      "y2": "yf0 + 20"
+    },
+    {
+      "id": "outer-flap-width",
+      "label": "Outer flap width",
+      "value": "of",
+      "x1": "xf1 + sw",
+      "y1": "yf0 + 40",
+      "x2": "bl",
+      "y2": "yf0 + 40"
+    },
+    {
+      "id": "band",
+      "label": "Hinge band",
+      "value": "band",
+      "x1": "xf0 - 20",
+      "y1": "yb1",
+      "x2": "xf0 - 20",
+      "y2": "yb2"
+    },
+    {
+      "id": "top-wall-height",
+      "label": "Top wall height",
+      "value": "wH",
+      "x1": "xf0 + 20",
+      "y1": "yb2",
+      "x2": "xf0 + 20",
+      "y2": "yf0"
+    },
+    {
+      "id": "flap-height",
+      "label": "Top flap height",
+      "value": "fH",
+      "x1": "xf0 + 20",
+      "y1": "tabD",
+      "x2": "xf0 + 20",
+      "y2": "yb1"
+    },
+    {
+      "id": "corner-ear-height",
+      "label": "Corner ear height",
+      "value": "hh",
+      "x1": "xf1 + band + 30",
+      "y1": "yf0 - hh",
+      "x2": "xf1 + band + 30",
+      "y2": "yf0"
+    },
+    {
+      "id": "slot-diameter",
+      "label": "Flap slot width",
+      "value": "fhW",
+      "x1": "xc + 51.5*kL - fhW / 2",
+      "y1": "tabD + 57.2*kH - 30",
+      "x2": "xc + 51.5*kL + fhW / 2",
+      "y2": "tabD + 57.2*kH - 30"
+    },
+    {
+      "id": "flap-slot-height",
+      "label": "Flap slot height",
+      "value": "fhH",
+      "x1": "xc + 51.5*kL + 30",
+      "y1": "tabD + 57.2*kH - fhH / 2",
+      "x2": "xc + 51.5*kL + 30",
+      "y2": "tabD + 57.2*kH + fhH / 2"
+    },
+    {
+      "id": "side-slot-length",
+      "label": "Side slot length",
+      "value": "shW",
+      "x1": "xf0 - sw / 2 - shW / 2",
+      "y1": "yf0 + W / 2 - 94.5*kW - 20",
+      "x2": "xf0 - sw / 2 + shW / 2",
+      "y2": "yf0 + W / 2 - 94.5*kW - 20"
+    },
+    {
+      "id": "side-slot-spacing",
+      "label": "Side slot spacing",
+      "value": "94.5*kW",
+      "x1": "xf0 - sw / 2 + 30",
+      "y1": "yf0 + W / 2 - 94.5*kW",
+      "x2": "xf0 - sw / 2 + 30",
+      "y2": "yf0 + W / 2"
+    }
+  ],
+  "details": {
+    "creasing": [
+      "H",
+      "W",
+      "H"
+    ],
+    "boardLength": "bl",
+    "boardWidth": "bw"
+  }
+}
