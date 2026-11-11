@@ -1,0 +1,71 @@
+.app-account-controls[hidden] {
+  display: none;
+}
+
+.app-account-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.app-account-plan {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 7px;
+  padding: 0 11px;
+  border: 1px solid rgba(102, 211, 232, 0.3);
+  border-radius: 7px;
+  background: rgba(9, 22, 38, 0.9);
+  color: #bdebf2;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.app-account-plan-indicator {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #66d3e8;
+  box-shadow: 0 0 8px rgba(102, 211, 232, 0.55);
+}
+
+.app-signout-button {
+  min-height: 36px;
+  padding: 0 11px;
+  border: 1px solid rgba(165, 190, 214, 0.3);
+  border-radius: 7px;
+  background: rgba(9, 22, 38, 0.88);
+  color: #e8f0f8;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  transition: border-color 160ms ease, background 160ms ease;
+}
+
+.app-signout-button:hover {
+  border-color: #66d3e8;
+  background: #102238;
+}
+
+@media (max-width: 640px) {
+  .app-account-controls {
+    gap: 5px;
+  }
+
+  .app-account-plan {
+    min-height: 32px;
+    gap: 5px;
+    padding: 0 7px;
+    font-size: 10px;
+  }
+
+  .app-signout-button {
+    min-height: 32px;
+    padding: 0 8px;
+    font-size: 10px;
+  }
+}

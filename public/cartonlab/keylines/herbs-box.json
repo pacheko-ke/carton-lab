@@ -2,7 +2,6 @@
   "id": "herbsbox",
   "name": "Herbs Box",
   "title": "HERBS BOX KEYLINE",
-  "category":"Other",
   "inputs": [
     {
       "id": "band",
@@ -56,7 +55,9 @@
     "whH": "29.7",
     "shW": "29.7",
     "shH": "19.7",
-    "shR": "9.85"
+    "shR": "9.85",
+    "slotL": "26",
+    "slotH": "band - 0.2"
   },
   "require": [
     {
@@ -82,6 +83,10 @@
     {
       "expr": "153.1*kL + fhW / 2 < earF + L / 2",
       "message": "The flap slots do not fit this width."
+    },
+    {
+      "expr": "tc + slotL / 2 < L / 2",
+      "message": "The lock slots do not fit this width."
     }
   ],
   "cuts": [
@@ -250,6 +255,78 @@
       "width": "shW",
       "height": "shH",
       "rx": "shR"
+    },
+    {
+      "id": "lock-slot-band-top-left",
+      "type": "rect",
+      "x": "xc - tc - slotL / 2",
+      "y": "yb1 + 0.1",
+      "width": "slotL",
+      "height": "slotH",
+      "rx": "slotH / 2"
+    },
+    {
+      "id": "lock-slot-floor-top-left",
+      "type": "rect",
+      "x": "xc - tc - slotL / 2",
+      "y": "yf0",
+      "width": "slotL",
+      "height": "slotH",
+      "rx": "slotH / 2"
+    },
+    {
+      "id": "lock-slot-floor-bottom-left",
+      "type": "rect",
+      "x": "xc - tc - slotL / 2",
+      "y": "yf1 - slotH",
+      "width": "slotL",
+      "height": "slotH",
+      "rx": "slotH / 2"
+    },
+    {
+      "id": "lock-slot-band-bottom-left",
+      "type": "rect",
+      "x": "xc - tc - slotL / 2",
+      "y": "bw - yb1 - 0.1 - slotH",
+      "width": "slotL",
+      "height": "slotH",
+      "rx": "slotH / 2"
+    },
+    {
+      "id": "lock-slot-band-top-right",
+      "type": "rect",
+      "x": "xc + tc - slotL / 2",
+      "y": "yb1 + 0.1",
+      "width": "slotL",
+      "height": "slotH",
+      "rx": "slotH / 2"
+    },
+    {
+      "id": "lock-slot-floor-top-right",
+      "type": "rect",
+      "x": "xc + tc - slotL / 2",
+      "y": "yf0",
+      "width": "slotL",
+      "height": "slotH",
+      "rx": "slotH / 2"
+    },
+    {
+      "id": "lock-slot-floor-bottom-right",
+      "type": "rect",
+      "x": "xc + tc - slotL / 2",
+      "y": "yf1 - slotH",
+      "width": "slotL",
+      "height": "slotH",
+      "rx": "slotH / 2"
+    },
+    {
+      "id": "lock-slot-band-bottom-right",
+      "type": "rect",
+      "x": "xc + tc - slotL / 2",
+      "y": "bw - yb1 - 0.1 - slotH",
+      "width": "slotL",
+      "height": "slotH",
+      "rx": "slotH / 2"
     }
   ],
   "creases": [
@@ -434,6 +511,33 @@
       "y1": "yf0 + W / 2 - 94.5*kW",
       "x2": "xf0 - sw / 2 + 30",
       "y2": "yf0 + W / 2"
+    },
+    {
+      "id": "lock-slot-length",
+      "label": "Lock slot length",
+      "value": "slotL",
+      "x1": "xc - tc - slotL / 2",
+      "y1": "yf0 + 22",
+      "x2": "xc - tc + slotL / 2",
+      "y2": "yf0 + 22"
+    },
+    {
+      "id": "lock-slot-width",
+      "label": "Lock slot width",
+      "value": "slotH",
+      "x1": "xc - tc - slotL / 2 - 12",
+      "y1": "yf0",
+      "x2": "xc - tc - slotL / 2 - 12",
+      "y2": "yf0 + slotH"
+    },
+    {
+      "id": "lock-slot-spacing",
+      "label": "Lock slot spacing",
+      "value": "2*tc",
+      "x1": "xc - tc",
+      "y1": "yf0 + 40",
+      "x2": "xc + tc",
+      "y2": "yf0 + 40"
     }
   ],
   "details": {
@@ -444,5 +548,6 @@
     ],
     "boardLength": "bl",
     "boardWidth": "bw"
-  }
+  },
+  "category": "Other"
 }

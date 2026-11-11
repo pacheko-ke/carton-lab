@@ -128,7 +128,30 @@ function applyTypeVisibility(type) {
 }
 
 const KEYLINE_CATEGORY_ORDER = ["RSC", "Pizza", "Chicken Box", "Flower Box", "Tray", "Sea Flow", "Sea Freight", "EPZ", "Other"];
+const FREE_KEYLINE_CATEGORIES = new Set(["RSC", "Pizza", "Chicken Box"]);
 let activeKeylineCategory = "RSC";
+
+function createPremiumBadge() {
+  const badge = document.createElement("span");
+  badge.className = "keyline-premium-badge";
+  badge.setAttribute("role", "img");
+  badge.setAttribute("aria-label", "Premium");
+
+  const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  icon.setAttribute("viewBox", "0 0 16 16");
+  icon.setAttribute("aria-hidden", "true");
+  icon.setAttribute("focusable", "false");
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute("d", "M2 5.5 5.3 8 8 3.5 10.7 8 14 5.5l-1.2 7H3.2L2 5.5ZM3.2 14h9.6");
+  path.setAttribute("fill", "none");
+  path.setAttribute("stroke", "currentColor");
+  path.setAttribute("stroke-linecap", "round");
+  path.setAttribute("stroke-linejoin", "round");
+  path.setAttribute("stroke-width", "1.5");
+  icon.appendChild(path);
+  badge.append(icon);
+  return badge;
+}
 
 function keylineCategoryFor(id) {
   if (id === "rsc") return "RSC";
@@ -194,7 +217,14 @@ function renderKeylinePicker() {
     button.setAttribute("aria-controls", "keylineChoices");
     button.setAttribute("aria-selected", String(category === activeKeylineCategory));
     button.tabIndex = category === activeKeylineCategory ? 0 : -1;
-    button.textContent = category;
+    if (FREE_KEYLINE_CATEGORIES.has(category)) {
+      button.textContent = category;
+    } else {
+      const label = document.createElement("span");
+      label.className = "keyline-tab-label";
+      label.textContent = category;
+      button.append(label, createPremiumBadge());
+    }
     button.addEventListener("click", () => {
       const ids = groups.get(category) || [];
       if (category === "RSC" || ids.length === 1) {
@@ -1184,6 +1214,17 @@ $("boxType").addEventListener("change", () => {
 });
 
 async function init() {
+  const accountControls = $("appAccountControls");
+  if (new URLSearchParams(window.location.search).get("account") === "free") {
+    accountControls.hidden = false;
+    $("appLogOut").addEventListener("click", () => {
+      window.parent.postMessage(
+        { type: "cartonlab:sign-out" },
+        window.location.origin,
+      );
+    });
+  }
+
   // Load each indexed keyline, then group them under compact category tabs.
   let loadErrors = [];
   try {

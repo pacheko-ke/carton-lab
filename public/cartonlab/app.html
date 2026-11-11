@@ -5,14 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>CartonLab Lightweight 2.0</title>
   <link rel="stylesheet" href="app.css" />
+  <link rel="stylesheet" href="account-controls.css" />
 </head>
 <body class="min-h-screen bg-slate-100 font-sans text-slate-900 antialiased dark:bg-slate-900 dark:text-slate-100">
-  <header class="flex items-center gap-3 px-6 pt-5">
-    <img src="icons/icon48.png" alt="" class="h-9 w-9" />
+  <header class="flex items-center gap-3 px-3 pt-5 md:px-6">
+    <img src="/cartonlab-icon.png" alt="" class="h-9 w-9" />
     <h1 class="text-xl font-semibold tracking-tight">CartonLab Lightweight 2.0</h1>
+    <div id="appAccountControls" class="app-account-controls" hidden>
+      <span class="app-account-plan">
+        <span class="app-account-plan-indicator" aria-hidden="true"></span>
+        Free account
+      </span>
+      <button id="appLogOut" type="button" class="app-signout-button">Log out</button>
+    </div>
   </header>
 
-  <main class="grid items-start gap-5 px-6 py-5 lg:grid-cols-[340px_minmax(0,1fr)]">
+  <main class="grid items-start gap-5 px-3 py-5 md:px-6 lg:grid-cols-[340px_minmax(0,1fr)]">
     <aside class="flex flex-col gap-3">
 
       <section class="card">
