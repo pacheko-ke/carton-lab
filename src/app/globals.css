@@ -617,7 +617,7 @@ input {
 
 .account-header {
   display: flex;
-  width: min(1200px, calc(100% - 64px));
+  width: min(100% - 40px, 560px);
   height: 82px;
   align-items: center;
   justify-content: space-between;
@@ -626,6 +626,7 @@ input {
 }
 
 .account-back-link {
+  flex: 0 0 auto;
   color: #a9bdcf;
   font-size: 12px;
 }
@@ -760,6 +761,30 @@ input {
 
 .account-plan-card .button {
   width: 100%;
+}
+
+.account-phone-label {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 14px;
+  color: #c3d2e0;
+  font-size: 11px;
+}
+
+.account-phone-label input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid rgba(163, 194, 220, 0.24);
+  border-radius: 8px;
+  background: #0c1d30;
+  color: #eff6fc;
+  font: inherit;
+}
+
+.account-phone-label input:focus-visible {
+  outline: 2px solid #66d3e8;
+  outline-offset: 2px;
 }
 
 .account-subscription-note {

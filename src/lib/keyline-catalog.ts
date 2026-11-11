@@ -9,6 +9,7 @@ import flower from "./keyline-definitions/flower.json";
 import flowerTop from "./keyline-definitions/flower-top.json";
 import hangerBox from "./keyline-definitions/hangerbox.json";
 import herbsBox from "./keyline-definitions/herbs-box.json";
+import hangingBasin from "./keyline-definitions/hangingbasin.json";
 import pizzaBoxOne from "./keyline-definitions/pizzabox-1.json";
 import pizzaBox from "./keyline-definitions/pizzastandard.json";
 import pf1 from "./keyline-definitions/pf1.json";
@@ -45,6 +46,7 @@ const definitions: KeylineDefinition[] = [
   avocadoTray,
   tray,
   herbsBox,
+  hangingBasin,
 ];
 
 const categoryOrder = [

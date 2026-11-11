@@ -1,0 +1,90 @@
+{
+  "id": "hangingbasin",
+  "name": "Hanging Basin",
+  "title": "HANGING BASIN KEYLINE",
+  "category": "Other",
+  "params": {
+    "refL": "250",
+    "refW": "310",
+    "refH": "372",
+    "boardLength": "455 + L + W",
+    "boardWidth": "400 + H"
+  },
+  "map": {
+    "x": [
+      [0, "0"],
+      [140, "140"],
+      [390, "140 + L"],
+      [425, "175 + L"],
+      [565, "315 + L"],
+      [875, "315 + L + W"],
+      [945, "385 + L + W"],
+      [1015, "455 + L + W"]
+    ],
+    "y": [
+      [0, "0"],
+      [60, "60"],
+      [200, "200"],
+      [572, "200 + H"],
+      [712, "340 + H"],
+      [772, "400 + H"]
+    ]
+  },
+  "cuts": [
+    { "id": "top-flap-edge", "d": "M875 60 L875 200" },
+    { "id": "left-edge", "d": "M0 200 L0 572" },
+    { "id": "top-edge", "d": "M615 0 L875 0 L875 60" },
+    { "id": "top-slant", "d": "M565 200 L615 0" },
+    { "id": "upper-step", "d": "M875 200 L945 200" },
+    { "id": "lower-step", "d": "M945 572 L875 572" },
+    { "id": "right-edge", "d": "M1015 200 L1015 572 L945 572" },
+    { "id": "upper-return", "d": "M1015 200 L945 200" },
+    { "id": "lower-right-edge", "d": "M875 712 L875 572" },
+    { "id": "bottom-edge", "d": "M615 772 L875 772 L875 712" },
+    { "id": "bottom-slant", "d": "M565 572 L615 772" },
+    {
+      "id": "handle-opening",
+      "d": "M225 348 L335 348 L335 461 L225 461 Z"
+    },
+    { "id": "drain-cut-1", "d": "M660 324 L780 446" },
+    { "id": "drain-cut-2", "d": "M780 324 L660 446" },
+    { "id": "top-left-edge", "d": "M565 200 L0 200" },
+    { "id": "bottom-left-edge", "d": "M0 572 L565 572" }
+  ],
+  "fillOutline": "M0 200 L0 572 L565 572 L615 772 L875 772 L875 712 L875 572 L945 572 L1015 572 L1015 200 L945 200 L875 200 L875 60 L875 0 L615 0 L565 200 Z",
+  "outlineCutIds": [
+    "top-flap-edge",
+    "left-edge",
+    "top-edge",
+    "top-slant",
+    "upper-step",
+    "lower-step",
+    "right-edge",
+    "upper-return",
+    "lower-right-edge",
+    "bottom-edge",
+    "bottom-slant",
+    "top-left-edge",
+    "bottom-left-edge"
+  ],
+  "fillHoles": ["handle-opening"],
+  "creases": [
+    { "d": "M875 572 L875 200" },
+    { "d": "M565 200 L565 572" },
+    { "d": "M600 60 L875 60" },
+    { "d": "M140 200 L140 572" },
+    { "d": "M390 200 L390 572" },
+    { "d": "M425 200 L425 572" },
+    { "d": "M600 712 L875 712" },
+    { "d": "M780 446 L780 324" },
+    { "d": "M660 324 L660 446 L780 446" },
+    { "d": "M780 324 L660 324" },
+    { "d": "M875 200 L565 200" },
+    { "d": "M565 572 L875 572" }
+  ],
+  "details": {
+    "creasing": ["140", "L", "35", "140", "W", "70", "70"],
+    "boardLength": "boardLength",
+    "boardWidth": "boardWidth"
+  }
+}

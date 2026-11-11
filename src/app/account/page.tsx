@@ -8,7 +8,9 @@ import { requireVerifiedUser } from "@/lib/account";
 import {
   hasPremiumAccess,
   isFlutterwaveBillingConfigured,
+  MPESA_PROVIDER_PLAN_ID,
 } from "@/lib/billing";
+import { isDarajaConfigured } from "@/lib/daraja";
 import BrandIcon from "../brand-icon";
 
 type AccountPageProps = {
@@ -17,7 +19,9 @@ type AccountPageProps = {
 
 const billingMessages: Record<string, string> = {
   "checkout-complete":
-    "Checkout completed. Premium access will appear after Flutterwave confirms your subscription.",
+    "Checkout completed. Premium access will appear after Flutterwave verifies your payment.",
+  "mpesa-prompt-sent":
+    "An M-Pesa payment prompt was sent to your phone. Premium access will appear after Daraja confirms the payment.",
   cancelled:
     "Your subscription was cancelled. Premium access remains until the paid period ends.",
   "not-active": "No active Premium subscription was found.",
@@ -47,7 +51,9 @@ async function AccountContent({ searchParams }: AccountPageProps) {
   const activeSubscription = user.subscriptions
     .filter(
       (subscription) =>
-        subscription.providerPlanId === process.env.FLW_PAYMENT_PLAN_ID &&
+        ((Boolean(process.env.FLW_PAYMENT_PLAN_ID) &&
+          subscription.providerPlanId === process.env.FLW_PAYMENT_PLAN_ID) ||
+          subscription.providerPlanId === MPESA_PROVIDER_PLAN_ID) &&
         (subscription.status === "active" ||
           (subscription.status === "cancelled" &&
             subscription.cancelAtPeriodEnd)) &&
@@ -131,13 +137,22 @@ async function AccountContent({ searchParams }: AccountPageProps) {
                     Premium access remains active until then.
                   </p>
                 )}
-              {activeSubscription?.status === "active" && (
-                <form action={cancelPremiumSubscription}>
-                  <button className="button button-large" type="submit">
-                    Cancel subscription
-                  </button>
-                </form>
-              )}
+              {activeSubscription?.providerPlanId === MPESA_PROVIDER_PLAN_ID &&
+                activeSubscription.currentPeriodEnd && (
+                  <p className="account-subscription-note">
+                    Your M-Pesa payment covers one month and does not renew
+                    automatically. Premium access ends on{" "}
+                    {activeSubscription.currentPeriodEnd.toLocaleDateString()}.
+                  </p>
+                )}
+              {activeSubscription?.status === "active" &&
+                activeSubscription.providerPlanId !== MPESA_PROVIDER_PLAN_ID && (
+                  <form action={cancelPremiumSubscription}>
+                    <button className="button button-large" type="submit">
+                      Cancel subscription
+                    </button>
+                  </form>
+                )}
             </>
           ) : (
             <>
@@ -146,17 +161,47 @@ async function AccountContent({ searchParams }: AccountPageProps) {
                 <li>PDF, SVG, and DXF exports for available keylines</li>
                 <li>Premium keylines are locked</li>
               </ul>
-              {isFlutterwaveBillingConfigured() ? (
+              {isFlutterwaveBillingConfigured() && (
                 <form action={startPremiumCheckout}>
+                  <input type="hidden" name="paymentMethod" value="card" />
                   <button className="button button-large" type="submit">
                     Upgrade to Premium with card <span>→</span>
                   </button>
                 </form>
-              ) : (
-                <p className="account-billing-unavailable" role="status">
-                  Premium checkout is not available yet.
-                </p>
               )}
+              {isDarajaConfigured() && (
+                <form action={startPremiumCheckout}>
+                  <input type="hidden" name="paymentMethod" value="mpesa" />
+                  <label className="account-phone-label" htmlFor="mpesa-phone">
+                    M-Pesa phone number
+                    <input
+                      id="mpesa-phone"
+                      name="phoneNumber"
+                      type="tel"
+                      autoComplete="tel"
+                      inputMode="tel"
+                      placeholder="0712345678"
+                      pattern="[0-9+() -]{9,16}"
+                      maxLength={16}
+                      required
+                    />
+                  </label>
+                  <button className="button button-large" type="submit">
+                    Pay one month with M-Pesa <span>→</span>
+                  </button>
+                </form>
+              )}
+              {!isFlutterwaveBillingConfigured() &&
+                !isDarajaConfigured() && (
+                  <p className="account-billing-unavailable" role="status">
+                    Premium checkout is not available yet.
+                  </p>
+                )}
+              <p className="account-subscription-note">
+                M-Pesa is a one-time monthly payment. Its KES amount is
+                calculated from the latest available USD/KES reference rate at
+                checkout and does not renew automatically.
+              </p>
             </>
           )}
         </section>

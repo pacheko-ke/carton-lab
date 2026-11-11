@@ -111,7 +111,6 @@ export async function POST(request: Request) {
   }
   const payload = parsedPayload as WebhookPayload;
 
-  const planId = getFlutterwavePlanId();
   const data = payload.data;
   if (payload.event === "charge.completed" && data?.id) {
     if (data.status !== "successful") {
@@ -125,9 +124,6 @@ export async function POST(request: Request) {
     if (
       transaction.status !== "successful" ||
       transaction.id !== data.id ||
-      transaction.currency !== PREMIUM_CURRENCY ||
-      Number(transaction.amount) !== PREMIUM_PRICE ||
-      transaction.payment_type !== "card" ||
       !transaction.tx_ref ||
       !email
     ) {
@@ -138,7 +134,18 @@ export async function POST(request: Request) {
       where: { txRef: transaction.tx_ref },
       include: { user: true },
     });
-    if (checkout && checkout.planId !== planId) {
+
+    const planId = getFlutterwavePlanId();
+    if (
+      transaction.currency !== PREMIUM_CURRENCY ||
+      Number(transaction.amount) !== PREMIUM_PRICE ||
+      transaction.payment_type !== "card" ||
+      (checkout &&
+        (checkout.paymentMethod !== "card" ||
+          checkout.planId !== planId ||
+          checkout.currency !== PREMIUM_CURRENCY ||
+          checkout.amount !== PREMIUM_PRICE))
+    ) {
       return NextResponse.json({ received: true, ignored: true });
     }
 
@@ -169,8 +176,9 @@ export async function POST(request: Request) {
     );
     const providerSubscription = matchingSubscriptions.find(
       (subscription) =>
-        subscription.amount === PREMIUM_PRICE &&
-        Number.isSafeInteger(subscription.id),
+        Number(subscription.amount) === PREMIUM_PRICE &&
+        Number.isSafeInteger(subscription.id) &&
+        subscription.id > 0,
     );
     if (!providerSubscription) {
       return NextResponse.json(
@@ -218,18 +226,25 @@ export async function POST(request: Request) {
         providerEventCreatedAt: paidAt,
       },
     });
+    await prisma.billingCheckout.deleteMany({
+      where: { txRef: transaction.tx_ref },
+    });
 
     return NextResponse.json({ received: true });
   }
 
   if (payload.event === "subscription.cancelled" && data) {
+    const planId = getFlutterwavePlanId();
     const email = data.customer?.customer_email ?? data.customer?.email;
     const eventPlanId =
-      typeof data.plan === "object" ? data.plan.id : data.plan;
+      typeof data.plan === "object" && data.plan !== null
+        ? data.plan.id
+        : data.plan;
     if (
       !email ||
       String(eventPlanId) !== planId ||
-      (data.status && data.status.toLowerCase() !== "deactivated")
+      (data.status &&
+        !["deactivated", "cancelled"].includes(data.status.toLowerCase()))
     ) {
       return NextResponse.json({ received: true, ignored: true });
     }
@@ -248,7 +263,6 @@ export async function POST(request: Request) {
         data: {
           status: "cancelled",
           cancelAtPeriodEnd: true,
-          providerEventCreatedAt: new Date(),
         },
       });
     }
