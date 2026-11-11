@@ -35,6 +35,8 @@
 .keyline-choice-heading{margin:0 0 .05rem;color:#64748b;font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
 .keyline-choice{display:flex;width:100%;min-height:2.35rem;align-items:center;justify-content:space-between;border:1px solid #cbd5e1;border-radius:.6rem;background:#fff;padding:.45rem .65rem;color:#334155;text-align:left;font-size:.8rem;line-height:1.25;transition:background-color .15s,border-color .15s,color .15s}
 .keyline-choice:hover{border-color:#0f6cbd;background:#f8fbff}
+.keyline-choice-locked{border-color:#e8c66a;background:linear-gradient(110deg,#fffdf5,#fff9e6)}
+.keyline-choice-locked:hover{border-color:#c99524;background:#fff5d5}
 .keyline-choice[aria-pressed=true]{border-color:#0f6cbd;background:#eff6ff;color:#0b4f86;font-weight:650;box-shadow:inset 3px 0 #0f6cbd}
 .keyline-tab:focus-visible,.keyline-choice:focus-visible{outline:2px solid #0f6cbd;outline-offset:2px}
 @media(prefers-color-scheme:dark){
@@ -42,6 +44,8 @@
   .keyline-tab:hover,.keyline-choice:hover{border-color:#38bdf8;background:#172b3d;color:#bae6fd}
   .keyline-tab[aria-selected=true]{border-color:#0284c7;background:#0369a1;color:#fff}
   .keyline-choice[aria-pressed=true]{border-color:#38bdf8;background:#0c2a40;color:#bae6fd;box-shadow:inset 3px 0 #38bdf8}
+  .keyline-choice-locked{border-color:#927b43;background:#292617;color:#f4e3b2}
+  .keyline-choice-locked:hover{border-color:#d6b85d;background:#332d18}
   .keyline-choice-heading{color:#94a3b8}
 }
   @media (max-width: 767px){

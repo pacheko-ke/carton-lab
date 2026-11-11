@@ -557,6 +557,33 @@ function registerKeyline(def) {
 async function loadKeylines(base) {
   base = base || "keylines/";
   const errors = [];
+  if (base === "/api/keylines") {
+    const response = await fetch(base, { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error(`Account verification failed (HTTP ${response.status})`);
+    }
+
+    const catalog = await response.json();
+    if (
+      !Array.isArray(catalog.definitions) ||
+      !Array.isArray(catalog.locked) ||
+      (catalog.plan !== "free" && catalog.plan !== "premium")
+    ) {
+      throw new Error("The verified keyline catalog is invalid.");
+    }
+
+    window.CARTONLAB_PLAN = catalog.plan;
+    window.CARTONLAB_LOCKED_KEYLINES = catalog.locked;
+    for (const definition of catalog.definitions) {
+      try {
+        registerKeyline(definition);
+      } catch (error) {
+        errors.push(`${definition?.id || "unknown keyline"}: ${error.message}`);
+      }
+    }
+    return errors;
+  }
+
   const index = await (await fetch(base + "index.json")).json();
   for (const file of index) {
     try {

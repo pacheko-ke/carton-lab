@@ -608,6 +608,167 @@ input {
   color: #bdcddd;
 }
 
+.account-page {
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse at 50% 20%, rgba(25, 106, 151, 0.17), transparent 34rem),
+    #091626;
+}
+
+.account-header {
+  display: flex;
+  width: min(1200px, calc(100% - 64px));
+  height: 82px;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 auto;
+  border-bottom: 1px solid rgba(195, 216, 235, 0.1);
+}
+
+.account-back-link {
+  color: #a9bdcf;
+  font-size: 12px;
+}
+
+.account-back-link:hover {
+  color: #72d9ed;
+}
+
+.account-content {
+  width: min(100% - 40px, 560px);
+  margin: 0 auto;
+  padding: 72px 0 96px;
+}
+
+.account-intro .eyebrow {
+  font-size: 9px;
+}
+
+.account-intro h1 {
+  margin: 18px 0 0;
+  color: #eff6fc;
+  font-size: clamp(32px, 6vw, 46px);
+  font-weight: 700;
+  letter-spacing: -0.055em;
+}
+
+.account-intro p {
+  margin: 10px 0 0;
+  color: #96aabe;
+  font-size: 13px;
+}
+
+.account-notice,
+.account-billing-unavailable {
+  margin: 22px 0 0;
+  padding: 13px 15px;
+  border: 1px solid rgba(102, 211, 232, 0.24);
+  border-radius: 9px;
+  background: rgba(16, 34, 56, 0.78);
+  color: #bdebf2;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.account-plan-card {
+  margin-top: 30px;
+  padding: 27px;
+  border: 1px solid rgba(163, 194, 220, 0.18);
+  border-radius: 15px;
+  background: rgba(16, 34, 54, 0.94);
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.22);
+}
+
+.account-plan-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.account-plan-kicker {
+  color: #91a6ba;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.account-plan-heading h2 {
+  margin: 7px 0 0;
+  color: #eff6fc;
+  font-size: 26px;
+  letter-spacing: -0.04em;
+}
+
+.account-plan-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 10px;
+  border: 1px solid rgba(102, 211, 232, 0.2);
+  border-radius: 999px;
+  color: #bdebf2;
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.account-plan-status > span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #66d3e8;
+}
+
+.account-plan-price {
+  margin: 23px 0 0;
+  color: #f2f7fc;
+  font-size: 38px;
+  font-weight: 700;
+  letter-spacing: -0.06em;
+}
+
+.account-plan-price span {
+  color: #91a6ba;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+.account-feature-list {
+  display: grid;
+  gap: 12px;
+  margin: 23px 0 26px;
+  padding: 20px 0 0;
+  border-top: 1px solid rgba(195, 216, 235, 0.1);
+  color: #c3d2e0;
+  font-size: 12px;
+  list-style: none;
+}
+
+.account-feature-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  line-height: 1.5;
+}
+
+.account-feature-list li::before {
+  content: "✓";
+  color: #66d3e8;
+  font-weight: 700;
+}
+
+.account-plan-card .button {
+  width: 100%;
+}
+
+.account-subscription-note {
+  margin: -7px 0 20px;
+  color: #e7c797;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
 .auth-page {
   position: relative;
   display: flex;

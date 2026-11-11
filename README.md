@@ -10,6 +10,33 @@ accounts are saved in PostgreSQL through Prisma. New users can sign in only when
 Google returns a verified email; access to `/app` and its assets is checked
 against the verified user record.
 
+## Plans and Flutterwave billing
+
+Every verified account starts on the Free plan. Free accounts can use RSC,
+Pizza, and Chicken Box keylines; Premium keyline definitions are served only
+after a Flutterwave transaction and active subscription are verified. Premium
+is $5 USD per month and includes every keyline. Recurring billing is card-only;
+Flutterwave payment plans do not support recurring M-Pesa. The `/account` page
+shows the verified plan and its limits and lets subscribers cancel their plan.
+
+1. In Flutterwave, create an active **$5 USD monthly** payment plan. The plan
+   currency, amount, and interval must match exactly.
+2. Set `FLW_SECRET_KEY`, `FLW_PUBLIC_KEY`, and `FLW_PAYMENT_PLAN_ID` in the
+   local environment and Vercel Production. Set `APP_URL` to the canonical app
+   URL when it differs from `https://cartonlab-web.vercel.app`.
+3. Configure the Flutterwave webhook URL as
+   `https://cartonlab-web.vercel.app/api/flutterwave/webhook`, enable
+   `charge.completed` and `subscription.cancelled`, and set the webhook secret
+   hash to `FLW_SECRET_HASH` in the local environment and Vercel Production.
+4. Apply the Prisma migration with `npx prisma migrate deploy`. Vercel
+   production builds apply pending migrations automatically.
+
+Billing stays unavailable until all four Flutterwave variables are
+configured. The app does not grant Premium based on a checkout return URL;
+only a secret-hash-verified webhook followed by server-side transaction and
+subscription verification can activate the plan. Cancelled subscriptions
+retain access through their paid period end.
+
 ## Configure Google sign-in
 
 1. Provision a PostgreSQL database and set its `POSTGRES_PRISMA_URL`. The Vercel
@@ -28,6 +55,10 @@ against the verified user record.
    AUTH_GOOGLE_ID=<Google OAuth client ID>
    AUTH_GOOGLE_SECRET=<Google OAuth client secret>
    POSTGRES_PRISMA_URL=<PostgreSQL connection string>
+   FLW_SECRET_KEY=<Flutterwave secret key>
+   FLW_PUBLIC_KEY=<Flutterwave public key>
+   FLW_PAYMENT_PLAN_ID=<Flutterwave plan ID for $5 USD per month>
+   FLW_SECRET_HASH=<Flutterwave webhook secret hash>
    ```
 
 5. Apply the schema locally with `npx prisma migrate deploy`. Vercel production

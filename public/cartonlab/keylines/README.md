@@ -1,15 +1,21 @@
 # Adding a keyline
 
-Every keyline is one JSON file in this folder. The app draws it with the same preview,
+The extension reads keyline JSON files from the repository's `keylines` folder.
+The website keeps definitions in `src/lib/keyline-definitions` and serves them
+through its authenticated keyline API. Do not put website keyline definitions in
+`public`: Premium geometry must remain server-side. The app draws each keyline with the same preview,
 PDF / SVG / DXF export, carton colour, dimension marking and details table as the RSC.
 
 ## Add a new keyline (3 steps)
 
 1. Copy `flower.json` to a new file, for example `tray.json`. Change `id` and `name`.
 2. Replace `params`, `cuts`, `creases` and `details` with your design.
-3. Add the file name to `index.json`:
+3. Add the file name to the extension's `keylines/index.json`.
+4. To add it to the website, also place the definition in
+   `src/lib/keyline-definitions` and register it in `src/lib/keyline-catalog.ts`.
+   Keep the server-side category and free-plan rules in sync.
 
-       ["flower.json", "tray.json"]
+Reload the extension. The new keyline appears in the **Box type** list.
 
 Reload the extension. The new keyline appears in the **Box type** list. No code changes.
 

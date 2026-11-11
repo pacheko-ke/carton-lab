@@ -129,6 +129,7 @@ function applyTypeVisibility(type) {
 
 const KEYLINE_CATEGORY_ORDER = ["RSC", "Pizza", "Chicken Box", "Flower Box", "Tray", "Sea Flow", "Sea Freight", "EPZ", "Other"];
 const FREE_KEYLINE_CATEGORIES = new Set(["RSC", "Pizza", "Chicken Box"]);
+const LOCKED_KEYLINES = {};
 let activeKeylineCategory = "RSC";
 
 function createPremiumBadge() {
@@ -155,7 +156,7 @@ function createPremiumBadge() {
 
 function keylineCategoryFor(id) {
   if (id === "rsc") return "RSC";
-  const def = KEYLINES[id] || {};
+  const def = KEYLINES[id] || LOCKED_KEYLINES[id] || {};
   if (typeof def.category === "string" && def.category.trim()) {
     const custom = def.category.trim();
     const known = KEYLINE_CATEGORY_ORDER.find((name) => name.toLowerCase() === custom.toLowerCase());
@@ -176,7 +177,7 @@ function keylineCategoryFor(id) {
 
 function keylineGroups() {
   const groups = new Map([["RSC", ["rsc"]]]);
-  Object.keys(KEYLINES).forEach((id) => {
+  [...Object.keys(KEYLINES), ...Object.keys(LOCKED_KEYLINES)].forEach((id) => {
     const category = keylineCategoryFor(id);
     if (!groups.has(category)) groups.set(category, []);
     groups.get(category).push(id);
@@ -187,6 +188,13 @@ function keylineGroups() {
 }
 
 function selectKeyline(id) {
+  if (LOCKED_KEYLINES[id]) {
+    window.parent.postMessage(
+      { type: "cartonlab:upgrade" },
+      window.location.origin,
+    );
+    return;
+  }
   activeKeylineCategory = keylineCategoryFor(id);
   if ($("boxType").value !== id) {
     $("boxType").value = id;
@@ -227,7 +235,10 @@ function renderKeylinePicker() {
     }
     button.addEventListener("click", () => {
       const ids = groups.get(category) || [];
-      if (category === "RSC" || ids.length === 1) {
+      if (
+        category === "RSC" ||
+        (ids.length === 1 && !LOCKED_KEYLINES[ids[0]])
+      ) {
         selectKeyline(ids[0] || "rsc");
         $("keyline-tab-" + order.indexOf(category))?.focus();
         return;
@@ -261,12 +272,21 @@ function renderKeylinePicker() {
   heading.textContent = `${activeKeylineCategory} keylines`;
   choices.appendChild(heading);
   ids.forEach((id) => {
-    const def = KEYLINES[id] || {};
+    const def = KEYLINES[id] || LOCKED_KEYLINES[id];
+    if (!def) return;
     const button = document.createElement("button");
     button.type = "button";
     button.className = "keyline-choice";
     button.setAttribute("aria-pressed", String(id === selectedType));
-    button.textContent = def.name || id;
+    if (LOCKED_KEYLINES[id]) {
+      button.classList.add("keyline-choice-locked");
+      button.setAttribute("aria-label", `${def.name || id}, Premium keyline`);
+      const label = document.createElement("span");
+      label.textContent = def.name || id;
+      button.append(label, createPremiumBadge());
+    } else {
+      button.textContent = def.name || id;
+    }
     button.addEventListener("click", () => selectKeyline(id));
     choices.appendChild(button);
   });
@@ -1215,8 +1235,27 @@ $("boxType").addEventListener("change", () => {
 
 async function init() {
   const accountControls = $("appAccountControls");
-  if (new URLSearchParams(window.location.search).get("account") === "free") {
+  // Fetch only the definitions permitted by the server-verified account plan.
+  let loadErrors = [];
+  try {
+    loadErrors = await loadKeylines("/api/keylines");
+  } catch (error) {
+    console.error("Could not verify account access to keylines:", error);
+    showError("Could not verify your account or load keylines. Please reload.");
+    return;
+  }
+  (window.CARTONLAB_LOCKED_KEYLINES || []).forEach((definition) => {
+    LOCKED_KEYLINES[definition.id] = definition;
+  });
+  const plan = window.CARTONLAB_PLAN;
+  if (plan === "free" || plan === "premium") {
     accountControls.hidden = false;
+    $("appAccountPlanLabel").textContent =
+      plan === "premium" ? "Premium account" : "Free account";
+    $("appAccountPlan").setAttribute(
+      "aria-label",
+      `View ${plan === "premium" ? "Premium" : "Free"} account`,
+    );
     $("appLogOut").addEventListener("click", () => {
       window.parent.postMessage(
         { type: "cartonlab:sign-out" },
@@ -1225,13 +1264,6 @@ async function init() {
     });
   }
 
-  // Load each indexed keyline, then group them under compact category tabs.
-  let loadErrors = [];
-  try {
-    loadErrors = await loadKeylines("keylines/");
-  } catch (e) {
-    loadErrors = ["keylines/index.json: " + e.message];
-  }
   Object.keys(KEYLINES).forEach((id) => {
     const opt = document.createElement("option");
     opt.value = id;

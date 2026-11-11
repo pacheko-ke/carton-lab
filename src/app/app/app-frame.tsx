@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { signOutOfCartonLab } from "../auth-actions";
 
 export default function AppFrame() {
+  const router = useRouter();
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const signOutFormRef = useRef<HTMLFormElement>(null);
 
@@ -15,17 +17,22 @@ export default function AppFrame() {
         typeof event.data !== "object" ||
         event.data === null ||
         !("type" in event.data) ||
-        event.data.type !== "cartonlab:sign-out"
+        (event.data.type !== "cartonlab:sign-out" &&
+          event.data.type !== "cartonlab:upgrade")
       ) {
         return;
       }
 
-      signOutFormRef.current?.requestSubmit();
+      if (event.data.type === "cartonlab:sign-out") {
+        signOutFormRef.current?.requestSubmit();
+      } else if (event.data.type === "cartonlab:upgrade") {
+        router.push("/account");
+      }
     }
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, []);
+  }, [router]);
 
   return (
     <>
@@ -38,7 +45,7 @@ export default function AppFrame() {
       <iframe
         ref={iframeRef}
         className="h-full w-full border-0"
-        src="/cartonlab/app.html?account=free"
+        src="/cartonlab/app.html"
         title="CartonLab Lightweight 2.0"
       />
     </>
