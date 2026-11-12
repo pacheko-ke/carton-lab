@@ -1,167 +1,267 @@
 {
-  "id": "fefco-0215",
-  "name": "FEFCO 0215 Auto-Bottom",
-  "title": "FEFCO 0215 AUTO-BOTTOM KEYLINE",
-  "category": "Auto-Bottom",
+  "id": "fefco0215",
+  "name": "FEFCO 0215",
+  "title": "FEFCO 0215 KEYLINE",
+  "inputs": [
+    {
+      "id": "glue",
+      "label": "Glue flap width",
+      "default": 25,
+      "min": 0
+    }
+  ],
   "params": {
-    "refL": "150",
-    "refW": "100",
-    "refH": "120",
-    "seam": "15",
-    "tuck": "0.85*W",
-    "dust": "W/2",
-    "x1": "seam",
+    "refL": "250",
+    "refW": "200",
+    "refH": "150",
+    "kL": "L / refL",
+    "kW": "W / refW",
+    "kH": "H / refH",
+    "x1": "glue",
     "x2": "x1 + L",
     "x3": "x2 + W",
     "x4": "x3 + L",
     "x5": "x4 + W",
-    "yTop": "tuck",
-    "yBottom": "yTop + H",
-    "major": "W/2",
-    "minor": "L/2",
-    "lock": "min(major, L/2)",
-    "boardW": "seam + 2*L + 2*W",
-    "boardH": "tuck + H + max(major, minor)"
+    "bl": "x5",
+    "tB": "22.1",
+    "yh": "tB + W",
+    "yb": "yh + H",
+    "bf1": "130*kW",
+    "bf2": "122*kW",
+    "tfh": "119.9*kW",
+    "bw": "yb + bf1",
+    "gSl": "5.8",
+    "bi": "1.5",
+    "ti": "4.5",
+    "tabR": "10",
+    "tabS1": "3.5",
+    "tabS2": "9",
+    "nW": "109.2*kL",
+    "nD": "39*kW",
+    "trW": "107.2*kL",
+    "trS": "100*kW",
+    "f2x": "99.2*kW",
+    "f2y": "69.1*kW",
+    "tfA": "30",
+    "tfB": "11",
+    "tfC": "tfh - tfA - tfB",
+    "tdx1": "15.5",
+    "tdx2": "32.2"
   },
   "require": [
     {
-      "expr": "L > 2",
-      "message": "The box length must be greater than 2 mm."
+      "expr": "tB + 3 < W",
+      "message": "The tab does not fit this width."
+    },
+    {
+      "expr": "nW < L",
+      "message": "The recess is too wide for this length."
+    },
+    {
+      "expr": "trW < nW",
+      "message": "The interlock tip must be narrower than the recess."
+    },
+    {
+      "expr": "bf1 + bf1 > W",
+      "message": "The bottom flaps must overlap."
+    },
+    {
+      "expr": "tfh < W",
+      "message": "The side top flaps are too tall for this width."
+    },
+    {
+      "expr": "glue > 0",
+      "message": "The glue flap must be wider than zero."
     }
   ],
   "cuts": [
     {
       "id": "outline",
-      "d": "M0 {yTop} L{x1} {yTop} L{x1} 0 L{x2} 0 L{x2} {yTop} L{x2} {yTop - dust} L{x3} {yTop - dust} L{x3} {yTop} L{x4} {yTop} L{x4} {yTop - dust} L{x5} {yTop - dust} L{x5} {yTop} L{x5} {yBottom} L{x5} {yBottom + minor} L{x4} {yBottom + minor} L{x4} {yBottom + major} L{x3} {yBottom + major} L{x3} {yBottom + minor} L{x2} {yBottom + minor} L{x2} {yBottom + major} L{x1} {yBottom + major} L{x1} {yBottom} L0 {yBottom} Z"
-    },
-    {
-      "id": "bottom-relief-right",
-      "d": "M{x4} {yBottom} L{x4} {yBottom + min(major, minor)}"
-    },
-    {
-      "id": "bottom-relief-center",
-      "d": "M{x3} {yBottom} L{x3} {yBottom + min(major, minor)}"
-    },
-    {
-      "id": "bottom-relief-left",
-      "d": "M{x2} {yBottom} L{x2} {yBottom + min(major, minor)}"
+      "d": "M{x1} {tB} L{x1} {yh} L{0} {yh + gSl} L{0} {yb - gSl} L{x1} {yb} L{x1 + bi} {yb} L{x1 + bi} {yb + bf1} L{x1 + L / 2 - nW / 2} {yb + bf1} L{x1 + L / 2 - nW / 2} {yb + bf1 - nD} L{x1 + L / 2 + nW / 2} {yb + bf1 - nD} L{x1 + L / 2 + nW / 2} {yb + bf1} L{x2 - bi} {yb + bf1} L{x2 - bi} {yb} L{x2 + bi} {yb} L{x2 + bi + f2x} {yb + f2y} L{x2 + bi + f2x} {yb + bf2} L{x3 - bi} {yb + bf2} L{x3 - bi} {yb} L{x3 + bi} {yb} L{x3 + L / 2 - trW / 2} {yb + trS} L{x3 + L / 2 - trW / 2} {yb + bf1} L{x3 + L / 2 + trW / 2} {yb + bf1} L{x3 + L / 2 + trW / 2} {yb + trS} L{x4 - bi} {yb} L{x4 + bi} {yb} L{x4 + bi} {yb + bf2} L{x5 - bi - f2x} {yb + bf2} L{x5 - bi - f2x} {yb + f2y} L{x5 - bi} {yb} L{x5} {yb} L{x5} {yh} L{x5 - ti} {yh} L{x5 - ti} {yh - tfh} L{x4 + ti + tdx1 + tdx2} {yh - tfh} L{x4 + ti + tdx1} {yh - tfA - tfB} L{x4 + ti} {yh - tfA} L{x4 + ti} {yh} L{x3 - ti} {yh} L{x3 - ti} {yh - tfA} L{x3 - ti - tdx1} {yh - tfA - tfB} L{x3 - ti - tdx1 - tdx2} {yh - tfh} L{x2 + ti} {yh - tfh} L{x2 + ti} {yh} L{x2 - 0.1} {yh} L{x2} {tB} L{x2 - tabS2} {tB} L{x2 - tabS2} {tB + 6} L{x2 - tabS2} {tB} L{x2 - tabS1} {tB} L{x2 - tabS1 + 0.3} {tB - 12.3} A{tabR} {9.8} 0 0 0 {x2 - tabS1 - 10} {0} L{x1 + tabS1 + 10} {0} A{tabR} {9.8} 0 0 0 {x1 + tabS1 + 0.3} {tB - 12.3} L{x1 + tabS1} {tB} L{x1 + tabS2} {tB} L{x1 + tabS2} {tB + 6} L{x1 + tabS2} {tB} Z"
     }
   ],
   "creases": [
     {
-      "id": "side-seam",
-      "x1": "x1",
-      "y1": "yTop",
-      "x2": "x1",
-      "y2": "yBottom"
+      "d": "M{x1} {yh} L{x1} {yb}"
     },
     {
-      "id": "wall-1",
-      "x1": "x2",
-      "y1": "yTop",
-      "x2": "x2",
-      "y2": "yBottom"
+      "d": "M{x2} {yh} L{x2} {yb}"
     },
     {
-      "id": "wall-2",
-      "x1": "x3",
-      "y1": "yTop",
-      "x2": "x3",
-      "y2": "yBottom"
+      "d": "M{x3} {yh} L{x3} {yb}"
     },
     {
-      "id": "wall-3",
-      "x1": "x4",
-      "y1": "yTop",
-      "x2": "x4",
-      "y2": "yBottom"
+      "d": "M{x4} {yh} L{x4} {yb}"
     },
     {
-      "id": "top-reverse-tuck",
-      "d": "M{x1} {yTop} L{x2} {yTop}"
+      "d": "M{x1 + bi} {yb} L{x2 - bi} {yb}"
     },
     {
-      "id": "top-dust-left",
-      "d": "M{x2} {yTop} L{x3} {yTop}"
+      "d": "M{x2 + bi} {yb} L{x3 - bi} {yb}"
     },
     {
-      "id": "top-open-front",
-      "d": "M{x3} {yTop} L{x4} {yTop}"
+      "d": "M{x3 + bi} {yb} L{x4 - bi} {yb}"
     },
     {
-      "id": "top-dust-right",
-      "d": "M{x4} {yTop} L{x5} {yTop}"
+      "d": "M{x4 + bi} {yb} L{x5 - bi} {yb}"
     },
     {
-      "id": "bottom-back-major",
-      "d": "M{x1} {yBottom} L{x2} {yBottom}"
+      "d": "M{x1} {yh} L{x2} {yh}"
     },
     {
-      "id": "bottom-side-left",
-      "d": "M{x2} {yBottom} L{x3} {yBottom}"
+      "d": "M{x2 + ti} {yh} L{x3 - ti} {yh}"
     },
     {
-      "id": "bottom-front-major",
-      "d": "M{x3} {yBottom} L{x4} {yBottom}"
+      "d": "M{x4 + ti} {yh} L{x5 - ti} {yh}"
     },
     {
-      "id": "bottom-side-right",
-      "d": "M{x4} {yBottom} L{x5} {yBottom}"
-    },
-    {
-      "id": "crash-lock-left",
-      "d": "M{x2} {yBottom} L{x2 - lock} {yBottom + lock}"
-    },
-    {
-      "id": "crash-lock-right",
-      "d": "M{x3} {yBottom} L{x3 + lock} {yBottom + lock}"
+      "d": "M{x1 + tabS2} {tB + 3} L{x2 - tabS2} {tB + 3}"
     }
   ],
   "dimensions": [
     {
-      "id": "length",
-      "label": "Body length (L)",
-      "value": "L",
-      "x1": "x1",
-      "y1": "boardH + 30",
-      "x2": "x2",
-      "y2": "boardH + 30"
-    },
-    {
-      "id": "width",
-      "label": "Body width (W)",
-      "value": "W",
-      "x1": "x2",
-      "y1": "-20",
-      "x2": "x3",
-      "y2": "-20"
-    },
-    {
-      "id": "wall-height",
-      "label": "Wall height (H)",
-      "value": "H",
-      "x1": "x1 - 25",
-      "y1": "yTop",
-      "x2": "x1 - 25",
-      "y2": "yBottom"
+      "id": "board-length",
+      "label": "Board length",
+      "value": "bl",
+      "x1": "0",
+      "y1": "bw + 30",
+      "x2": "bl",
+      "y2": "bw + 30"
     },
     {
       "id": "board-width",
       "label": "Board width",
-      "value": "boardW",
-      "x1": "0",
-      "y1": "boardH + 60",
-      "x2": "boardW",
-      "y2": "boardH + 60"
+      "value": "bw",
+      "x1": "bl + 30",
+      "y1": "0",
+      "x2": "bl + 30",
+      "y2": "bw"
     },
     {
-      "id": "board-height",
-      "label": "Board height",
-      "value": "boardH",
-      "x1": "boardW + 30",
+      "id": "panel-1",
+      "label": "Panel 1 width (L)",
+      "value": "L",
+      "x1": "x1",
+      "y1": "yb + 20",
+      "x2": "x2",
+      "y2": "yb + 20"
+    },
+    {
+      "id": "panel-2",
+      "label": "Panel 2 width (W)",
+      "value": "W",
+      "x1": "x2",
+      "y1": "yb + 20",
+      "x2": "x3",
+      "y2": "yb + 20"
+    },
+    {
+      "id": "panel-3",
+      "label": "Panel 3 width (L)",
+      "value": "L",
+      "x1": "x3",
+      "y1": "yb + 20",
+      "x2": "x4",
+      "y2": "yb + 20"
+    },
+    {
+      "id": "panel-4",
+      "label": "Panel 4 width (W)",
+      "value": "W",
+      "x1": "x4",
+      "y1": "yb + 20",
+      "x2": "x5",
+      "y2": "yb + 20"
+    },
+    {
+      "id": "body-height",
+      "label": "Body height (H)",
+      "value": "H",
+      "x1": "x1 + 30",
+      "y1": "yh",
+      "x2": "x1 + 30",
+      "y2": "yb"
+    },
+    {
+      "id": "glue-width",
+      "label": "Glue flap width",
+      "value": "glue",
+      "x1": "0",
+      "y1": "yh + H / 2",
+      "x2": "x1",
+      "y2": "yh + H / 2"
+    },
+    {
+      "id": "top-flap-length",
+      "label": "Top flap length (incl. tab)",
+      "value": "W",
+      "x1": "x1 + 30",
+      "y1": "tB",
+      "x2": "x1 + 30",
+      "y2": "yh"
+    },
+    {
+      "id": "tab-height",
+      "label": "Tuck tab height",
+      "value": "tB + 3",
+      "x1": "x1 + 80",
       "y1": "0",
-      "x2": "boardW + 30",
-      "y2": "boardH"
+      "x2": "x1 + 80",
+      "y2": "tB + 3"
+    },
+    {
+      "id": "side-top-flap-height",
+      "label": "Side top flap height",
+      "value": "tfh",
+      "x1": "x2 + 20",
+      "y1": "yh - tfh",
+      "x2": "x2 + 20",
+      "y2": "yh"
+    },
+    {
+      "id": "bottom-flap-long",
+      "label": "Bottom flap height (long sides)",
+      "value": "bf1",
+      "x1": "x1 + 20",
+      "y1": "yb",
+      "x2": "x1 + 20",
+      "y2": "yb + bf1"
+    },
+    {
+      "id": "bottom-flap-short",
+      "label": "Bottom flap height (short sides)",
+      "value": "bf2",
+      "x1": "x2 + 20",
+      "y1": "yb",
+      "x2": "x2 + 20",
+      "y2": "yb + bf2"
+    },
+    {
+      "id": "recess-width",
+      "label": "Recess width",
+      "value": "nW",
+      "x1": "x1 + L / 2 - nW / 2",
+      "y1": "yb + bf1 + 12",
+      "x2": "x1 + L / 2 + nW / 2",
+      "y2": "yb + bf1 + 12"
+    },
+    {
+      "id": "recess-depth",
+      "label": "Recess depth",
+      "value": "nD",
+      "x1": "x1 + L / 2 - nW / 2 - 12",
+      "y1": "yb + bf1 - nD",
+      "x2": "x1 + L / 2 - nW / 2 - 12",
+      "y2": "yb + bf1"
+    },
+    {
+      "id": "tip-width",
+      "label": "Interlock tip width",
+      "value": "trW",
+      "x1": "x3 + L / 2 - trW / 2",
+      "y1": "yb + bf1 + 12",
+      "x2": "x3 + L / 2 + trW / 2",
+      "y2": "yb + bf1 + 12"
     }
   ],
   "details": {
@@ -170,7 +270,7 @@
       "W",
       "H"
     ],
-    "boardLength": "boardW",
-    "boardWidth": "boardH"
+    "boardLength": "bl",
+    "boardWidth": "bw"
   }
 }

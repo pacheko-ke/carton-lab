@@ -80,6 +80,7 @@ export function keylineCategoryFor(definition: KeylineDefinition) {
   const key = id.toLowerCase();
   const text = `${key} ${name.toLowerCase()}`;
   if (/pizza/.test(text)) return "Pizza";
+  if (/fefco.?0215|auto.?bottom/.test(text)) return "Auto-Bottom";
   if (/seafreight|sea freight|freight/.test(key)) return "Sea Freight";
   if (/seaflow|sea flow/.test(key)) return "Sea Flow";
   if (/flower|pf1|f1|f2|zim/.test(text)) return "Flower Box";
