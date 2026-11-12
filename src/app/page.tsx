@@ -74,13 +74,16 @@ export default function Home() {
           <span>CartonLab Lightweight 2.0</span>
         </Link>
         <nav className="header-nav" aria-label="Main navigation">
-          <a href="#how-it-works">How it works</a>
-          <Link href="/login" className="nav-login">Log in</Link>
-          <Link href="/signup" className="button button-small">
-            <span className="button-label-desktop">Create account</span>
-            <span className="button-label-mobile">Sign up</span>
-            <span>↗</span>
-          </Link>
+          <ol>
+            <li><Link href="/" aria-current="page">Home</Link></li>
+            <li><a href="#how-it-works">How it works</a></li>
+            <li><Link href="/login" className="nav-login">Sign in</Link></li>
+            <li>
+              <Link href="/signup" className="button button-small">
+                Sign up <span>↗</span>
+              </Link>
+            </li>
+          </ol>
         </nav>
       </header>
 

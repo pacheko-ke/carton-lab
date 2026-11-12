@@ -94,11 +94,43 @@ input {
 }
 
 .header-nav {
-  display: flex;
-  align-items: center;
-  gap: 32px;
   color: #b6c6d6;
   font-size: 13px;
+}
+
+.header-nav ol {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.header-nav li {
+  display: flex;
+  align-items: center;
+}
+
+.header-nav li + li::before {
+  padding: 0 13px;
+  color: #587087;
+  content: "/";
+}
+
+.header-nav li:not(:last-child) > a,
+.site-footer a,
+.text-link,
+.back-link {
+  color: inherit;
+  transition: color 160ms ease;
+}
+
+.header-nav li:not(:last-child) > a:hover,
+.site-footer a:hover,
+.text-link:hover,
+.back-link:hover {
+  color: #72d9ed;
 }
 
 .nav-user {
@@ -119,20 +151,6 @@ input {
 .nav-signout:hover,
 .auth-signout:hover {
   color: #70d7e8;
-}
-
-.header-nav a,
-.site-footer a,
-.text-link,
-.back-link {
-  transition: color 160ms ease;
-}
-
-.header-nav a:hover,
-.site-footer a:hover,
-.text-link:hover,
-.back-link:hover {
-  color: #72d9ed;
 }
 
 .button {
@@ -1127,25 +1145,25 @@ input {
   }
 
   .header-nav {
-    gap: 14px;
+    font-size: 11px;
   }
 
-  .header-nav > a:first-child {
+  .header-nav li:first-child {
     display: none;
   }
 
-  .button-small {
+  .header-nav li:nth-child(2)::before {
+    display: none;
+  }
+
+  .header-nav .button-small {
     min-height: 36px;
     padding: 0 11px;
     font-size: 10px;
   }
 
-  .button-label-desktop {
-    display: none;
-  }
-
-  .button-label-mobile {
-    display: inline;
+  .header-nav li + li::before {
+    padding: 0 7px;
   }
 
   .hero-section {
@@ -1262,11 +1280,15 @@ input {
 
 @media (max-width: 390px) {
   .header-nav {
-    gap: 11px;
+    font-size: 10px;
   }
 
   .header-nav .nav-login {
     font-size: 11px;
+  }
+
+  .header-nav li + li::before {
+    padding: 0 5px;
   }
 
   .brand-lockup {
@@ -1301,16 +1323,24 @@ input {
     width: calc(100% - 24px);
   }
 
-  .header-nav {
-    gap: 8px;
+  .site-header {
+    height: auto;
+    min-height: 72px;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 12px 0;
   }
 
-  .header-nav .nav-login {
-    display: none;
+  .header-nav {
+    font-size: 9px;
+  }
+
+  .header-nav li + li::before {
+    padding: 0 4px;
   }
 
   .header-nav .button-small {
-    gap: 6px;
+    gap: 4px;
     padding: 0 9px;
   }
 
