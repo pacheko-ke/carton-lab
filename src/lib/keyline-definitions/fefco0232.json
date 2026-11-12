@@ -111,8 +111,8 @@
       "50.8 * scaleY",
       "50.8 * scaleY",
       "H",
-      "101.5 * scaleY"
+      "W / 2"
     ],
-    "overallY": "50.8 * scaleY + 50.8 * scaleY + H + 101.5 * scaleY"
+    "overallY": "50.8 * scaleY + 50.8 * scaleY + H + W / 2"
   }
 }

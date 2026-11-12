@@ -207,6 +207,11 @@ function selectKeyline(id) {
   }
 }
 
+function keylineChoiceLabel(def, id) {
+  const name = typeof def.name === "string" ? def.name : id;
+  return name.match(/^(FEFCO\s+\d{4}(?:-\d+)?)/i)?.[1] || name;
+}
+
 function renderKeylinePicker() {
   const tabs = $("keylineTabs");
   const choices = $("keylineChoices");
@@ -285,10 +290,10 @@ function renderKeylinePicker() {
       button.classList.add("keyline-choice-locked");
       button.setAttribute("aria-label", `${def.name || id}, Premium keyline`);
       const label = document.createElement("span");
-      label.textContent = def.name || id;
+      label.textContent = keylineChoiceLabel(def, id);
       button.append(label, createPremiumBadge());
     } else {
-      button.textContent = def.name || id;
+      button.textContent = keylineChoiceLabel(def, id);
     }
     button.addEventListener("click", () => selectKeyline(id));
     choices.appendChild(button);

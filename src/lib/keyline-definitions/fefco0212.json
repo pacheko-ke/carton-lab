@@ -89,8 +89,8 @@
       "30 * scaleY",
       "W",
       "H",
-      "101.5 * scaleY"
+      "W / 2"
     ],
-    "overallY": "30 * scaleY + W + H + 101.5 * scaleY"
+    "overallY": "30 * scaleY + W + H + W / 2"
   }
 }

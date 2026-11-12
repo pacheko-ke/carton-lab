@@ -140,10 +140,10 @@
     "y": [
       "18.5 * scaleY",
       "77.5 * scaleY",
-      "74 * scaleY",
+      "W / 2",
       "H",
       "107 * scaleY"
     ],
-    "overallY": "18.5 * scaleY + 77.5 * scaleY + 74 * scaleY + H + 107 * scaleY"
+    "overallY": "18.5 * scaleY + 77.5 * scaleY + W / 2 + H + 107 * scaleY"
   }
 }

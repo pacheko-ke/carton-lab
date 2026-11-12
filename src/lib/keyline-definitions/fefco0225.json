@@ -100,10 +100,10 @@
     ],
     "overallX": "35 * scaleX + L + W + 1.5 * scaleX + 300 * scaleX + 1.5 * scaleX + W",
     "y": [
-      "101.5 * scaleY",
+      "W / 2",
       "H",
       "W"
     ],
-    "overallY": "101.5 * scaleY + H + W"
+    "overallY": "W / 2 + H + W"
   }
 }

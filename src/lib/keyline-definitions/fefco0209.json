@@ -88,8 +88,8 @@
     "y": [
       "40 * scaleY",
       "H",
-      "101.5 * scaleY"
+      "W / 2"
     ],
-    "overallY": "40 * scaleY + H + 101.5 * scaleY"
+    "overallY": "40 * scaleY + H + W / 2"
   }
 }

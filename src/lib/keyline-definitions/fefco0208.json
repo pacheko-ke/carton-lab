@@ -135,11 +135,11 @@
     "overallX": "35 * scaleX + L + W + L + W",
     "y": [
       "40 * scaleY",
-      "101.5 * scaleY",
+      "W / 2",
       "H",
-      "101.5 * scaleY",
+      "W / 2",
       "40 * scaleY"
     ],
-    "overallY": "40 * scaleY + 101.5 * scaleY + H + 101.5 * scaleY + 40 * scaleY"
+    "overallY": "40 * scaleY + W / 2 + H + W / 2 + 40 * scaleY"
   }
 }
