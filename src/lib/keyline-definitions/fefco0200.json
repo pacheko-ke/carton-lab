@@ -1,0 +1,61 @@
+{
+  "id": "fefco0200",
+  "name": "FEFCO 0200",
+  "title": "FEFCO 0200 KEYLINE",
+  "category": "Slotted Boxes",
+  "params": {
+    "refL": "150",
+    "refW": "112.5",
+    "refH": "150",
+    "scaleX": "(L / refL + W / refW) / 2",
+    "scaleY": "(W / refW + H / refH) / 2"
+  },
+  "map": {
+    "x": [
+      [
+        0,
+        "0"
+      ],
+      [
+        2433.3,
+        "643.81062 * scaleX"
+      ]
+    ],
+    "y": [
+      [
+        0,
+        "0"
+      ],
+      [
+        916.7,
+        "242.54354 * scaleY"
+      ]
+    ]
+  },
+  "cuts": [
+    {
+      "id": "cut",
+      "d": "M267.1,68.6h1984.3v566.9h-8.5v212.6h-408.2v-212.6h-17v212.6h-549.9v-212.6h-17v212.6h-408.2v-212.6h-17v212.6H275.6v-212.6h-8.5l-85-22.8V91.4l85-22.8Z"
+    }
+  ],
+  "creases": [
+    {
+      "d": "M834,635.5V68.6M1259.2,635.5V68.6M1826.1,635.5V68.6M267.1,635.5V68.6M275.6,635.5h549.9M842.5,635.5h408.2M1267.7,635.5h549.9M1834.6,635.5h408.2"
+    }
+  ],
+  "autoDimensionValues": {
+    "x": [
+      "22.5 * scaleX",
+      "150 * scaleX",
+      "112.5 * scaleX",
+      "150 * scaleX",
+      "112.5 * scaleX"
+    ],
+    "overallX": "22.5 * scaleX + 150 * scaleX + 112.5 * scaleX + 150 * scaleX + 112.5 * scaleX",
+    "y": [
+      "150 * scaleY",
+      "56.3 * scaleY"
+    ],
+    "overallY": "150 * scaleY + 56.3 * scaleY"
+  }
+}
