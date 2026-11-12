@@ -1045,126 +1045,20 @@ $("print").addEventListener("click", () => {
   window.print();
 });
 
-const foldPreviewDialog = $("foldPreviewDialog");
-const foldPreviewFaces = $("foldPreviewFaces");
-const FOLD_VIEW = { width: 800, height: 420, padding: 38 };
-let foldFaceGeometry = [];
-let foldAnimationFrame = 0;
-let foldProgress = 0;
-let foldTarget = 0;
-
-function foldBounds(points) {
-  return points.reduce((bounds, point) => ({
-    minX: Math.min(bounds.minX, point[0]),
-    minY: Math.min(bounds.minY, point[1]),
-    maxX: Math.max(bounds.maxX, point[0]),
-    maxY: Math.max(bounds.maxY, point[1]),
-  }), { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity });
-}
-
-function fitFoldPoints(points, bounds, scale) {
-  const width = (bounds.maxX - bounds.minX) * scale;
-  const height = (bounds.maxY - bounds.minY) * scale;
-  const offsetX = (FOLD_VIEW.width - width) / 2;
-  const offsetY = (FOLD_VIEW.height - height) / 2;
-  return points.map(([x, y]) => [
-    offsetX + (x - bounds.minX) * scale,
-    offsetY + (y - bounds.minY) * scale,
-  ]);
-}
-
-function buildFoldPreview() {
-  const p = readParams();
-  const L = p.L, W = p.W, H = p.H;
-  const name = p.type === "rsc" ? "RSC" : (KEYLINES[p.type] && KEYLINES[p.type].name) || p.type;
-  $("foldPreviewDimensions").textContent = `${name} · ${L} × ${W} × ${H} ${p.unit}`;
-
-  const faces = [
-    { name: "Base", delay: 0, net: [[0, 0], [L, 0], [L, W], [0, W]], world: [[0, 0, 0], [L, 0, 0], [L, W, 0], [0, W, 0]] },
-    { name: "Front", delay: 0.08, net: [[0, 0], [L, 0], [L, -H], [0, -H]], world: [[0, 0, 0], [L, 0, 0], [L, 0, H], [0, 0, H]] },
-    { name: "Back", delay: 0.28, net: [[0, W], [L, W], [L, W + H], [0, W + H]], world: [[0, W, 0], [L, W, 0], [L, W, H], [0, W, H]] },
-    { name: "Left", delay: 0.16, net: [[0, 0], [0, W], [-H, W], [-H, 0]], world: [[0, 0, 0], [0, W, 0], [0, W, H], [0, 0, H]] },
-    { name: "Right", delay: 0.22, net: [[L, 0], [L, W], [L + H, W], [L + H, 0]], world: [[L, 0, 0], [L, W, 0], [L, W, H], [L, 0, H]] },
-    { name: "Top", delay: 0.5, net: [[0, W + H], [L, W + H], [L, W + H + W], [0, W + H + W]], world: [[0, W, H], [L, W, H], [L, 0, H], [0, 0, H]] },
-  ];
-  const netPoints = faces.flatMap((face) => face.net);
-  const project = ([x, y, z]) => [(x - y) * Math.cos(Math.PI / 6), (x + y) * 0.5 - z];
-  const worldPoints = faces.flatMap((face) => face.world.map(project));
-  const netBox = foldBounds(netPoints);
-  const worldBox = foldBounds(worldPoints);
-  const netWidth = netBox.maxX - netBox.minX, netHeight = netBox.maxY - netBox.minY;
-  const worldWidth = worldBox.maxX - worldBox.minX, worldHeight = worldBox.maxY - worldBox.minY;
-  const scale = Math.min(
-    (FOLD_VIEW.width - FOLD_VIEW.padding * 2) / Math.max(netWidth, worldWidth),
-    (FOLD_VIEW.height - FOLD_VIEW.padding * 2) / Math.max(netHeight, worldHeight),
-  );
-  const flattened = new Map(faces.map((face) => [face.name, fitFoldPoints(face.net, netBox, scale)]));
-  const folded = new Map(faces.map((face) => [face.name, fitFoldPoints(face.world.map(project), worldBox, scale)]));
-  const fill = p.color === "brown" ? "#ffcc99" : "#ffffff";
-  const shades = { Base: fill, Front: fill, Back: p.color === "brown" ? "#e9ad78" : "#f1f5f9", Left: fill, Right: p.color === "brown" ? "#f3bd8b" : "#f8fafc", Top: p.color === "brown" ? "#ffddb8" : "#ffffff" };
-  foldPreviewFaces.replaceChildren();
-  foldFaceGeometry = faces.map((face) => {
-    const node = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-    node.setAttribute("fill", shades[face.name]);
-    node.setAttribute("stroke", "#334155");
-    node.setAttribute("stroke-width", "1.5");
-    node.setAttribute("stroke-linejoin", "round");
-    node.setAttribute("data-face", face.name);
-    foldPreviewFaces.appendChild(node);
-    return { node, delay: face.delay, flat: flattened.get(face.name), folded: folded.get(face.name) };
-  });
-  setFoldProgress(0);
-}
-
-function setFoldProgress(progress) {
-  foldProgress = progress;
-  foldFaceGeometry.forEach(({ node, delay, flat, folded }) => {
-    const local = Math.max(0, Math.min(1, (progress - delay) / (1 - delay)));
-    const eased = 1 - Math.pow(1 - local, 3);
-    const points = flat.map(([x, y], i) => [
-      x + (folded[i][0] - x) * eased,
-      y + (folded[i][1] - y) * eased,
-    ]);
-    node.setAttribute("points", points.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(" "));
-  });
-  $("foldToggle").textContent = progress >= 1 ? "Unfold carton" : "Fold carton";
-}
-
-function animateFold(target) {
-  cancelAnimationFrame(foldAnimationFrame);
-  foldTarget = target;
-  const from = foldProgress;
-  const started = performance.now();
-  const duration = 1500 * Math.max(0.25, Math.abs(target - from));
-  const step = (now) => {
-    const t = Math.min(1, (now - started) / duration);
-    const eased = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-    setFoldProgress(from + (target - from) * eased);
-    if (t < 1) foldAnimationFrame = requestAnimationFrame(step);
-    else foldAnimationFrame = 0;
-  };
-  foldAnimationFrame = requestAnimationFrame(step);
-}
-
 $("openFoldPreview").addEventListener("click", () => {
   if (!current) return;
   const p = readParams();
-  if (![p.L, p.W, p.H].every((size) => Number.isFinite(size) && size > 0)) {
-    $("foldPreviewDimensions").textContent = "Enter positive length, width, and height to preview the fold.";
-    foldPreviewFaces.replaceChildren();
-    foldFaceGeometry = [];
-    if (!foldPreviewDialog.open) foldPreviewDialog.showModal();
-    return;
-  }
-  buildFoldPreview();
-  foldPreviewDialog.showModal();
-  animateFold(1);
-});
-$("foldToggle").addEventListener("click", () => animateFold(foldTarget === 1 ? 0 : 1));
-$("closeFoldPreview").addEventListener("click", () => foldPreviewDialog.close());
-foldPreviewDialog.addEventListener("close", () => {
-  cancelAnimationFrame(foldAnimationFrame);
-  foldAnimationFrame = 0;
+  const name = p.type === "rsc" ? "RSC" : (KEYLINES[p.type] && KEYLINES[p.type].name) || p.type;
+  window.parent.postMessage({
+    type: "cartonlab:fold-preview",
+    payload: {
+      name,
+      dimensions: { L: p.L, W: p.W, H: p.H, unit: p.unit },
+      color: p.color,
+      outline: current.model.foldOutline,
+      items: current.model.items.filter((item) => item.layer === "CUT" || item.layer === "CREASE"),
+    },
+  }, window.location.origin);
 });
 
 $("share").addEventListener("click", () => shareKeyline());

@@ -400,6 +400,7 @@ function buildKeylineModel(def, p, opts) {
 
   // creases: { x1,y1,x2,y2 } or { d: "<path of straight lines>" }
   let creases = [];
+  const creaseIds = [];
   (def.creases || []).forEach((c) => {
     const real = c.space === "real";
     if (typeof c.d === "string") {
@@ -407,12 +408,16 @@ function buildKeylineModel(def, p, opts) {
       if (!real) sg = mapSegs(sg, fx, fy);
       KC.flattenSegs(sg).forEach((sp) => {
         const n = sp.pts.length;
-        for (let k = 0; k < (sp.closed ? n : n - 1); k++) creases.push([...sp.pts[k], ...sp.pts[(k + 1) % n]]);
+        for (let k = 0; k < (sp.closed ? n : n - 1); k++) {
+          creases.push([...sp.pts[k], ...sp.pts[(k + 1) % n]]);
+          creaseIds.push(c.id || "");
+        }
       });
     } else {
       let q = [ev(c.x1, env), ev(c.y1, env), ev(c.x2, env), ev(c.y2, env)];
       if (!real) q = [fx(q[0]), fy(q[1]), fx(q[2]), fy(q[3])];
       creases.push(q);
+      creaseIds.push(c.id || "");
     }
   });
 
@@ -456,7 +461,15 @@ function buildKeylineModel(def, p, opts) {
     if (def.strokeFillOutline && silhouetteSegs) items.push({ t: "path", layer: "CUT", segs: silhouetteSegs });
   } else if (outlineSegs) items.push({ t: "path", layer: "CUT", segs: outlineSegs, ...(fill ? { fill } : {}) });
   if (segs.length || !outlineSegs || def.fillOutlineSeparate) items.push({ t: "path", layer: "CUT", segs, ...(!outlineSegs && fill ? { fill } : {}) });
-  creases.forEach((c) => line("CREASE", c[0], c[1], c[2], c[3]));
+  creases.forEach((c, idx) => items.push({
+    t: "line",
+    layer: "CREASE",
+    x1: c[0],
+    y1: c[1],
+    x2: c[2],
+    y2: c[3],
+    ...(creaseIds[idx] ? { creaseId: creaseIds[idx] } : {}),
+  }));
 
   const g1 = th * 2.4, tk = th * 0.4, wo = th * 0.3, far = g1 + tk * 1.2;
 
@@ -536,7 +549,14 @@ function buildKeylineModel(def, p, opts) {
   const title = String(p.job || "").trim() || def.title || `${String(def.name || def.id).toUpperCase()} KEYLINE`;
   const fy2 = opts.dims ? artH + g1 + th * 3 : artH + th * 2.5;
   KC.addDetailsFrame(items, { th, u, title, rows, artW, fy: fy2 });
-  return KC.finalizeModel(items, u, size, th, artH);
+  const model = KC.finalizeModel(items, u, size, th, artH);
+  const foldOutline = outlineSegs || silhouetteSegs;
+  if (foldOutline) {
+    model.foldOutline = KC.flattenSegs(foldOutline)
+      .filter((subpath) => subpath.closed && subpath.pts.length >= 3)
+      .map((subpath) => subpath.pts);
+  }
+  return model;
 }
 
 /* ---------- Registry: keylines/index.json lists the definition files ---------- */
