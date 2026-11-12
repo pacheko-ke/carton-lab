@@ -35,7 +35,9 @@ type CheckoutResponse = {
 
 export async function startPremiumCheckout(formData: FormData) {
   const user = await requireVerifiedUser();
-  if (hasPremiumAccess(user.subscriptions)) {
+  if (
+    hasPremiumAccess(user.subscriptions, user.premiumAccessGranted)
+  ) {
     redirect("/account?billing=already-premium");
   }
   if (!user.email) {

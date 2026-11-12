@@ -12,14 +12,21 @@ export async function GET() {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { emailVerified: true, subscriptions: true },
+    select: {
+      emailVerified: true,
+      premiumAccessGranted: true,
+      subscriptions: true,
+    },
   });
 
   if (!user?.emailVerified) {
     return NextResponse.json({ error: "Verified account required" }, { status: 403 });
   }
 
-  const premium = hasPremiumAccess(user.subscriptions);
+  const premium = hasPremiumAccess(
+    user.subscriptions,
+    user.premiumAccessGranted,
+  );
   return NextResponse.json(
     {
       plan: premium ? "premium" : "free",

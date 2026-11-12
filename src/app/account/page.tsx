@@ -47,7 +47,10 @@ async function AccountContent({ searchParams }: AccountPageProps) {
     requireVerifiedUser(),
     searchParams,
   ]);
-  const premium = hasPremiumAccess(user.subscriptions);
+  const premium = hasPremiumAccess(
+    user.subscriptions,
+    user.premiumAccessGranted,
+  );
   const activeSubscription = user.subscriptions
     .filter(
       (subscription) =>
@@ -65,6 +68,7 @@ async function AccountContent({ searchParams }: AccountPageProps) {
         (second.currentPeriodEnd?.getTime() ?? 0) -
         (first.currentPeriodEnd?.getTime() ?? 0),
     )[0];
+  const complimentaryPremium = user.premiumAccessGranted && !activeSubscription;
   const message = Array.isArray(params.billing)
     ? undefined
     : billingMessages[params.billing ?? ""];
@@ -119,8 +123,8 @@ async function AccountContent({ searchParams }: AccountPageProps) {
           </div>
 
           <p className="account-plan-price">
-            {premium ? "$5" : "$0"}
-            <span> / month</span>
+            {complimentaryPremium ? "Granted" : premium ? "$5" : "$0"}
+            {!complimentaryPremium && <span> / month</span>}
           </p>
 
           {premium ? (
@@ -129,6 +133,12 @@ async function AccountContent({ searchParams }: AccountPageProps) {
                 <li>Access to every packaging keyline</li>
                 <li>PDF, SVG, and DXF exports</li>
               </ul>
+              {complimentaryPremium && (
+                <p className="account-subscription-note">
+                  Premium access is granted to this account; no paid
+                  subscription is required.
+                </p>
+              )}
               {activeSubscription?.cancelAtPeriodEnd &&
                 activeSubscription.currentPeriodEnd && (
                   <p className="account-subscription-note">

@@ -33,8 +33,10 @@ export function hasPremiumAccess(
     | "currentPeriodEnd"
     | "cancelAtPeriodEnd"
   >[],
+  premiumAccessGranted = false,
   now = new Date(),
 ) {
+  if (premiumAccessGranted) return true;
   const planId = process.env.FLW_PAYMENT_PLAN_ID;
   return subscriptions.some(
     (subscription) =>
