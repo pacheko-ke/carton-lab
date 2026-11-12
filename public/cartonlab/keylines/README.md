@@ -31,9 +31,10 @@ Reload the extension. The new keyline appears in the **Box type** list. No code 
 | `require` | Optional checks: `{ "expr": "L > slot", "message": "..." }`. A false check shows the message instead of a drawing. |
 | `cuts` | The solid cut lines: paths, rectangles, circles, ellipses. Shapes inside the outline become holes. |
 | `creases` | The dashed fold lines. |
+| `dimensionGroup` | Optional property on cut and crease entries. Entries with the same group get a separate dimension set. |
 | `dimensions` | Optional extra dimension lines: `{ "value": "H", "x1": 0, "y1": 0, "x2": 0, "y2": "H" }`. |
 | `renderDimensions` | Set to `true` to draw the definition's `dimensions` in addition to automatic crease dimensions. |
-| `autoDimensionValues` | Optional label overrides for automatic dimensions: `x` and `y` segment arrays plus `overallX` and `overallY`. |
+| `autoDimensionValues` | Optional label overrides for automatic dimensions: `x` and `y` segment arrays plus `overallX` and `overallY`; grouped definitions may override these under `groups`. |
 | `map` | Optional. Stretches a drawing made in other coordinates (see "Method B"). |
 | `details` | Fills the details table. |
 
@@ -97,6 +98,12 @@ definition. Each entry supplies `x1`, `y1`, `x2`, `y2` and a numeric `value` exp
 dimension line is drawn between the mapped endpoints and labeled with `value`.
 `autoDimensionValues` changes only automatic dimension labels, not their measured line
 positions.
+
+For multi-piece artwork, give every cut and crease a `dimensionGroup`, reusing the same
+group name for entries belonging to one piece. Each group is dimensioned using only its
+own cut bounds and crease positions, so separate pieces on one artboard do not share
+overall or fold dimensions.
+Grouped label overrides can be keyed by group name under `autoDimensionValues.groups`.
 
 ## Two ways to keep a drawing flexible
 

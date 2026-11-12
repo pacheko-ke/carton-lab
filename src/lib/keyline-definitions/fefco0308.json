@@ -44,109 +44,135 @@
   "cuts": [
     {
       "id": "cut-1",
-      "d": "M93 359 L346 359 L346 276 L347 276 L347 359 L429 359 L429 276 L429 93 L429 10 L347 10 L347 93 L346 93 L346 10 L93 10 L93 93 L92 93 L92 10 L10 10 L10 93 L10 276 L10 359 L92 359 L92 276 L93 276 Z"
+      "d": "M93 359 L346 359 L346 276 L347 276 L347 359 L429 359 L429 276 L429 93 L429 10 L347 10 L347 93 L346 93 L346 10 L93 10 L93 93 L92 93 L92 10 L10 10 L10 93 L10 276 L10 359 L92 359 L92 276 L93 276 Z",
+      "dimensionGroup": "top"
     },
     {
       "id": "cut-2",
-      "d": "M89.6 618.6 L349.4 618.6 L349.4 593.7 L350.4 593.7 L350.4 618.6 L374.3 618.6 L374.3 593.7 L374.3 403.9 L374.3 379 L350.4 379 L350.4 403.9 L349.4 403.9 L349.4 379 L89.6 379 L89.6 403.9 L88.6 403.9 L88.6 379 L64.7 379 L64.7 403.9 L64.7 593.7 L64.7 618.6 L88.6 618.6 L88.6 593.7 L89.6 593.7 Z"
+      "d": "M89.6 618.6 L349.4 618.6 L349.4 593.7 L350.4 593.7 L350.4 618.6 L374.3 618.6 L374.3 593.7 L374.3 403.9 L374.3 379 L350.4 379 L350.4 403.9 L349.4 403.9 L349.4 379 L89.6 379 L89.6 403.9 L88.6 403.9 L88.6 379 L64.7 379 L64.7 403.9 L64.7 593.7 L64.7 618.6 L88.6 618.6 L88.6 593.7 L89.6 593.7 Z",
+      "dimensionGroup": "bottom"
     }
   ],
   "creases": [
     {
       "id": "crease-1",
-      "d": "M93 276 L346 276"
+      "d": "M93 276 L346 276",
+      "dimensionGroup": "top"
     },
     {
       "id": "crease-2",
-      "d": "M346 276 L346 93"
+      "d": "M346 276 L346 93",
+      "dimensionGroup": "top"
     },
     {
       "id": "crease-3",
-      "d": "M346 93 L93 93"
+      "d": "M346 93 L93 93",
+      "dimensionGroup": "top"
     },
     {
       "id": "crease-4",
-      "d": "M93 93 L93 276"
+      "d": "M93 93 L93 276",
+      "dimensionGroup": "top"
     },
     {
       "id": "crease-5",
-      "d": "M10 276 L92 276"
+      "d": "M10 276 L92 276",
+      "dimensionGroup": "top"
     },
     {
       "id": "crease-6",
-      "d": "M92 93 L10 93"
+      "d": "M92 93 L10 93",
+      "dimensionGroup": "top"
     },
     {
       "id": "crease-7",
-      "d": "M347 276 L429 276"
+      "d": "M347 276 L429 276",
+      "dimensionGroup": "top"
     },
     {
       "id": "crease-8",
-      "d": "M429 93 L347 93"
+      "d": "M429 93 L347 93",
+      "dimensionGroup": "top"
     },
     {
       "id": "crease-9",
-      "d": "M89.6 593.7 L349.4 593.7"
+      "d": "M89.6 593.7 L349.4 593.7",
+      "dimensionGroup": "bottom"
     },
     {
       "id": "crease-10",
-      "d": "M349.4 593.7 L349.4 403.9"
+      "d": "M349.4 593.7 L349.4 403.9",
+      "dimensionGroup": "bottom"
     },
     {
       "id": "crease-11",
-      "d": "M349.4 403.9 L89.6 403.9"
+      "d": "M349.4 403.9 L89.6 403.9",
+      "dimensionGroup": "bottom"
     },
     {
       "id": "crease-12",
-      "d": "M89.6 403.9 L89.6 593.7"
+      "d": "M89.6 403.9 L89.6 593.7",
+      "dimensionGroup": "bottom"
     },
     {
       "id": "crease-13",
-      "d": "M64.7 593.7 L88.6 593.7"
+      "d": "M64.7 593.7 L88.6 593.7",
+      "dimensionGroup": "bottom"
     },
     {
       "id": "crease-14",
-      "d": "M88.6 403.9 L64.7 403.9"
+      "d": "M88.6 403.9 L64.7 403.9",
+      "dimensionGroup": "bottom"
     },
     {
       "id": "crease-15",
-      "d": "M350.4 593.7 L374.3 593.7"
+      "d": "M350.4 593.7 L374.3 593.7",
+      "dimensionGroup": "bottom"
     },
     {
       "id": "crease-16",
-      "d": "M374.3 403.9 L350.4 403.9"
+      "d": "M374.3 403.9 L350.4 403.9",
+      "dimensionGroup": "bottom"
     },
     {
       "id": "crease-17",
-      "d": "M93 276 L10 359"
+      "d": "M93 276 L10 359",
+      "dimensionGroup": "top"
     },
     {
       "id": "crease-18",
-      "d": "M346 276 L429 359"
+      "d": "M346 276 L429 359",
+      "dimensionGroup": "top"
     },
     {
       "id": "crease-19",
-      "d": "M93 93 L10 10"
+      "d": "M93 93 L10 10",
+      "dimensionGroup": "top"
     },
     {
       "id": "crease-20",
-      "d": "M346 93 L429 10"
+      "d": "M346 93 L429 10",
+      "dimensionGroup": "top"
     },
     {
       "id": "crease-21",
-      "d": "M89.6 593.7 L64.7 618.6"
+      "d": "M89.6 593.7 L64.7 618.6",
+      "dimensionGroup": "bottom"
     },
     {
       "id": "crease-22",
-      "d": "M349.4 593.7 L374.3 618.6"
+      "d": "M349.4 593.7 L374.3 618.6",
+      "dimensionGroup": "bottom"
     },
     {
       "id": "crease-23",
-      "d": "M89.6 403.9 L64.7 379"
+      "d": "M89.6 403.9 L64.7 379",
+      "dimensionGroup": "bottom"
     },
     {
       "id": "crease-24",
-      "d": "M349.4 403.9 L374.3 379"
+      "d": "M349.4 403.9 L374.3 379",
+      "dimensionGroup": "bottom"
     }
   ]
 }

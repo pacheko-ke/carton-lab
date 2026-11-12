@@ -336,6 +336,17 @@ function buildKeylineModel(def, p, opts) {
   const { L, W, H, unit: u } = p;
   if (!(L > 0 && W > 0 && H > 0)) throw new Error("Enter length, width and height greater than zero.");
   if (!def || !Array.isArray(def.cuts) || !def.cuts.length) throw new Error("Keyline has no cuts defined.");
+  const dimensionGroupFor = (shape) => {
+    if (shape.dimensionGroup === undefined) return null;
+    if (typeof shape.dimensionGroup !== "string" || !shape.dimensionGroup.trim()) {
+      throw new Error(`Keyline "${def.id}" has an invalid dimension group.`);
+    }
+    return shape.dimensionGroup.trim();
+  };
+  const hasDimensionGroups = [...def.cuts, ...(def.creases || [])].some((shape) => shape.dimensionGroup !== undefined);
+  if (hasDimensionGroups && [...def.cuts, ...(def.creases || [])].some((shape) => !dimensionGroupFor(shape))) {
+    throw new Error(`Keyline "${def.id}" must assign every cut and crease to a dimension group.`);
+  }
   const f = (v) => KC.fmt(v, u);
   const t = (v) => String(+v.toFixed(u === "mm" ? 1 : 3));
 
@@ -378,10 +389,16 @@ function buildKeylineModel(def, p, opts) {
   let segs = [];
   const holes = [];
   const cutSegsById = new Map();
+  const dimensionCutSegs = new Map();
   def.cuts.forEach((c, idx) => {
     const part = cutToSegs(c, idx, env, fx, fy, holes);
     segs = segs.concat(part);
     if (c.id) cutSegsById.set(c.id, part);
+    const dimensionGroup = dimensionGroupFor(c);
+    if (dimensionGroup) {
+      if (!dimensionCutSegs.has(dimensionGroup)) dimensionCutSegs.set(dimensionGroup, []);
+      dimensionCutSegs.get(dimensionGroup).push(...part);
+    }
   });
 
   let silhouetteSegs = null, outlineSegs = null;
@@ -400,21 +417,35 @@ function buildKeylineModel(def, p, opts) {
 
   // creases: { x1,y1,x2,y2 } or { d: "<path of straight lines>" }
   let creases = [];
+  const dimensionCreaseLines = new Map();
   (def.creases || []).forEach((c) => {
     const real = c.space === "real";
+    const dimensionGroup = dimensionGroupFor(c);
+    const addCrease = (crease) => {
+      creases.push(crease);
+      if (dimensionGroup) {
+        if (!dimensionCreaseLines.has(dimensionGroup)) dimensionCreaseLines.set(dimensionGroup, []);
+        dimensionCreaseLines.get(dimensionGroup).push(crease);
+      }
+    };
     if (typeof c.d === "string") {
       let sg = normalizePath(parsePathD(fillTemplate(c.d, env)));
       if (!real) sg = mapSegs(sg, fx, fy);
       KC.flattenSegs(sg).forEach((sp) => {
         const n = sp.pts.length;
         for (let k = 0; k < (sp.closed ? n : n - 1); k++) {
-          creases.push([...sp.pts[k], ...sp.pts[(k + 1) % n]]);
+          addCrease([...sp.pts[k], ...sp.pts[(k + 1) % n]]);
         }
       });
     } else {
       let q = [ev(c.x1, env), ev(c.y1, env), ev(c.x2, env), ev(c.y2, env)];
       if (!real) q = [fx(q[0]), fy(q[1]), fx(q[2]), fy(q[3])];
-      creases.push(q);
+      addCrease(q);
+    }
+  });
+  dimensionCreaseLines.forEach((_, group) => {
+    if (!dimensionCutSegs.has(group)) {
+      throw new Error(`Keyline "${def.id}" has creases without a cut in dimension group "${group}".`);
     }
   });
 
@@ -424,6 +455,12 @@ function buildKeylineModel(def, p, opts) {
     if (outlineSegs) outlineSegs = mapSegs(outlineSegs, (v) => v * k, (v) => v * k);
     if (silhouetteSegs && def.strokeFillOutline) silhouetteSegs = mapSegs(silhouetteSegs, (v) => v * k, (v) => v * k);
     creases = creases.map((c) => c.map((v) => v * k));
+    dimensionCutSegs.forEach((groupSegs, group) => {
+      dimensionCutSegs.set(group, mapSegs(groupSegs, (v) => v * k, (v) => v * k));
+    });
+    dimensionCreaseLines.forEach((groupCreases, group) => {
+      dimensionCreaseLines.set(group, groupCreases.map((c) => c.map((v) => v * k)));
+    });
   }
 
   // move the artwork so its top-left corner is (0,0)
@@ -436,6 +473,12 @@ function buildKeylineModel(def, p, opts) {
   if (outlineSegs) outlineSegs = mapSegs(outlineSegs, (v) => v - x0, (v) => v - y0);
   if (silhouetteSegs && def.strokeFillOutline) silhouetteSegs = mapSegs(silhouetteSegs, (v) => v - x0, (v) => v - y0);
   creases = creases.map((c) => [c[0] - x0, c[1] - y0, c[2] - x0, c[3] - y0]);
+  dimensionCutSegs.forEach((groupSegs, group) => {
+    dimensionCutSegs.set(group, mapSegs(groupSegs, (v) => v - x0, (v) => v - y0));
+  });
+  dimensionCreaseLines.forEach((groupCreases, group) => {
+    dimensionCreaseLines.set(group, groupCreases.map((c) => [c[0] - x0, c[1] - y0, c[2] - x0, c[3] - y0]));
+  });
   const artW = x1 - x0, artH = y1 - y0;
   const holesOut = holes.map((h) => ({ cx: h.cx * k - x0, cy: h.cy * k - y0, rx: h.rx * k, ry: h.ry * k }));
 
@@ -467,7 +510,8 @@ function buildKeylineModel(def, p, opts) {
     y2: c[3],
   }));
 
-  const g1 = th * 2.4, tk = th * 0.4, wo = th * 0.3, far = g1 + tk * 1.2;
+  const g1 = th * 2.4, tk = th * 0.4, wo = th * 0.3;
+  let dimensionExtraBottom = 0;
 
   if (opts.dims) {
     const prec = Number.isInteger(opts.prec) ? Math.min(Math.max(opts.prec, 0), 3) : 1;
@@ -493,27 +537,133 @@ function buildKeylineModel(def, p, opts) {
       arr.sort((a, b) => a - b).forEach((v) => { if (!out.length || Math.abs(v - out[out.length - 1]) > 1e-4) out.push(v); });
       return out;
     };
-    const xs = uniq([0, artW, ...creases.filter((c) => Math.abs(c[0] - c[2]) < 1e-6 && c[0] > 1e-4 && c[0] < artW - 1e-4).map((c) => c[0])]);
-    const ys = uniq([0, artH, ...creases.filter((c) => Math.abs(c[1] - c[3]) < 1e-6 && c[1] > 1e-4 && c[1] < artH - 1e-4).map((c) => c[1])]);
     const autoDimensionValues = def.autoDimensionValues || {};
-    const segmentDimensionValue = (axis, index) => {
-      const values = autoDimensionValues[axis];
-      return Array.isArray(values) && values[index] !== undefined ? ev(values[index], env) * k : undefined;
+    const segmentDimensionValue = (values, axis, index) => {
+      const axisValues = values[axis];
+      return Array.isArray(axisValues) && axisValues[index] !== undefined ? ev(axisValues[index], env) * k : undefined;
     };
-    const overallDimensionValue = (axis) => {
-      const value = autoDimensionValues[`overall${axis.toUpperCase()}`];
+    const overallDimensionValue = (values, axis) => {
+      const value = values[`overall${axis.toUpperCase()}`];
       return value === undefined ? undefined : ev(value, env) * k;
     };
+    const renderDimensionSet = (bounds, groupCreases, values, placement) => {
+      const xs = uniq([bounds.minX, bounds.maxX, ...groupCreases
+        .filter((c) => Math.abs(c[0] - c[2]) < 1e-6 && c[0] > bounds.minX + 1e-4 && c[0] < bounds.maxX - 1e-4)
+        .map((c) => c[0])]);
+      const ys = uniq([bounds.minY, bounds.maxY, ...groupCreases
+        .filter((c) => Math.abs(c[1] - c[3]) < 1e-6 && c[1] > bounds.minY + 1e-4 && c[1] < bounds.maxY - 1e-4)
+        .map((c) => c[1])]);
 
-    xs.forEach((x) => line("DIM", x, -wo, x, -far));
-    [0, artW].forEach((x) => line("DIM", x, artH + wo, x, artH + far));
-    ys.forEach((y) => line("DIM", -wo, y, -far, y));
-    [0, artH].forEach((y) => line("DIM", artW + wo, y, artW + far, y));
+      const horizontalRows = [
+        { y: placement.segmentY, side: placement.segmentSide, above: placement.segmentAbove, segments: true },
+        { y: placement.overallY, side: placement.overallSide, above: placement.overallAbove, segments: false },
+      ];
+      const topRows = horizontalRows.filter((row) => row.side === "top");
+      const bottomRows = horizontalRows.filter((row) => row.side === "bottom");
+      const horizontalEndpoints = [bounds.minX, bounds.maxX];
+      const verticalEndpoints = [bounds.minY, bounds.maxY];
+      const topWitnessXs = topRows.some((row) => row.segments) ? xs : horizontalEndpoints;
+      const bottomWitnessXs = bottomRows.some((row) => row.segments) ? xs : horizontalEndpoints;
 
-    for (let k = 0; k < xs.length - 1; k++) hDim(-g1, xs[k], xs[k + 1], true, segmentDimensionValue("x", k));
-    hDim(artH + g1, 0, artW, false, overallDimensionValue("x"));
-    for (let k = 0; k < ys.length - 1; k++) vDim(-g1, ys[k], ys[k + 1], true, segmentDimensionValue("y", k));
-    vDim(artW + g1, 0, artH, false, overallDimensionValue("y"));
+      if (topRows.length) {
+        const endY = Math.min(...topRows.map((row) => row.y)) - tk * 1.2;
+        topWitnessXs.forEach((x) => line("DIM", x, bounds.minY - wo, x, endY));
+      }
+      if (bottomRows.length) {
+        const endY = Math.max(...bottomRows.map((row) => row.y)) + tk * 1.2;
+        bottomWitnessXs.forEach((x) => line("DIM", x, bounds.maxY + wo, x, endY));
+      }
+      ys.forEach((y) => {
+        line("DIM", bounds.minX - wo, y, bounds.minX - placement.leftOffset - tk * 1.2, y);
+      });
+      verticalEndpoints.forEach((y) => {
+        line("DIM", bounds.maxX + wo, y, bounds.maxX + placement.rightOffset + tk * 1.2, y);
+      });
+
+      horizontalRows.forEach((row) => {
+        if (row.segments) {
+          for (let index = 0; index < xs.length - 1; index++) {
+            hDim(row.y, xs[index], xs[index + 1], row.above, segmentDimensionValue(values, "x", index));
+          }
+        } else {
+          hDim(row.y, bounds.minX, bounds.maxX, row.above, overallDimensionValue(values, "x"));
+        }
+      });
+      for (let index = 0; index < ys.length - 1; index++) {
+        vDim(bounds.minX - placement.leftOffset, ys[index], ys[index + 1], true, segmentDimensionValue(values, "y", index));
+      }
+      vDim(bounds.maxX + placement.rightOffset, bounds.minY, bounds.maxY, false, overallDimensionValue(values, "y"));
+    };
+
+    const orderedDimensionGroups = [...dimensionCutSegs.entries()].map(([id, groupSegs]) => {
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      KC.flattenSegs(groupSegs).forEach((sp) => sp.pts.forEach(([x, y]) => {
+        minX = Math.min(minX, x); minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x); maxY = Math.max(maxY, y);
+      }));
+      if (![minX, minY, maxX, maxY].every(Number.isFinite)) {
+        throw new Error(`Keyline "${def.id}" has an empty dimension group "${id}".`);
+      }
+      return {
+        id,
+        bounds: { minX, minY, maxX, maxY },
+        creases: dimensionCreaseLines.get(id) || [],
+      };
+    }).sort((a, b) => a.bounds.minY - b.bounds.minY);
+
+    if (!orderedDimensionGroups.length) {
+      renderDimensionSet(
+        { minX: 0, minY: 0, maxX: artW, maxY: artH },
+        creases,
+        autoDimensionValues,
+        {
+          segmentY: -g1, segmentSide: "top", segmentAbove: true,
+          overallY: artH + g1, overallSide: "bottom", overallAbove: false,
+          leftOffset: g1, rightOffset: g1,
+        },
+      );
+    } else {
+      const rowSpacing = th * 1.8;
+      const offsetForGap = (gap) => Math.max(th * 0.15, Math.min(g1, gap / 2 - th * 0.55));
+      orderedDimensionGroups.forEach((group, index) => {
+        const previous = orderedDimensionGroups[index - 1];
+        const next = orderedDimensionGroups[index + 1];
+        const topOffset = previous ? offsetForGap(group.bounds.minY - previous.bounds.maxY) : g1;
+        const bottomOffset = next ? offsetForGap(next.bounds.minY - group.bounds.maxY) : g1;
+        const groupValues = autoDimensionValues.groups && autoDimensionValues.groups[group.id]
+          ? autoDimensionValues.groups[group.id]
+          : autoDimensionValues;
+        let placement;
+
+        if (orderedDimensionGroups.length === 1) {
+          placement = {
+            segmentY: group.bounds.minY - g1, segmentSide: "top", segmentAbove: true,
+            overallY: group.bounds.maxY + g1, overallSide: "bottom", overallAbove: false,
+            leftOffset: g1, rightOffset: g1,
+          };
+        } else if (index === 0) {
+          placement = {
+            segmentY: group.bounds.minY - g1, segmentSide: "top", segmentAbove: true,
+            overallY: group.bounds.minY - g1 - rowSpacing, overallSide: "top", overallAbove: true,
+            leftOffset: g1, rightOffset: g1,
+          };
+        } else if (index === orderedDimensionGroups.length - 1) {
+          placement = {
+            segmentY: group.bounds.maxY + g1, segmentSide: "bottom", segmentAbove: false,
+            overallY: group.bounds.maxY + g1 + rowSpacing, overallSide: "bottom", overallAbove: false,
+            leftOffset: g1, rightOffset: g1,
+          };
+          dimensionExtraBottom = Math.max(dimensionExtraBottom, rowSpacing);
+        } else {
+          placement = {
+            segmentY: group.bounds.minY - topOffset, segmentSide: "top", segmentAbove: true,
+            overallY: group.bounds.maxY + bottomOffset, overallSide: "bottom", overallAbove: false,
+            leftOffset: g1, rightOffset: g1,
+          };
+        }
+        renderDimensionSet(group.bounds, group.creases, groupValues, placement);
+      });
+    }
 
     if (def.renderDimensions === true) {
       if (!Array.isArray(def.dimensions)) throw new Error("Custom dimensions must be an array.");
@@ -574,7 +724,7 @@ function buildKeylineModel(def, p, opts) {
     [["Board length:", `${f(boardLen)} ${u}`], ["Board width:", `${f(boardWid)} ${u}`]],
   ];
   const title = String(p.job || "").trim() || def.title || `${String(def.name || def.id).toUpperCase()} KEYLINE`;
-  const fy2 = opts.dims ? artH + g1 + th * 3 : artH + th * 2.5;
+  const fy2 = opts.dims ? artH + g1 + dimensionExtraBottom + th * 3 : artH + th * 2.5;
   KC.addDetailsFrame(items, { th, u, title, rows, artW, fy: fy2 });
   return KC.finalizeModel(items, u, size, th, artH);
 }
