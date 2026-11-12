@@ -1,0 +1,129 @@
+{
+  "id": "fefco0203",
+  "name": "FEFCO 0203 Full Overlap",
+  "title": "FULL OVERLAP BOX KEYLINE",
+  "category": "Slotted Boxes",
+  "inputs": [
+    {
+      "id": "glue",
+      "label": "Glue flap width",
+      "default": 30,
+      "min": 5
+    },
+    {
+      "id": "slot",
+      "label": "Slot width",
+      "default": 6,
+      "min": 0
+    }
+  ],
+  "params": {
+    "s2": "slot / 2",
+    "gt": "8",
+    "xg": "glue",
+    "xa": "xg + L",
+    "xb": "xa + W",
+    "xc": "xb + L",
+    "xd": "xc + W",
+    "yb1": "W",
+    "yb2": "W + H",
+    "ye": "H + 2*W"
+  },
+  "require": [
+    {
+      "expr": "slot < min(L, W)",
+      "message": "The slot width must be smaller than the length and the width."
+    },
+    {
+      "expr": "H > 2*gt",
+      "message": "The height must be more than 16 mm so the glue flap taper fits."
+    }
+  ],
+  "cuts": [
+    {
+      "id": "outline",
+      "d": "M{xg} {yb1} L{xg + s2} {yb1} L{xg + s2} {0} L{xa - s2} {0} L{xa - s2} {yb1} L{xa + s2} {yb1} L{xa + s2} {0} L{xb - s2} {0} L{xb - s2} {yb1} L{xb + s2} {yb1} L{xb + s2} {0} L{xc - s2} {0} L{xc - s2} {yb1} L{xc + s2} {yb1} L{xc + s2} {0} L{xd - s2} {0} L{xd - s2} {yb1} L{xd} {yb1} L{xd} {yb2} L{xd - s2} {yb2} L{xd - s2} {ye} L{xc + s2} {ye} L{xc + s2} {yb2} L{xc - s2} {yb2} L{xc - s2} {ye} L{xb + s2} {ye} L{xb + s2} {yb2} L{xb - s2} {yb2} L{xb - s2} {ye} L{xa + s2} {ye} L{xa + s2} {yb2} L{xa - s2} {yb2} L{xa - s2} {ye} L{xg + s2} {ye} L{xg + s2} {yb2} L{xg} {yb2} L{0} {yb2 - gt} L{0} {yb1 + gt} Z"
+    }
+  ],
+  "creases": [
+    {
+      "x1": "xg",
+      "y1": "yb1",
+      "x2": "xg",
+      "y2": "yb2"
+    },
+    {
+      "x1": "xa",
+      "y1": "yb1",
+      "x2": "xa",
+      "y2": "yb2"
+    },
+    {
+      "x1": "xb",
+      "y1": "yb1",
+      "x2": "xb",
+      "y2": "yb2"
+    },
+    {
+      "x1": "xc",
+      "y1": "yb1",
+      "x2": "xc",
+      "y2": "yb2"
+    },
+    {
+      "x1": "xg + s2",
+      "y1": "yb1",
+      "x2": "xa - s2",
+      "y2": "yb1"
+    },
+    {
+      "x1": "xa + s2",
+      "y1": "yb1",
+      "x2": "xb - s2",
+      "y2": "yb1"
+    },
+    {
+      "x1": "xb + s2",
+      "y1": "yb1",
+      "x2": "xc - s2",
+      "y2": "yb1"
+    },
+    {
+      "x1": "xc + s2",
+      "y1": "yb1",
+      "x2": "xd - s2",
+      "y2": "yb1"
+    },
+    {
+      "x1": "xg + s2",
+      "y1": "yb2",
+      "x2": "xa - s2",
+      "y2": "yb2"
+    },
+    {
+      "x1": "xa + s2",
+      "y1": "yb2",
+      "x2": "xb - s2",
+      "y2": "yb2"
+    },
+    {
+      "x1": "xb + s2",
+      "y1": "yb2",
+      "x2": "xc - s2",
+      "y2": "yb2"
+    },
+    {
+      "x1": "xc + s2",
+      "y1": "yb2",
+      "x2": "xd - s2",
+      "y2": "yb2"
+    }
+  ],
+  "details": {
+    "creasing": [
+      "W",
+      "H",
+      "W"
+    ]
+  }
+}
