@@ -73,18 +73,21 @@ export default function Home() {
           <span className="brand-mark"><BrandIcon className="brand-mark-image" /></span>
           <span>CartonLab Lightweight 2.0</span>
         </Link>
-        <nav className="header-nav" aria-label="Main navigation">
-          <ol>
-            <li><Link href="/" aria-current="page">Home</Link></li>
-            <li><a href="#how-it-works">How it works</a></li>
-            <li><Link href="/login" className="nav-login">Sign in</Link></li>
-            <li>
-              <Link href="/signup" className="button button-small">
-                Sign up <span>↗</span>
-              </Link>
-            </li>
-          </ol>
-        </nav>
+        <details className="header-menu">
+          <summary aria-label="Toggle navigation menu">
+            <span />
+            <span />
+            <span />
+          </summary>
+          <nav aria-label="Main navigation">
+            <Link href="/" aria-current="page">Home</Link>
+            <a href="#how-it-works">How it works</a>
+            <Link href="/login">Sign in</Link>
+            <Link href="/signup" className="button button-small">
+              Sign up <span>↗</span>
+            </Link>
+          </nav>
+        </details>
       </header>
 
       <section className="hero-section">
