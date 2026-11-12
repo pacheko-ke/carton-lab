@@ -127,7 +127,7 @@ function applyTypeVisibility(type) {
   document.querySelectorAll(".rsc-only").forEach((el) => { el.hidden = !rsc; });
 }
 
-const KEYLINE_CATEGORY_ORDER = ["RSC", "Pizza", "Chicken Box", "Flower", "Tray", "EPZ", "Other"];
+const KEYLINE_CATEGORY_ORDER = ["RSC", "Pizza", "Chicken Box", "Slotted Boxes", "Flower", "Tray", "Apparel", "Other"];
 const FREE_KEYLINE_CATEGORIES = new Set(["RSC", "Pizza", "Chicken Box"]);
 const LOCKED_KEYLINES = {};
 let activeKeylineCategory = "RSC";
@@ -157,11 +157,13 @@ function createPremiumBadge() {
 function keylineCategoryFor(id) {
   if (id === "rsc") return "RSC";
   const def = KEYLINES[id] || LOCKED_KEYLINES[id] || {};
+  if (/fefco/.test(`${id} ${String(def.name || "")}`.toLowerCase())) return "Slotted Boxes";
   if (typeof def.category === "string" && def.category.trim()) {
     const custom = def.category.trim();
     if (["flower box", "sea flow", "sea freight"].includes(custom.toLowerCase())) {
       return "Flower";
     }
+    if (custom.toLowerCase() === "epz") return "Apparel";
     const known = KEYLINE_CATEGORY_ORDER.find((name) => name.toLowerCase() === custom.toLowerCase());
     return known || custom;
   }
@@ -172,7 +174,7 @@ function keylineCategoryFor(id) {
     return "Flower";
   }
   if (/tray/.test(text)) return "Tray";
-  if (/hanger/.test(text)) return "EPZ";
+  if (/hanger/.test(text)) return "Apparel";
   return "Other";
 }
 

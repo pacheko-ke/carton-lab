@@ -57,10 +57,11 @@ const categoryOrder = [
   "RSC",
   "Pizza",
   "Chicken Box",
+  "Slotted Boxes",
   "Flower",
   "Tray",
   "Auto-Bottom",
-  "EPZ",
+  "Apparel",
   "Other",
 ];
 const freeCategories = new Set(["RSC", "Pizza", "Chicken Box"]);
@@ -68,6 +69,7 @@ const freeCategories = new Set(["RSC", "Pizza", "Chicken Box"]);
 export function keylineCategoryFor(definition: KeylineDefinition) {
   const { id, name, category } = definition;
   if (id === "rsc") return "RSC";
+  if (/fefco/.test(`${id} ${name}`.toLowerCase())) return "Slotted Boxes";
 
   const normalizedCategory = typeof category === "string" ? category.trim() : "";
   if (
@@ -81,6 +83,7 @@ export function keylineCategoryFor(definition: KeylineDefinition) {
     ) {
       return "Flower";
     }
+    if (normalizedCategory.toLowerCase() === "epz") return "Apparel";
     const custom = normalizedCategory;
     return (
       categoryOrder.find(
@@ -92,7 +95,7 @@ export function keylineCategoryFor(definition: KeylineDefinition) {
   const key = id.toLowerCase();
   const text = `${key} ${name.toLowerCase()}`;
   if (/pizza/.test(text)) return "Pizza";
-  if (/fefco.?0215|auto.?bottom/.test(text)) return "Auto-Bottom";
+  if (/auto.?bottom/.test(text)) return "Auto-Bottom";
   if (
     /flower|pf1|f1|f2|zim|seafreight|sea freight|freight|seaflow|sea flow/.test(
       text,
@@ -101,7 +104,7 @@ export function keylineCategoryFor(definition: KeylineDefinition) {
     return "Flower";
   }
   if (/tray/.test(text)) return "Tray";
-  if (/hanger/.test(text)) return "EPZ";
+  if (/hanger/.test(text)) return "Apparel";
   return "Other";
 }
 
