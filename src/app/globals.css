@@ -162,6 +162,13 @@ body {
   font-size: 12px;
 }
 
+.carton-3d-warning {
+  margin: 0;
+  color: #ffe0a6;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 @media (max-width: 700px) {
   .carton-3d-overlay {
     padding: 10px;

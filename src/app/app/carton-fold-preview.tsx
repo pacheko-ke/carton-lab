@@ -416,7 +416,7 @@ function buildTopology(data: FoldPreviewData): Topology {
   if (!faces.length) throw new Error("Could not divide this keyline into panels. Check that its crease lines meet the cut outline.");
 
   const seenHoles = new Set<string>();
-  const holeCandidates = [...closedContours, ...preferredOutlines].filter((contour) =>
+  const holeCandidates = [...contours.filter((contour) => contour.closed), ...preferredOutlines].filter((contour) =>
     contour.points !== outline &&
     Math.abs(signedArea(contour.points)) < Math.abs(signedArea(outline)) - tolerance * tolerance,
   );
@@ -537,6 +537,8 @@ export default function CartonFoldPreview({
       };
     }
   }, [data]);
+  const foldRoots = topologyResult.topology?.faces.filter((face) => face.parent === undefined).length || 0;
+  const hasFoldHinges = topologyResult.topology?.faces.some((face) => face.parent !== undefined) || false;
   const error = topologyResult.error || rendererError;
 
   useEffect(() => {
@@ -754,6 +756,13 @@ export default function CartonFoldPreview({
         </header>
         <div ref={canvasHost} className="carton-3d-canvas" />
         {error ? <p className="carton-3d-error" role="alert">{error}</p> : null}
+        {topologyResult.topology && (!hasFoldHinges || foldRoots > 1) ? (
+          <p className="carton-3d-warning" role="status">
+            {hasFoldHinges
+              ? `The crease graph splits into ${foldRoots} panel groups; disconnected groups remain flat.`
+              : "No fold hinges could be inferred from this keyline. The panels remain flat; verify its crease geometry."}
+          </p>
+        ) : null}
         <div className="carton-3d-controls">
           <label htmlFor="carton-fold-progress">Fold progress</label>
           <input
@@ -762,6 +771,7 @@ export default function CartonFoldPreview({
             min="0"
             max="100"
             value={progress}
+            disabled={!hasFoldHinges}
             onChange={(event) => setProgress(Number(event.target.value))}
           />
           <output htmlFor="carton-fold-progress">{progress}%</output>
