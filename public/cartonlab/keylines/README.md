@@ -31,6 +31,8 @@ Reload the extension. The new keyline appears in the **Box type** list. No code 
 | `require` | Optional checks: `{ "expr": "L > slot", "message": "..." }`. A false check shows the message instead of a drawing. |
 | `cuts` | The solid cut lines: paths, rectangles, circles, ellipses. Shapes inside the outline become holes. |
 | `creases` | The dashed fold lines. |
+| `dimensions` | Optional extra dimension lines: `{ "value": "H", "x1": 0, "y1": 0, "x2": 0, "y2": "H" }`. |
+| `renderDimensions` | Set to `true` to draw the definition's `dimensions` in addition to automatic crease dimensions. |
 | `map` | Optional. Stretches a drawing made in other coordinates (see "Method B"). |
 | `details` | Fills the details table. |
 
@@ -89,7 +91,9 @@ turn the conversion off and use numbers exactly as typed.
 ## Dimension marking
 
 Made automatically from your `creases`: the spacing between fold lines plus the overall
-width and height. Nothing to configure.
+width and height. Set `renderDimensions` to `true` to add explicit dimensions from the
+definition. Each entry supplies `x1`, `y1`, `x2`, `y2` and a numeric `value` expression; the
+dimension line is drawn between the mapped endpoints and labeled with `value`.
 
 ## Two ways to keep a drawing flexible
 

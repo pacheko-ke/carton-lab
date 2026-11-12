@@ -473,17 +473,17 @@ function buildKeylineModel(def, p, opts) {
     const prec = Number.isInteger(opts.prec) ? Math.min(Math.max(opts.prec, 0), 3) : 1;
     const fd = (v) => v.toFixed(prec);
     const fits = (label, span) => KC.tw(label, th) <= span * 0.95;
-    const hDim = (y, xa, xb, above) => {
+    const hDim = (y, xa, xb, above, value) => {
       withDimGroup(() => {
         line("DIM", xa, y, xb, y); line("DIM", xa, y - tk, xa, y + tk); line("DIM", xb, y - tk, xb, y + tk);
-        const label = fd(xb - xa);
+        const label = fd(value === undefined ? xb - xa : value);
         if (fits(label, xb - xa)) text("DIM", (xa + xb) / 2, above ? y - th * 0.35 : y + th * 1.05, label, { anchor: "middle" });
       });
     };
-    const vDim = (x, ya, yb, left) => {
+    const vDim = (x, ya, yb, left, value) => {
       withDimGroup(() => {
         line("DIM", x, ya, x, yb); line("DIM", x - tk, ya, x + tk, ya); line("DIM", x - tk, yb, x + tk, yb);
-        const label = fd(yb - ya);
+        const label = fd(value === undefined ? yb - ya : value);
         if (fits(label, yb - ya)) text("DIM", x + (left ? -th * 0.35 : th * 0.35), (ya + yb) / 2, label, { anchor: "middle", rot: left ? 90 : -90 });
       });
     };
@@ -505,6 +505,28 @@ function buildKeylineModel(def, p, opts) {
     hDim(artH + g1, 0, artW, false);
     for (let k = 0; k < ys.length - 1; k++) vDim(-g1, ys[k], ys[k + 1], true);
     vDim(artW + g1, 0, artH, false);
+
+    if (def.renderDimensions === true) {
+      if (!Array.isArray(def.dimensions)) throw new Error("Custom dimensions must be an array.");
+      def.dimensions.forEach((d, idx) => {
+        if (!d || d.x1 === undefined || d.y1 === undefined || d.x2 === undefined || d.y2 === undefined || d.value === undefined) {
+          throw new Error(`Custom dimension #${idx + 1} needs endpoints and a value.`);
+        }
+        const x1 = fx(ev(d.x1, env)) * k - x0;
+        const y1 = fy(ev(d.y1, env)) * k - y0;
+        const x2 = fx(ev(d.x2, env)) * k - x0;
+        const y2 = fy(ev(d.y2, env)) * k - y0;
+        const value = ev(d.value, env) * k;
+        if (![x1, y1, x2, y2, value].every(Number.isFinite) || (x1 === x2 && y1 === y2)) {
+          throw new Error(`Custom dimension #${idx + 1} has invalid geometry or value.`);
+        }
+        if (Math.abs(x2 - x1) < Math.abs(y2 - y1)) {
+          vDim((x1 + x2) / 2, Math.min(y1, y2), Math.max(y1, y2), d.left === true, value);
+        } else {
+          hDim((y1 + y2) / 2, Math.min(x1, x2), Math.max(x1, x2), d.above === true, value);
+        }
+      });
+    }
 
     // hole sizes: a size line across every circle / ellipse cut, labelled with its diameter.
     // The label sits inside the hole when it fits, otherwise just outside it.
