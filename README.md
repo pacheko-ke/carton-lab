@@ -1,6 +1,6 @@
 # CartonLab Lightweight 2.0
 
-Website version of CartonLab, built with Next.js and Tailwind CSS. The Next.js
+Next.js and Tailwind CSS. The Next.js
 home page is a product landing page. The carton keyline application is available
 at `/app`; its original UI and browser-based features are served from
 `public/cartonlab`.
