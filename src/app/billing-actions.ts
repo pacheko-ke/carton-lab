@@ -16,7 +16,7 @@ import {
 } from "@/lib/billing";
 import {
   initiateStkPush,
-  isDarajaConfigured,
+  isDarajaAvailableForUser,
   normalizeKenyanPhoneNumber,
 } from "@/lib/daraja";
 import { prisma } from "@/lib/prisma";
@@ -76,7 +76,7 @@ export async function startPremiumCheckout(formData: FormData) {
     amount = PREMIUM_PRICE;
     currency = PREMIUM_CURRENCY;
   } else {
-    if (!isDarajaConfigured()) {
+    if (!isDarajaAvailableForUser(user.email)) {
       throw new Error("Daraja M-Pesa billing is not fully configured.");
     }
     phoneNumber = normalizeKenyanPhoneNumber(formData.get("phoneNumber"));

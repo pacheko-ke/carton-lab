@@ -10,7 +10,7 @@ import {
   isFlutterwaveBillingConfigured,
   MPESA_PROVIDER_PLAN_ID,
 } from "@/lib/billing";
-import { isDarajaConfigured } from "@/lib/daraja";
+import { isDarajaAvailableForUser } from "@/lib/daraja";
 import BrandIcon from "../brand-icon";
 
 type AccountPageProps = {
@@ -169,7 +169,7 @@ async function AccountContent({ searchParams }: AccountPageProps) {
                   </button>
                 </form>
               )}
-              {isDarajaConfigured() && (
+              {isDarajaAvailableForUser(user.email) && (
                 <form action={startPremiumCheckout}>
                   <input type="hidden" name="paymentMethod" value="mpesa" />
                   <label className="account-phone-label" htmlFor="mpesa-phone">
@@ -192,7 +192,7 @@ async function AccountContent({ searchParams }: AccountPageProps) {
                 </form>
               )}
               {!isFlutterwaveBillingConfigured() &&
-                !isDarajaConfigured() && (
+                !isDarajaAvailableForUser(user.email) && (
                   <p className="account-billing-unavailable" role="status">
                     Premium checkout is not available yet.
                   </p>

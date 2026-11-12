@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { MPESA_CURRENCY, MPESA_PROVIDER_PLAN_ID, PREMIUM_PRICE } from "@/lib/billing";
 import {
-  isDarajaConfigured,
+  isDarajaAvailableForUser,
   queryStkPush,
 } from "@/lib/daraja";
 import { prisma } from "@/lib/prisma";
@@ -76,13 +76,6 @@ function parseDarajaDate(value: unknown) {
 }
 
 export async function POST(request: Request) {
-  if (!isDarajaConfigured()) {
-    return NextResponse.json(
-      { error: "Daraja callback verification is not configured." },
-      { status: 503 },
-    );
-  }
-
   let parsedPayload: unknown;
   try {
     parsedPayload = await request.json();
@@ -118,6 +111,12 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { error: "No matching M-Pesa checkout was found." },
       { status: 404 },
+    );
+  }
+  if (!isDarajaAvailableForUser(checkout.user.email)) {
+    return NextResponse.json(
+      { error: "Daraja callback verification is not configured for this checkout." },
+      { status: 503 },
     );
   }
 

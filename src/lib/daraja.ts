@@ -96,11 +96,24 @@ export function isDarajaConfigured() {
       /^\d+$/.test(process.env.DARAJA_SHORTCODE) &&
       process.env.DARAJA_PASSKEY &&
       callbackUrl?.startsWith("https://") &&
-      !/localhost|127\.0\.0\.1/i.test(callbackUrl) &&
-      !(
-        process.env.NODE_ENV === "production" &&
-        environment === "sandbox"
-      ),
+      !/localhost|127\.0\.0\.1/i.test(callbackUrl),
+  );
+}
+
+export function isDarajaAvailableForUser(email: string | null) {
+  if (!isDarajaConfigured()) return false;
+  if (
+    process.env.NODE_ENV !== "production" ||
+    (process.env.DARAJA_ENV ?? "sandbox") !== "sandbox"
+  ) {
+    return true;
+  }
+
+  const testerEmail = process.env.DARAJA_SANDBOX_TESTER_EMAIL?.trim();
+  return Boolean(
+    email &&
+      testerEmail &&
+      email.toLowerCase() === testerEmail.toLowerCase(),
   );
 }
 
@@ -168,12 +181,6 @@ export async function initiateStkPush(input: {
   accountReference: string;
 }) {
   const settings = getSettings();
-  if (
-    process.env.NODE_ENV === "production" &&
-    settings.environment === "sandbox"
-  ) {
-    throw new Error("Daraja sandbox payments are disabled in production.");
-  }
   if (!Number.isSafeInteger(input.amount) || input.amount < 1) {
     throw new Error("The M-Pesa amount must be a positive whole number of KES.");
   }
@@ -228,12 +235,6 @@ export async function queryStkPush(input: {
   checkoutRequestId: string;
 }): Promise<StkPushQueryResponse> {
   const settings = getSettings();
-  if (
-    process.env.NODE_ENV === "production" &&
-    settings.environment === "sandbox"
-  ) {
-    throw new Error("Daraja sandbox verification is disabled in production.");
-  }
 
   const timestamp = getTimestamp();
   const accessToken = await getAccessToken(settings);

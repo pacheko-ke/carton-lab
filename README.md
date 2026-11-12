@@ -40,9 +40,13 @@ portal and set `DARAJA_ENV`, `DARAJA_CONSUMER_KEY`,
 `DARAJA_CALLBACK_URL` from that app. The callback URL must be a public HTTPS
 endpoint ending in `/api/daraja/callback`; for local sandbox testing, expose
 the local app through an HTTPS tunnel. There are no shared universal Daraja
-API credentials. Sandbox payments are disabled in production, so test
-credentials cannot grant production Premium access. Use Daraja's sandbox test
-phone and instructions for STK Push simulation.
+API credentials. Sandbox payments are hidden in production by default. For
+temporary production testing, set `DARAJA_ENV=sandbox` and
+`DARAJA_SANDBOX_TESTER_EMAIL` to the verified email of the one account allowed
+to see and use sandbox checkout. Sandbox payments are simulated, not real
+payments, and can activate Premium for that test account; remove the tester
+email and redeploy when testing is complete. Use Daraja's sandbox test phone
+and instructions for STK Push simulation.
 Set `DARAJA_TRANSACTION_TYPE=CustomerBuyGoodsOnline` if the business shortcode
 is a Buy Goods/Till number; the default is `CustomerPayBillOnline`.
 
