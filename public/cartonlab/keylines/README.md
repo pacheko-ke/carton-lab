@@ -141,9 +141,6 @@ Use **Print** to print the complete dieline and artwork. **Share** opens the dev
 attachment with the job and box dimensions. If the browser does not support file sharing, the PDF downloads
 separately so you can attach it in the app you choose.
 
-Use **3D preview** to animate an illustrative carton net folding to the entered dimensions. It shows a
-rectangular carton shape; the selected keyline's exact flap and closure details are not reproduced.
-
 ## Direct geometry editing
 
 The preview grid and grid snapping are on by default, with a 10 mm step (0.394 in). Change the grid step beside

@@ -1045,22 +1045,6 @@ $("print").addEventListener("click", () => {
   window.print();
 });
 
-$("openFoldPreview").addEventListener("click", () => {
-  if (!current) return;
-  const p = readParams();
-  const name = p.type === "rsc" ? "RSC" : (KEYLINES[p.type] && KEYLINES[p.type].name) || p.type;
-  window.parent.postMessage({
-    type: "cartonlab:fold-preview",
-    payload: {
-      name,
-      dimensions: { L: p.L, W: p.W, H: p.H, unit: p.unit, ply: p.ply },
-      color: p.color,
-      outline: current.model.foldOutline,
-      items: current.model.items.filter((item) => item.layer === "CUT" || item.layer === "CREASE"),
-    },
-  }, window.location.origin);
-});
-
 $("share").addEventListener("click", () => shareKeyline());
 
 $("dlPdf").addEventListener("click", () => {
