@@ -1053,7 +1053,7 @@ $("openFoldPreview").addEventListener("click", () => {
     type: "cartonlab:fold-preview",
     payload: {
       name,
-      dimensions: { L: p.L, W: p.W, H: p.H, unit: p.unit },
+      dimensions: { L: p.L, W: p.W, H: p.H, unit: p.unit, ply: p.ply },
       color: p.color,
       outline: current.model.foldOutline,
       items: current.model.items.filter((item) => item.layer === "CUT" || item.layer === "CREASE"),

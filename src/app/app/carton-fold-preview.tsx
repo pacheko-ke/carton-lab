@@ -21,7 +21,7 @@ type FoldItem =
 
 export type FoldPreviewData = {
   name: string;
-  dimensions: { L: number; W: number; H: number; unit: string };
+  dimensions: { L: number; W: number; H: number; unit: string; ply: number };
   color: string;
   outline?: Point[][];
   items: FoldItem[];
@@ -57,9 +57,9 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 export function isFoldPreviewData(value: unknown): value is FoldPreviewData {
   if (!isRecord(value) || typeof value.name !== "string" || value.name.length > 160) return false;
   if (!isRecord(value.dimensions) || !Array.isArray(value.items) || value.items.length > 5000) return false;
-  const { L, W, H, unit } = value.dimensions;
+  const { L, W, H, unit, ply } = value.dimensions;
   if (![L, W, H].every((size) => typeof size === "number" && Number.isFinite(size) && size > 0)) return false;
-  if (typeof unit !== "string" || unit.length > 12 || typeof value.color !== "string") return false;
+  if (typeof unit !== "string" || unit.length > 12 || (ply !== 3 && ply !== 5) || typeof value.color !== "string") return false;
 
   if (value.outline !== undefined && (!Array.isArray(value.outline) || value.outline.length > 200)) return false;
   if (Array.isArray(value.outline) && !value.outline.every((path) =>
@@ -279,14 +279,6 @@ function edgeKey(a: number, b: number) {
   return a < b ? `${a}:${b}` : `${b}:${a}`;
 }
 
-function pointOnSegment(point: Point, a: Point, b: Point, tolerance: number) {
-  const ab: Point = [b[0] - a[0], b[1] - a[1]];
-  const length = ab[0] ** 2 + ab[1] ** 2;
-  if (length < 1e-12) return samePoint(point, a, tolerance);
-  const t = Math.max(0, Math.min(1, ((point[0] - a[0]) * ab[0] + (point[1] - a[1]) * ab[1]) / length));
-  return Math.hypot(point[0] - (a[0] + t * ab[0]), point[1] - (a[1] + t * ab[1])) <= tolerance;
-}
-
 function buildTopology(data: FoldPreviewData): Topology {
   const contours = cutContours(data.items);
   const tolerance = data.dimensions.unit === "in" ? 0.01 : 0.25;
@@ -423,18 +415,19 @@ function buildTopology(data: FoldPreviewData): Topology {
   }
   if (!faces.length) throw new Error("Could not divide this keyline into panels. Check that its crease lines meet the cut outline.");
 
+  const seenHoles = new Set<string>();
   const holeCandidates = [...closedContours, ...preferredOutlines].filter((contour) =>
     contour.points !== outline &&
     Math.abs(signedArea(contour.points)) < Math.abs(signedArea(outline)) - tolerance * tolerance,
   );
   holeCandidates.forEach(({ points }) => {
     const center = polygonCenter(points);
+    const signature = `${Math.round(Math.abs(signedArea(points)) / (tolerance * tolerance))}:${Math.round(center[0] / tolerance)}:${Math.round(center[1] / tolerance)}`;
+    if (seenHoles.has(signature)) return;
+    seenHoles.add(signature);
     const face = faces.find((candidate) =>
       pointInPolygon(center, candidate.points) &&
-      points.every((point) =>
-        pointInPolygon(point, candidate.points) ||
-        candidate.edges.some((edge) => pointOnSegment(point, vertices[edge.a], vertices[edge.b], tolerance)),
-      ),
+      points.every((point) => pointInPolygon(point, candidate.points)),
     );
     if (face) face.holes.push(points);
   });
@@ -454,26 +447,37 @@ function buildTopology(data: FoldPreviewData): Topology {
     adjacency.set(b, [...(adjacency.get(b) || []), { face: a, edge }]);
   });
 
-  const root = faces.reduce((best, face, index) => face.area > faces[best].area ? index : best, 0);
-  const queue = [root];
-  const visitedFaces = new Set([root]);
-  while (queue.length) {
-    const parent = queue.shift()!;
-    for (const { face: child, edge } of adjacency.get(parent) || []) {
-      if (visitedFaces.has(child)) continue;
-      const a = vertices[edge.a], b = vertices[edge.b];
-      const axis: Point = [b[0] - a[0], b[1] - a[1]];
-      const side: Point = [
-        faces[child].center[0] - (a[0] + b[0]) / 2,
-        faces[child].center[1] - (a[1] + b[1]) / 2,
-      ];
-      const direction = cross(axis, side);
-      faces[child].parent = parent;
-      faces[child].hinge = [a, b];
-      faces[child].hingeEdge = edge;
-      faces[child].angleSign = direction >= 0 ? 1 : -1;
-      visitedFaces.add(child);
-      queue.push(child);
+  const visitedFaces = new Set<number>();
+  while (visitedFaces.size < faces.length) {
+    let root = -1;
+    faces.forEach((face, index) => {
+      if (visitedFaces.has(index)) return;
+      const degree = adjacency.get(index)?.length || 0;
+      const rootDegree = root < 0 ? -1 : adjacency.get(root)?.length || 0;
+      if (root < 0 || degree > rootDegree || (degree === rootDegree && face.area > faces[root].area)) {
+        root = index;
+      }
+    });
+    visitedFaces.add(root);
+    const queue = [root];
+    while (queue.length) {
+      const parent = queue.shift()!;
+      for (const { face: child, edge } of adjacency.get(parent) || []) {
+        if (visitedFaces.has(child)) continue;
+        const a = vertices[edge.a], b = vertices[edge.b];
+        const axis: Point = [b[0] - a[0], b[1] - a[1]];
+        const side: Point = [
+          faces[child].center[0] - (a[0] + b[0]) / 2,
+          faces[child].center[1] - (a[1] + b[1]) / 2,
+        ];
+        const direction = cross(axis, side);
+        faces[child].parent = parent;
+        faces[child].hinge = [a, b];
+        faces[child].hingeEdge = edge;
+        faces[child].angleSign = direction >= 0 ? 1 : -1;
+        visitedFaces.add(child);
+        queue.push(child);
+      }
     }
   }
 
@@ -558,7 +562,7 @@ export default function CartonFoldPreview({
     const { minX, minY, maxX, maxY } = topology.bounds;
     const centerX = (minX + maxX) / 2, centerY = (minY + maxY) / 2;
     const span = Math.max(maxX - minX, maxY - minY);
-    const thickness = unitLabel === "in" ? 0.06 : 1.5;
+    const thickness = unitLabel === "in" ? (data.dimensions.ply === 5 ? 0.2 : 0.12) : data.dimensions.ply;
     const lineZ = thickness / 2 + span * 0.00015;
     const root = new THREE.Group();
     root.position.set(-centerX, -centerY, 0);
