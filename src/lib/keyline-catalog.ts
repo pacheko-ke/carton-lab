@@ -59,7 +59,6 @@ const categoryOrder = [
   "Chicken Box",
   "Flower Box",
   "Tray",
-  "Slotted Boxes",
   "Auto-Bottom",
   "Sea Flow",
   "Sea Freight",
@@ -71,8 +70,13 @@ const freeCategories = new Set(["RSC", "Pizza", "Chicken Box"]);
 export function keylineCategoryFor(definition: KeylineDefinition) {
   const { id, name, category } = definition;
   if (id === "rsc") return "RSC";
-  if (typeof category === "string" && category.trim()) {
-    const custom = category.trim();
+
+  const normalizedCategory = typeof category === "string" ? category.trim() : "";
+  if (
+    normalizedCategory &&
+    normalizedCategory.toLowerCase() !== "other"
+  ) {
+    const custom = normalizedCategory;
     return (
       categoryOrder.find(
         (known) => known.toLowerCase() === custom.toLowerCase(),
