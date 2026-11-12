@@ -5,7 +5,6 @@ import chickenBoxLf from "./keyline-definitions/chicken-box-lf.json";
 import chickenBoxTop from "./keyline-definitions/chicken-box-top.json";
 import f2 from "./keyline-definitions/f2.json";
 import f2Bottom from "./keyline-definitions/f2bottom.json";
-import fefco0210 from "./keyline-definitions/fefco0210.json";
 import fefco0203 from "./keyline-definitions/fefco0203.json";
 import fefco0215 from "./keyline-definitions/fefco-0215.json";
 import flower from "./keyline-definitions/flower.json";
@@ -34,7 +33,6 @@ const definitions: KeylineDefinition[] = [
   flower,
   f2,
   f2Bottom,
-  fefco0210,
   fefco0203,
   fefco0215,
   pf1,
@@ -61,7 +59,6 @@ const categoryOrder = [
   "Chicken Box",
   "Flower Box",
   "Tray",
-  "Boxes",
   "Slotted Boxes",
   "Auto-Bottom",
   "Sea Flow",
