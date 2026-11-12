@@ -1,0 +1,176 @@
+{
+  "id": "fefco-0215",
+  "name": "FEFCO 0215 Auto-Bottom",
+  "title": "FEFCO 0215 AUTO-BOTTOM KEYLINE",
+  "category": "Auto-Bottom",
+  "params": {
+    "refL": "150",
+    "refW": "100",
+    "refH": "120",
+    "seam": "15",
+    "tuck": "0.85*W",
+    "dust": "W/2",
+    "x1": "seam",
+    "x2": "x1 + L",
+    "x3": "x2 + W",
+    "x4": "x3 + L",
+    "x5": "x4 + W",
+    "yTop": "tuck",
+    "yBottom": "yTop + H",
+    "major": "W/2",
+    "minor": "L/2",
+    "lock": "min(major, L/2)",
+    "boardW": "seam + 2*L + 2*W",
+    "boardH": "tuck + H + max(major, minor)"
+  },
+  "require": [
+    {
+      "expr": "L > 2",
+      "message": "The box length must be greater than 2 mm."
+    }
+  ],
+  "cuts": [
+    {
+      "id": "outline",
+      "d": "M0 {yTop} L{x1} {yTop} L{x1} 0 L{x2} 0 L{x2} {yTop} L{x2} {yTop - dust} L{x3} {yTop - dust} L{x3} {yTop} L{x4} {yTop} L{x4} {yTop - dust} L{x5} {yTop - dust} L{x5} {yTop} L{x5} {yBottom} L{x5} {yBottom + minor} L{x4} {yBottom + minor} L{x4} {yBottom + major} L{x3} {yBottom + major} L{x3} {yBottom + minor} L{x2} {yBottom + minor} L{x2} {yBottom + major} L{x1} {yBottom + major} L{x1} {yBottom} L0 {yBottom} Z"
+    },
+    {
+      "id": "bottom-relief-right",
+      "d": "M{x4} {yBottom} L{x4} {yBottom + min(major, minor)}"
+    },
+    {
+      "id": "bottom-relief-center",
+      "d": "M{x3} {yBottom} L{x3} {yBottom + min(major, minor)}"
+    },
+    {
+      "id": "bottom-relief-left",
+      "d": "M{x2} {yBottom} L{x2} {yBottom + min(major, minor)}"
+    }
+  ],
+  "creases": [
+    {
+      "id": "side-seam",
+      "x1": "x1",
+      "y1": "yTop",
+      "x2": "x1",
+      "y2": "yBottom"
+    },
+    {
+      "id": "wall-1",
+      "x1": "x2",
+      "y1": "yTop",
+      "x2": "x2",
+      "y2": "yBottom"
+    },
+    {
+      "id": "wall-2",
+      "x1": "x3",
+      "y1": "yTop",
+      "x2": "x3",
+      "y2": "yBottom"
+    },
+    {
+      "id": "wall-3",
+      "x1": "x4",
+      "y1": "yTop",
+      "x2": "x4",
+      "y2": "yBottom"
+    },
+    {
+      "id": "top-reverse-tuck",
+      "d": "M{x1} {yTop} L{x2} {yTop}"
+    },
+    {
+      "id": "top-dust-left",
+      "d": "M{x2} {yTop} L{x3} {yTop}"
+    },
+    {
+      "id": "top-open-front",
+      "d": "M{x3} {yTop} L{x4} {yTop}"
+    },
+    {
+      "id": "top-dust-right",
+      "d": "M{x4} {yTop} L{x5} {yTop}"
+    },
+    {
+      "id": "bottom-back-major",
+      "d": "M{x1} {yBottom} L{x2} {yBottom}"
+    },
+    {
+      "id": "bottom-side-left",
+      "d": "M{x2} {yBottom} L{x3} {yBottom}"
+    },
+    {
+      "id": "bottom-front-major",
+      "d": "M{x3} {yBottom} L{x4} {yBottom}"
+    },
+    {
+      "id": "bottom-side-right",
+      "d": "M{x4} {yBottom} L{x5} {yBottom}"
+    },
+    {
+      "id": "crash-lock-left",
+      "d": "M{x2} {yBottom} L{x2 - lock} {yBottom + lock}"
+    },
+    {
+      "id": "crash-lock-right",
+      "d": "M{x3} {yBottom} L{x3 + lock} {yBottom + lock}"
+    }
+  ],
+  "dimensions": [
+    {
+      "id": "length",
+      "label": "Body length (L)",
+      "value": "L",
+      "x1": "x1",
+      "y1": "boardH + 30",
+      "x2": "x2",
+      "y2": "boardH + 30"
+    },
+    {
+      "id": "width",
+      "label": "Body width (W)",
+      "value": "W",
+      "x1": "x2",
+      "y1": "-20",
+      "x2": "x3",
+      "y2": "-20"
+    },
+    {
+      "id": "wall-height",
+      "label": "Wall height (H)",
+      "value": "H",
+      "x1": "x1 - 25",
+      "y1": "yTop",
+      "x2": "x1 - 25",
+      "y2": "yBottom"
+    },
+    {
+      "id": "board-width",
+      "label": "Board width",
+      "value": "boardW",
+      "x1": "0",
+      "y1": "boardH + 60",
+      "x2": "boardW",
+      "y2": "boardH + 60"
+    },
+    {
+      "id": "board-height",
+      "label": "Board height",
+      "value": "boardH",
+      "x1": "boardW + 30",
+      "y1": "0",
+      "x2": "boardW + 30",
+      "y2": "boardH"
+    }
+  ],
+  "details": {
+    "creasing": [
+      "H",
+      "W",
+      "H"
+    ],
+    "boardLength": "boardW",
+    "boardWidth": "boardH"
+  }
+}
