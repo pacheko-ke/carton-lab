@@ -16,6 +16,12 @@
     "refW": "200",
     "refH": "150"
   },
+  "autoDimensionValues": {
+    "x": ["glue", "L", "W", "L", "W"],
+    "overallX": "glue + 2*L + 2*W",
+    "y": ["H", "H", "H"],
+    "overallY": "3*H"
+  },
   "renderDimensions": true,
   "map": {
     "x": [

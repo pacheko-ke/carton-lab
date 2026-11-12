@@ -33,6 +33,7 @@ Reload the extension. The new keyline appears in the **Box type** list. No code 
 | `creases` | The dashed fold lines. |
 | `dimensions` | Optional extra dimension lines: `{ "value": "H", "x1": 0, "y1": 0, "x2": 0, "y2": "H" }`. |
 | `renderDimensions` | Set to `true` to draw the definition's `dimensions` in addition to automatic crease dimensions. |
+| `autoDimensionValues` | Optional label overrides for automatic dimensions: `x` and `y` segment arrays plus `overallX` and `overallY`. |
 | `map` | Optional. Stretches a drawing made in other coordinates (see "Method B"). |
 | `details` | Fills the details table. |
 
@@ -94,6 +95,8 @@ Made automatically from your `creases`: the spacing between fold lines plus the 
 width and height. Set `renderDimensions` to `true` to add explicit dimensions from the
 definition. Each entry supplies `x1`, `y1`, `x2`, `y2` and a numeric `value` expression; the
 dimension line is drawn between the mapped endpoints and labeled with `value`.
+`autoDimensionValues` changes only automatic dimension labels, not their measured line
+positions.
 
 ## Two ways to keep a drawing flexible
 

@@ -495,16 +495,25 @@ function buildKeylineModel(def, p, opts) {
     };
     const xs = uniq([0, artW, ...creases.filter((c) => Math.abs(c[0] - c[2]) < 1e-6 && c[0] > 1e-4 && c[0] < artW - 1e-4).map((c) => c[0])]);
     const ys = uniq([0, artH, ...creases.filter((c) => Math.abs(c[1] - c[3]) < 1e-6 && c[1] > 1e-4 && c[1] < artH - 1e-4).map((c) => c[1])]);
+    const autoDimensionValues = def.autoDimensionValues || {};
+    const segmentDimensionValue = (axis, index) => {
+      const values = autoDimensionValues[axis];
+      return Array.isArray(values) && values[index] !== undefined ? ev(values[index], env) * k : undefined;
+    };
+    const overallDimensionValue = (axis) => {
+      const value = autoDimensionValues[`overall${axis.toUpperCase()}`];
+      return value === undefined ? undefined : ev(value, env) * k;
+    };
 
     xs.forEach((x) => line("DIM", x, -wo, x, -far));
     [0, artW].forEach((x) => line("DIM", x, artH + wo, x, artH + far));
     ys.forEach((y) => line("DIM", -wo, y, -far, y));
     [0, artH].forEach((y) => line("DIM", artW + wo, y, artW + far, y));
 
-    for (let k = 0; k < xs.length - 1; k++) hDim(-g1, xs[k], xs[k + 1], true);
-    hDim(artH + g1, 0, artW, false);
-    for (let k = 0; k < ys.length - 1; k++) vDim(-g1, ys[k], ys[k + 1], true);
-    vDim(artW + g1, 0, artH, false);
+    for (let k = 0; k < xs.length - 1; k++) hDim(-g1, xs[k], xs[k + 1], true, segmentDimensionValue("x", k));
+    hDim(artH + g1, 0, artW, false, overallDimensionValue("x"));
+    for (let k = 0; k < ys.length - 1; k++) vDim(-g1, ys[k], ys[k + 1], true, segmentDimensionValue("y", k));
+    vDim(artW + g1, 0, artH, false, overallDimensionValue("y"));
 
     if (def.renderDimensions === true) {
       if (!Array.isArray(def.dimensions)) throw new Error("Custom dimensions must be an array.");
