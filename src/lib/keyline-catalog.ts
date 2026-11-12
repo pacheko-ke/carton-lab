@@ -38,6 +38,16 @@ import fefco0233One from "./keyline-definitions/fefco0233-1.json";
 import fefco0240 from "./keyline-definitions/fefco0240.json";
 import fefco0241 from "./keyline-definitions/fefco0241.json";
 import fefco0242 from "./keyline-definitions/fefco0242.json";
+import fefco0300 from "./keyline-definitions/fefco0300.json";
+import fefco0301 from "./keyline-definitions/fefco0301.json";
+import fefco0302 from "./keyline-definitions/fefco0302.json";
+import fefco0303 from "./keyline-definitions/fefco0303.json";
+import fefco0304 from "./keyline-definitions/fefco0304.json";
+import fefco0306 from "./keyline-definitions/fefco0306.json";
+import fefco0307 from "./keyline-definitions/fefco0307.json";
+import fefco0308 from "./keyline-definitions/fefco0308.json";
+import fefco0309 from "./keyline-definitions/fefco0309.json";
+import fefco0310 from "./keyline-definitions/fefco0310.json";
 import flower from "./keyline-definitions/flower.json";
 import flowerTop from "./keyline-definitions/flower-top.json";
 import hangerBox from "./keyline-definitions/hangerbox.json";
@@ -97,6 +107,16 @@ const definitions: KeylineDefinition[] = [
   fefco0240,
   fefco0241,
   fefco0242,
+  fefco0300,
+  fefco0301,
+  fefco0302,
+  fefco0303,
+  fefco0304,
+  fefco0306,
+  fefco0307,
+  fefco0308,
+  fefco0309,
+  fefco0310,
   pf1,
   seaFlowTop,
   seaFlowBottom,
@@ -120,6 +140,7 @@ const categoryOrder = [
   "Pizza",
   "Chicken Box",
   "Slotted Boxes",
+  "Telescopic Boxes",
   "Flower",
   "Tray",
   "Auto-Bottom",
@@ -130,10 +151,13 @@ const freeCategories = new Set(["RSC", "Pizza", "Chicken Box"]);
 
 export function keylineCategoryFor(definition: KeylineDefinition) {
   const { id, name, category } = definition;
+  const normalizedCategory = typeof category === "string" ? category.trim() : "";
   if (id === "rsc") return "RSC";
+  if (normalizedCategory.toLowerCase() === "telescopic boxes") {
+    return "Telescopic Boxes";
+  }
   if (/fefco/.test(`${id} ${name}`.toLowerCase())) return "Slotted Boxes";
 
-  const normalizedCategory = typeof category === "string" ? category.trim() : "";
   if (
     normalizedCategory &&
     normalizedCategory.toLowerCase() !== "other"

@@ -127,7 +127,7 @@ function applyTypeVisibility(type) {
   document.querySelectorAll(".rsc-only").forEach((el) => { el.hidden = !rsc; });
 }
 
-const KEYLINE_CATEGORY_ORDER = ["RSC", "Pizza", "Chicken Box", "Slotted Boxes", "Flower", "Tray", "Apparel", "Other"];
+const KEYLINE_CATEGORY_ORDER = ["RSC", "Pizza", "Chicken Box", "Slotted Boxes", "Telescopic Boxes", "Flower", "Tray", "Apparel", "Other"];
 const FREE_KEYLINE_CATEGORIES = new Set(["RSC", "Pizza", "Chicken Box"]);
 const LOCKED_KEYLINES = {};
 let activeKeylineCategory = "RSC";
@@ -157,6 +157,9 @@ function createPremiumBadge() {
 function keylineCategoryFor(id) {
   if (id === "rsc") return "RSC";
   const def = KEYLINES[id] || LOCKED_KEYLINES[id] || {};
+  if (typeof def.category === "string" && def.category.trim().toLowerCase() === "telescopic boxes") {
+    return "Telescopic Boxes";
+  }
   if (/fefco/.test(`${id} ${String(def.name || "")}`.toLowerCase())) return "Slotted Boxes";
   if (typeof def.category === "string" && def.category.trim()) {
     const custom = def.category.trim();
@@ -221,6 +224,7 @@ function renderKeylinePicker() {
   const selectedType = $("boxType").value || "rsc";
   if (!groups.has(activeKeylineCategory)) activeKeylineCategory = keylineCategoryFor(selectedType);
   if (!groups.has(activeKeylineCategory)) activeKeylineCategory = "RSC";
+  choices.classList.toggle("keyline-choices-flower", activeKeylineCategory === "Flower");
 
   tabs.replaceChildren();
   const tabButtons = [];
