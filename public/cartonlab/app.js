@@ -127,7 +127,7 @@ function applyTypeVisibility(type) {
   document.querySelectorAll(".rsc-only").forEach((el) => { el.hidden = !rsc; });
 }
 
-const KEYLINE_CATEGORY_ORDER = ["RSC", "Pizza", "Chicken Box", "Flower Box", "Tray", "Sea Flow", "Sea Freight", "EPZ", "Other"];
+const KEYLINE_CATEGORY_ORDER = ["RSC", "Pizza", "Chicken Box", "Flower", "Tray", "EPZ", "Other"];
 const FREE_KEYLINE_CATEGORIES = new Set(["RSC", "Pizza", "Chicken Box"]);
 const LOCKED_KEYLINES = {};
 let activeKeylineCategory = "RSC";
@@ -159,18 +159,19 @@ function keylineCategoryFor(id) {
   const def = KEYLINES[id] || LOCKED_KEYLINES[id] || {};
   if (typeof def.category === "string" && def.category.trim()) {
     const custom = def.category.trim();
+    if (["flower box", "sea flow", "sea freight"].includes(custom.toLowerCase())) {
+      return "Flower";
+    }
     const known = KEYLINE_CATEGORY_ORDER.find((name) => name.toLowerCase() === custom.toLowerCase());
     return known || custom;
   }
   const key = String(id || "").toLowerCase();
   const text = `${key} ${String(def.name || "").toLowerCase()}`;
   if (/pizza/.test(text)) return "Pizza";
-  if (/seafreight|sea freight|freight/.test(key)) return "Sea Freight";
-  if (/seaflow|sea flow/.test(key)) return "Sea Flow";
-  if (/flower|pf1|f1|f2|zim/.test(text)) return "Flower Box";
+  if (/flower|pf1|f1|f2|zim|seafreight|sea freight|freight|seaflow|sea flow/.test(text)) {
+    return "Flower";
+  }
   if (/tray/.test(text)) return "Tray";
-  if (/seafreight|sea freight|freight/.test(text)) return "Sea Freight";
-  if (/sea flow/.test(text)) return "Sea Flow";
   if (/hanger/.test(text)) return "EPZ";
   return "Other";
 }

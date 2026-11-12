@@ -57,11 +57,9 @@ const categoryOrder = [
   "RSC",
   "Pizza",
   "Chicken Box",
-  "Flower Box",
+  "Flower",
   "Tray",
   "Auto-Bottom",
-  "Sea Flow",
-  "Sea Freight",
   "EPZ",
   "Other",
 ];
@@ -76,6 +74,13 @@ export function keylineCategoryFor(definition: KeylineDefinition) {
     normalizedCategory &&
     normalizedCategory.toLowerCase() !== "other"
   ) {
+    if (
+      ["flower box", "sea flow", "sea freight"].includes(
+        normalizedCategory.toLowerCase(),
+      )
+    ) {
+      return "Flower";
+    }
     const custom = normalizedCategory;
     return (
       categoryOrder.find(
@@ -88,12 +93,14 @@ export function keylineCategoryFor(definition: KeylineDefinition) {
   const text = `${key} ${name.toLowerCase()}`;
   if (/pizza/.test(text)) return "Pizza";
   if (/fefco.?0215|auto.?bottom/.test(text)) return "Auto-Bottom";
-  if (/seafreight|sea freight|freight/.test(key)) return "Sea Freight";
-  if (/seaflow|sea flow/.test(key)) return "Sea Flow";
-  if (/flower|pf1|f1|f2|zim/.test(text)) return "Flower Box";
+  if (
+    /flower|pf1|f1|f2|zim|seafreight|sea freight|freight|seaflow|sea flow/.test(
+      text,
+    )
+  ) {
+    return "Flower";
+  }
   if (/tray/.test(text)) return "Tray";
-  if (/seafreight|sea freight|freight/.test(text)) return "Sea Freight";
-  if (/sea flow/.test(text)) return "Sea Flow";
   if (/hanger/.test(text)) return "EPZ";
   return "Other";
 }
