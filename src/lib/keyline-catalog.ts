@@ -48,6 +48,20 @@ import fefco0307 from "./keyline-definitions/fefco0307.json";
 import fefco0308 from "./keyline-definitions/fefco0308.json";
 import fefco0309 from "./keyline-definitions/fefco0309.json";
 import fefco0310 from "./keyline-definitions/fefco0310.json";
+import fefco0312 from "./keyline-definitions/fefco0312.json";
+import fefco0313 from "./keyline-definitions/fefco0313.json";
+import fefco0314 from "./keyline-definitions/fefco0314.json";
+import fefco0320 from "./keyline-definitions/fefco0320.json";
+import fefco0321 from "./keyline-definitions/fefco0321.json";
+import fefco0322 from "./keyline-definitions/fefco0322.json";
+import fefco0323 from "./keyline-definitions/fefco0323.json";
+import fefco0325 from "./keyline-definitions/fefco0325.json";
+import fefco0330 from "./keyline-definitions/fefco0330.json";
+import fefco0331 from "./keyline-definitions/fefco0331.json";
+import fefco0350 from "./keyline-definitions/fefco0350.json";
+import fefco0351 from "./keyline-definitions/fefco0351.json";
+import fefco0352 from "./keyline-definitions/fefco0352.json";
+import fefco0360 from "./keyline-definitions/fefco0360.json";
 import flower from "./keyline-definitions/flower.json";
 import flowerTop from "./keyline-definitions/flower-top.json";
 import hangerBox from "./keyline-definitions/hangerbox.json";
@@ -65,6 +79,7 @@ import tray from "./keyline-definitions/tray.json";
 type KeylineDefinition = {
   id: string;
   name: string;
+  source?: string;
   category?: string;
   title?: string;
 };
@@ -117,6 +132,20 @@ const definitions: KeylineDefinition[] = [
   fefco0308,
   fefco0309,
   fefco0310,
+  fefco0312,
+  fefco0313,
+  fefco0314,
+  fefco0320,
+  fefco0321,
+  fefco0322,
+  fefco0323,
+  fefco0325,
+  fefco0330,
+  fefco0331,
+  fefco0350,
+  fefco0351,
+  fefco0352,
+  fefco0360,
   pf1,
   seaFlowTop,
   seaFlowBottom,

@@ -1,0 +1,204 @@
+{
+  "id": "fefco0325",
+  "name": "FEFCO 0325 - Body sleeve with returned rims and double-walled caps",
+  "title": "FEFCO 0325 KEYLINE",
+  "category": "Telescopic Boxes",
+  "source": "Box Blanks (boxblanks.com)",
+  "inputs": [
+    {
+      "id": "caliper",
+      "label": "Board caliper",
+      "default": 2.4,
+      "min": 0
+    }
+  ],
+  "params": {
+    "refL": "300",
+    "refW": "200",
+    "refH": "200",
+    "refCaliper": "2.4",
+    "scaleX": "(L / refL + 2 * H / refH + 2 * (caliper - refCaliper) / refL) / 3",
+    "scaleY": "(W / refW + 2 * H / refH + 2 * (caliper - refCaliper) / refW) / 3"
+  },
+  "map": {
+    "x": [
+      [
+        0,
+        "0"
+      ],
+      [
+        1185.8,
+        "1185.8 * scaleX"
+      ]
+    ],
+    "y": [
+      [
+        0,
+        "0"
+      ],
+      [
+        1279.6,
+        "1279.6 * scaleY"
+      ]
+    ]
+  },
+  "cuts": [
+    {
+      "id": "cut-1",
+      "d": "M128.8 269.9 L163.8 273.9 L165.3 273.9 L165.3 334.8 L465.3 334.8 L465.3 273.9 L466.8 273.9 L468.3 273.9 L468.3 334.8 L668.3 334.8 L668.3 273.9 L669.8 273.9 L671.3 273.9 L671.3 334.8 L971.3 334.8 L971.3 273.9 L972.8 273.9 L974.3 273.9 L974.3 334.8 L1174.3 334.8 L1174.3 273.9 L1175.8 273.9 L1175.8 70.9 L1174.3 70.9 L1174.3 10 L974.3 10 L974.3 70.9 L972.8 70.9 L971.3 70.9 L971.3 10 L671.3 10 L671.3 70.9 L669.8 70.9 L668.3 70.9 L668.3 10 L468.3 10 L468.3 70.9 L466.8 70.9 L465.3 70.9 L465.3 10 L165.3 10 L165.3 70.9 L163.8 70.9 L128.8 74.9 Z",
+      "dimensionGroup": "piece-1"
+    },
+    {
+      "id": "cut-2",
+      "d": "M128.8 744.3 L131.8 744.3 L131.8 802.2 L435.6 802.2 L435.6 744.3 L438.6 744.3 L438.6 683.4 L499.5 683.4 L499.5 680.4 L557.4 680.4 L557.4 476.6 L499.5 476.6 L499.5 473.6 L438.6 473.6 L438.6 412.7 L435.6 412.7 L435.6 354.8 L131.8 354.8 L131.8 412.7 L128.8 412.7 L128.8 473.6 L67.9 473.6 L67.9 476.6 L10 476.6 L10 680.4 L67.9 680.4 L67.9 683.4 L128.8 683.4 Z",
+      "dimensionGroup": "piece-2"
+    },
+    {
+      "id": "cut-3",
+      "d": "M128.8 1211.7 L131.8 1211.7 L131.8 1269.6 L435.6 1269.6 L435.6 1211.7 L438.6 1211.7 L438.6 1150.8 L499.5 1150.8 L499.5 1147.8 L557.4 1147.8 L557.4 944 L499.5 944 L499.5 941 L438.6 941 L438.6 880.1 L435.6 880.1 L435.6 822.2 L131.8 822.2 L131.8 880.1 L128.8 880.1 L128.8 941 L67.9 941 L67.9 944 L10 944 L10 1147.8 L67.9 1147.8 L67.9 1150.8 L128.8 1150.8 Z",
+      "dimensionGroup": "piece-3"
+    }
+  ],
+  "creases": [
+    {
+      "id": "crease-1",
+      "d": "M163.8 273.9 L163.8 70.9",
+      "dimensionGroup": "piece-1"
+    },
+    {
+      "id": "crease-2",
+      "d": "M165.3 273.9 L465.3 273.9",
+      "dimensionGroup": "piece-1"
+    },
+    {
+      "id": "crease-3",
+      "d": "M466.8 273.9 L466.8 70.9",
+      "dimensionGroup": "piece-1"
+    },
+    {
+      "id": "crease-4",
+      "d": "M465.3 70.9 L165.3 70.9",
+      "dimensionGroup": "piece-1"
+    },
+    {
+      "id": "crease-5",
+      "d": "M468.3 273.9 L668.3 273.9",
+      "dimensionGroup": "piece-1"
+    },
+    {
+      "id": "crease-6",
+      "d": "M669.8 273.9 L669.8 70.9",
+      "dimensionGroup": "piece-1"
+    },
+    {
+      "id": "crease-7",
+      "d": "M668.3 70.9 L468.3 70.9",
+      "dimensionGroup": "piece-1"
+    },
+    {
+      "id": "crease-8",
+      "d": "M671.3 273.9 L971.3 273.9",
+      "dimensionGroup": "piece-1"
+    },
+    {
+      "id": "crease-9",
+      "d": "M972.8 273.9 L972.8 70.9",
+      "dimensionGroup": "piece-1"
+    },
+    {
+      "id": "crease-10",
+      "d": "M971.3 70.9 L671.3 70.9",
+      "dimensionGroup": "piece-1"
+    },
+    {
+      "id": "crease-11",
+      "d": "M974.3 273.9 L1174.3 273.9",
+      "dimensionGroup": "piece-1"
+    },
+    {
+      "id": "crease-12",
+      "d": "M1174.3 70.9 L974.3 70.9",
+      "dimensionGroup": "piece-1"
+    },
+    {
+      "id": "crease-13",
+      "d": "M128.8 683.4 L438.6 683.4",
+      "dimensionGroup": "piece-2"
+    },
+    {
+      "id": "crease-14",
+      "d": "M438.6 683.4 L438.6 473.6",
+      "dimensionGroup": "piece-2"
+    },
+    {
+      "id": "crease-15",
+      "d": "M438.6 473.6 L128.8 473.6",
+      "dimensionGroup": "piece-2"
+    },
+    {
+      "id": "crease-16",
+      "d": "M128.8 473.6 L128.8 683.4",
+      "dimensionGroup": "piece-2"
+    },
+    {
+      "id": "crease-17",
+      "d": "M131.8 744.3 L435.6 744.3",
+      "dimensionGroup": "piece-2"
+    },
+    {
+      "id": "crease-18",
+      "d": "M435.6 412.7 L131.8 412.7",
+      "dimensionGroup": "piece-2"
+    },
+    {
+      "id": "crease-19",
+      "d": "M67.9 476.6 L67.9 680.4",
+      "dimensionGroup": "piece-2"
+    },
+    {
+      "id": "crease-20",
+      "d": "M499.5 680.4 L499.5 476.6",
+      "dimensionGroup": "piece-2"
+    },
+    {
+      "id": "crease-21",
+      "d": "M128.8 1150.8 L438.6 1150.8",
+      "dimensionGroup": "piece-3"
+    },
+    {
+      "id": "crease-22",
+      "d": "M438.6 1150.8 L438.6 941",
+      "dimensionGroup": "piece-3"
+    },
+    {
+      "id": "crease-23",
+      "d": "M438.6 941 L128.8 941",
+      "dimensionGroup": "piece-3"
+    },
+    {
+      "id": "crease-24",
+      "d": "M128.8 941 L128.8 1150.8",
+      "dimensionGroup": "piece-3"
+    },
+    {
+      "id": "crease-25",
+      "d": "M131.8 1211.7 L435.6 1211.7",
+      "dimensionGroup": "piece-3"
+    },
+    {
+      "id": "crease-26",
+      "d": "M435.6 880.1 L131.8 880.1",
+      "dimensionGroup": "piece-3"
+    },
+    {
+      "id": "crease-27",
+      "d": "M67.9 944 L67.9 1147.8",
+      "dimensionGroup": "piece-3"
+    },
+    {
+      "id": "crease-28",
+      "d": "M499.5 1147.8 L499.5 944",
+      "dimensionGroup": "piece-3"
+    }
+  ]
+}

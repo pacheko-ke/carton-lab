@@ -1,0 +1,264 @@
+{
+  "id": "fefco0350",
+  "name": "FEFCO 0350 - Octagonal drum with lid and base",
+  "title": "FEFCO 0350 KEYLINE",
+  "category": "Telescopic Boxes",
+  "source": "Box Blanks (boxblanks.com)",
+  "inputs": [
+    {
+      "id": "caliper",
+      "label": "Board caliper",
+      "default": 3.4,
+      "min": 0
+    }
+  ],
+  "params": {
+    "refL": "240",
+    "refW": "240",
+    "refH": "170",
+    "refCaliper": "3.4",
+    "scaleX": "(L / refL + 2 * H / refH + 2 * (caliper - refCaliper) / refL) / 3",
+    "scaleY": "(W / refW + 2 * H / refH + 2 * (caliper - refCaliper) / refW) / 3"
+  },
+  "map": {
+    "x": [
+      [
+        0,
+        "0"
+      ],
+      [
+        903.481,
+        "903.481 * scaleX"
+      ]
+    ],
+    "y": [
+      [
+        0,
+        "0"
+      ],
+      [
+        905.6,
+        "905.6 * scaleY"
+      ]
+    ]
+  },
+  "cuts": [
+    {
+      "id": "cut-1",
+      "d": "M53.25 179 L88.25 183 L188.904 183 L289.558 183 L390.212 183 L490.866 183 L591.519 183 L692.173 183 L792.827 183 L893.481 183 L893.481 10 L792.827 10 L692.173 10 L591.519 10 L490.866 10 L390.212 10 L289.558 10 L188.904 10 L88.25 10 L53.25 14 Z",
+      "dimensionGroup": "piece-1"
+    },
+    {
+      "id": "cut-2",
+      "d": "M126.415 539.3 L229.885 539.3 L229.885 496.05 L232.885 539.3 L247.8 539.3 L260.468 526.632 L333.632 453.468 L346.3 440.8 L346.3 425.885 L303.05 422.885 L346.3 422.885 L346.3 319.415 L303.05 319.415 L346.3 316.415 L346.3 301.5 L333.632 288.832 L260.468 215.668 L247.8 203 L232.885 203 L229.885 246.25 L229.885 203 L126.415 203 L126.415 246.25 L123.415 203 L108.5 203 L95.832 215.668 L22.668 288.832 L10 301.5 L10 316.415 L53.25 319.415 L10 319.415 L10 422.885 L53.25 422.885 L10 425.885 L10 440.8 L22.668 453.468 L95.832 526.632 L108.5 539.3 L123.415 539.3 L126.415 496.05 Z",
+      "dimensionGroup": "piece-2"
+    },
+    {
+      "id": "cut-3",
+      "d": "M126.415 895.6 L229.885 895.6 L229.885 852.35 L232.885 895.6 L247.8 895.6 L260.468 882.932 L333.632 809.768 L346.3 797.1 L346.3 782.185 L303.05 779.185 L346.3 779.185 L346.3 675.715 L303.05 675.715 L346.3 672.715 L346.3 657.8 L333.632 645.132 L260.468 571.968 L247.8 559.3 L232.885 559.3 L229.885 602.55 L229.885 559.3 L126.415 559.3 L126.415 602.55 L123.415 559.3 L108.5 559.3 L95.832 571.968 L22.668 645.132 L10 657.8 L10 672.715 L53.25 675.715 L10 675.715 L10 779.185 L53.25 779.185 L10 782.185 L10 797.1 L22.668 809.768 L95.832 882.932 L108.5 895.6 L123.415 895.6 L126.415 852.35 Z",
+      "dimensionGroup": "piece-3"
+    }
+  ],
+  "creases": [
+    {
+      "id": "crease-1",
+      "d": "M88.25 183 L88.25 10",
+      "dimensionGroup": "piece-1"
+    },
+    {
+      "id": "crease-2",
+      "d": "M188.904 183 L188.904 10",
+      "dimensionGroup": "piece-1"
+    },
+    {
+      "id": "crease-3",
+      "d": "M289.558 183 L289.558 10",
+      "dimensionGroup": "piece-1"
+    },
+    {
+      "id": "crease-4",
+      "d": "M390.212 183 L390.212 10",
+      "dimensionGroup": "piece-1"
+    },
+    {
+      "id": "crease-5",
+      "d": "M490.866 183 L490.866 10",
+      "dimensionGroup": "piece-1"
+    },
+    {
+      "id": "crease-6",
+      "d": "M591.519 183 L591.519 10",
+      "dimensionGroup": "piece-1"
+    },
+    {
+      "id": "crease-7",
+      "d": "M692.173 183 L692.173 10",
+      "dimensionGroup": "piece-1"
+    },
+    {
+      "id": "crease-8",
+      "d": "M792.827 183 L792.827 10",
+      "dimensionGroup": "piece-1"
+    },
+    {
+      "id": "crease-9",
+      "d": "M126.415 496.05 L229.885 496.05",
+      "dimensionGroup": "piece-2"
+    },
+    {
+      "id": "crease-10",
+      "d": "M229.885 496.05 L303.05 422.885",
+      "dimensionGroup": "piece-2"
+    },
+    {
+      "id": "crease-11",
+      "d": "M303.05 422.885 L303.05 319.415",
+      "dimensionGroup": "piece-2"
+    },
+    {
+      "id": "crease-12",
+      "d": "M303.05 319.415 L229.885 246.25",
+      "dimensionGroup": "piece-2"
+    },
+    {
+      "id": "crease-13",
+      "d": "M229.885 246.25 L126.415 246.25",
+      "dimensionGroup": "piece-2"
+    },
+    {
+      "id": "crease-14",
+      "d": "M126.415 246.25 L53.25 319.415",
+      "dimensionGroup": "piece-2"
+    },
+    {
+      "id": "crease-15",
+      "d": "M53.25 319.415 L53.25 422.885",
+      "dimensionGroup": "piece-2"
+    },
+    {
+      "id": "crease-16",
+      "d": "M53.25 422.885 L126.415 496.05",
+      "dimensionGroup": "piece-2"
+    },
+    {
+      "id": "crease-17",
+      "d": "M333.632 453.468 L303.05 422.885",
+      "dimensionGroup": "piece-2"
+    },
+    {
+      "id": "crease-18",
+      "d": "M229.885 496.05 L260.468 526.632",
+      "dimensionGroup": "piece-2"
+    },
+    {
+      "id": "crease-19",
+      "d": "M260.468 215.668 L229.885 246.25",
+      "dimensionGroup": "piece-2"
+    },
+    {
+      "id": "crease-20",
+      "d": "M303.05 319.415 L333.632 288.832",
+      "dimensionGroup": "piece-2"
+    },
+    {
+      "id": "crease-21",
+      "d": "M22.668 288.832 L53.25 319.415",
+      "dimensionGroup": "piece-2"
+    },
+    {
+      "id": "crease-22",
+      "d": "M126.415 246.25 L95.832 215.668",
+      "dimensionGroup": "piece-2"
+    },
+    {
+      "id": "crease-23",
+      "d": "M95.832 526.632 L126.415 496.05",
+      "dimensionGroup": "piece-2"
+    },
+    {
+      "id": "crease-24",
+      "d": "M53.25 422.885 L22.668 453.468",
+      "dimensionGroup": "piece-2"
+    },
+    {
+      "id": "crease-25",
+      "d": "M126.415 852.35 L229.885 852.35",
+      "dimensionGroup": "piece-3"
+    },
+    {
+      "id": "crease-26",
+      "d": "M229.885 852.35 L303.05 779.185",
+      "dimensionGroup": "piece-3"
+    },
+    {
+      "id": "crease-27",
+      "d": "M303.05 779.185 L303.05 675.715",
+      "dimensionGroup": "piece-3"
+    },
+    {
+      "id": "crease-28",
+      "d": "M303.05 675.715 L229.885 602.55",
+      "dimensionGroup": "piece-3"
+    },
+    {
+      "id": "crease-29",
+      "d": "M229.885 602.55 L126.415 602.55",
+      "dimensionGroup": "piece-3"
+    },
+    {
+      "id": "crease-30",
+      "d": "M126.415 602.55 L53.25 675.715",
+      "dimensionGroup": "piece-3"
+    },
+    {
+      "id": "crease-31",
+      "d": "M53.25 675.715 L53.25 779.185",
+      "dimensionGroup": "piece-3"
+    },
+    {
+      "id": "crease-32",
+      "d": "M53.25 779.185 L126.415 852.35",
+      "dimensionGroup": "piece-3"
+    },
+    {
+      "id": "crease-33",
+      "d": "M333.632 809.768 L303.05 779.185",
+      "dimensionGroup": "piece-3"
+    },
+    {
+      "id": "crease-34",
+      "d": "M229.885 852.35 L260.468 882.932",
+      "dimensionGroup": "piece-3"
+    },
+    {
+      "id": "crease-35",
+      "d": "M260.468 571.968 L229.885 602.55",
+      "dimensionGroup": "piece-3"
+    },
+    {
+      "id": "crease-36",
+      "d": "M303.05 675.715 L333.632 645.132",
+      "dimensionGroup": "piece-3"
+    },
+    {
+      "id": "crease-37",
+      "d": "M22.668 645.132 L53.25 675.715",
+      "dimensionGroup": "piece-3"
+    },
+    {
+      "id": "crease-38",
+      "d": "M126.415 602.55 L95.832 571.968",
+      "dimensionGroup": "piece-3"
+    },
+    {
+      "id": "crease-39",
+      "d": "M95.832 882.932 L126.415 852.35",
+      "dimensionGroup": "piece-3"
+    },
+    {
+      "id": "crease-40",
+      "d": "M53.25 779.185 L22.668 809.768",
+      "dimensionGroup": "piece-3"
+    }
+  ]
+}

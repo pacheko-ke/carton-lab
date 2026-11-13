@@ -1,0 +1,179 @@
+{
+  "id": "fefco0331",
+  "name": "FEFCO 0331 - Telescope box, double-walled tray and lid",
+  "title": "FEFCO 0331 KEYLINE",
+  "category": "Telescopic Boxes",
+  "source": "Box Blanks (boxblanks.com)",
+  "inputs": [
+    {
+      "id": "caliper",
+      "label": "Board caliper",
+      "default": 3.4,
+      "min": 0
+    }
+  ],
+  "params": {
+    "refL": "250",
+    "refW": "180",
+    "refH": "80",
+    "refCaliper": "3.4",
+    "scaleX": "(L / refL + 2 * H / refH + 2 * (caliper - refCaliper) / refL) / 3",
+    "scaleY": "(W / refW + 2 * H / refH + 2 * (caliper - refCaliper) / refW) / 3"
+  },
+  "map": {
+    "x": [
+      [
+        0,
+        "0"
+      ],
+      [
+        623.8,
+        "623.8 * scaleX"
+      ]
+    ],
+    "y": [
+      [
+        0,
+        "0"
+      ],
+      [
+        814.8,
+        "814.8 * scaleY"
+      ]
+    ]
+  },
+  "cuts": [
+    {
+      "id": "cut-1",
+      "d": "M403.4 346 L403.4 345 L486.4 345 L492.4 345 L575.4 345 L575.4 94 L492.4 94 L486.4 94 L403.4 94 L403.4 93 L403.4 92 L575.4 92 L575.4 10 L403.4 10 L220.4 10 L48.4 10 L48.4 92 L220.4 92 L220.4 93 L220.4 94 L137.4 94 L131.4 94 L48.4 94 L48.4 345 L131.4 345 L137.4 345 L220.4 345 L220.4 346 L220.4 347 L48.4 347 L48.4 429 L220.4 429 L403.4 429 L575.4 429 L575.4 347 L403.4 347 Z",
+      "dimensionGroup": "piece-1"
+    },
+    {
+      "id": "cut-2",
+      "d": "M441.8 721.8 L441.8 720.8 L524.8 720.8 L530.8 720.8 L613.8 720.8 L613.8 533 L530.8 533 L524.8 533 L441.8 533 L441.8 532 L441.8 531 L613.8 531 L613.8 449 L441.8 449 L182 449 L10 449 L10 531 L182 531 L182 532 L182 533 L99 533 L93 533 L10 533 L10 720.8 L93 720.8 L99 720.8 L182 720.8 L182 721.8 L182 722.8 L10 722.8 L10 804.8 L182 804.8 L441.8 804.8 L613.8 804.8 L613.8 722.8 L441.8 722.8 Z",
+      "dimensionGroup": "piece-2"
+    }
+  ],
+  "creases": [
+    {
+      "id": "crease-1",
+      "d": "M220.4 346 L403.4 346",
+      "dimensionGroup": "piece-1"
+    },
+    {
+      "id": "crease-2",
+      "d": "M403.4 345 L403.4 94",
+      "dimensionGroup": "piece-1"
+    },
+    {
+      "id": "crease-3",
+      "d": "M403.4 93 L220.4 93",
+      "dimensionGroup": "piece-1"
+    },
+    {
+      "id": "crease-4",
+      "d": "M220.4 94 L220.4 345",
+      "dimensionGroup": "piece-1"
+    },
+    {
+      "id": "crease-5",
+      "d": "M403.4 429 L403.4 347",
+      "dimensionGroup": "piece-1"
+    },
+    {
+      "id": "crease-6",
+      "d": "M220.4 347 L220.4 429",
+      "dimensionGroup": "piece-1"
+    },
+    {
+      "id": "crease-7",
+      "d": "M403.4 92 L403.4 10",
+      "dimensionGroup": "piece-1"
+    },
+    {
+      "id": "crease-8",
+      "d": "M220.4 10 L220.4 92",
+      "dimensionGroup": "piece-1"
+    },
+    {
+      "id": "crease-9",
+      "d": "M137.4 94 L137.4 345",
+      "dimensionGroup": "piece-1"
+    },
+    {
+      "id": "crease-10",
+      "d": "M131.4 94 L131.4 345",
+      "dimensionGroup": "piece-1"
+    },
+    {
+      "id": "crease-11",
+      "d": "M486.4 345 L486.4 94",
+      "dimensionGroup": "piece-1"
+    },
+    {
+      "id": "crease-12",
+      "d": "M492.4 345 L492.4 94",
+      "dimensionGroup": "piece-1"
+    },
+    {
+      "id": "crease-13",
+      "d": "M182 721.8 L441.8 721.8",
+      "dimensionGroup": "piece-2"
+    },
+    {
+      "id": "crease-14",
+      "d": "M441.8 720.8 L441.8 533",
+      "dimensionGroup": "piece-2"
+    },
+    {
+      "id": "crease-15",
+      "d": "M441.8 532 L182 532",
+      "dimensionGroup": "piece-2"
+    },
+    {
+      "id": "crease-16",
+      "d": "M182 533 L182 720.8",
+      "dimensionGroup": "piece-2"
+    },
+    {
+      "id": "crease-17",
+      "d": "M441.8 804.8 L441.8 722.8",
+      "dimensionGroup": "piece-2"
+    },
+    {
+      "id": "crease-18",
+      "d": "M182 722.8 L182 804.8",
+      "dimensionGroup": "piece-2"
+    },
+    {
+      "id": "crease-19",
+      "d": "M441.8 531 L441.8 449",
+      "dimensionGroup": "piece-2"
+    },
+    {
+      "id": "crease-20",
+      "d": "M182 449 L182 531",
+      "dimensionGroup": "piece-2"
+    },
+    {
+      "id": "crease-21",
+      "d": "M99 533 L99 720.8",
+      "dimensionGroup": "piece-2"
+    },
+    {
+      "id": "crease-22",
+      "d": "M93 533 L93 720.8",
+      "dimensionGroup": "piece-2"
+    },
+    {
+      "id": "crease-23",
+      "d": "M524.8 720.8 L524.8 533",
+      "dimensionGroup": "piece-2"
+    },
+    {
+      "id": "crease-24",
+      "d": "M530.8 720.8 L530.8 533",
+      "dimensionGroup": "piece-2"
+    }
+  ]
+}

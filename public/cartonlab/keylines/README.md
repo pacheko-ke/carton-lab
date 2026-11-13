@@ -26,6 +26,7 @@ Reload the extension. The new keyline appears in the **Box type** list. No code 
 | `id` | Unique short name (letters, digits, dash). `rsc` is reserved. |
 | `name` | Shown in the Box type list. |
 | `title` | Details table title when the job name is blank (optional). |
+| `source` | Optional attribution/provenance metadata for the supplied drawing. |
 | `inputs` | Optional fields the user fills in for this keyline, such as a notch size (see below). |
 | `params` | Named variables, calculated in order. May use `L`, `W`, `H`, your inputs and earlier params. |
 | `require` | Optional checks: `{ "expr": "L > slot", "message": "..." }`. A false check shows the message instead of a drawing. |
