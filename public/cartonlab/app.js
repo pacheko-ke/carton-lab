@@ -1189,10 +1189,10 @@ async function init() {
   if (plan === "free" || plan === "premium") {
     accountControls.hidden = false;
     $("appAccountPlanLabel").textContent =
-      plan === "premium" ? "Premium account" : "Free account";
+      plan === "premium" ? "Premium account" : "Go Premium";
     $("appAccountPlan").setAttribute(
       "aria-label",
-      `View ${plan === "premium" ? "Premium" : "Free"} account`,
+      plan === "premium" ? "View Premium account" : "Go Premium",
     );
     $("appLogOut").addEventListener("click", () => {
       window.parent.postMessage(
