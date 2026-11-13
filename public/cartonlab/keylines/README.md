@@ -37,7 +37,7 @@ Reload the extension. The new keyline appears in the **Box type** list. No code 
 | `renderDimensions` | Set to `true` to draw the definition's `dimensions` in addition to automatic crease dimensions. |
 | `autoDimensionValues` | Optional label overrides for automatic dimensions: `x` and `y` segment arrays plus `overallX` and `overallY`; grouped definitions may override these under `groups`. |
 | `map` | Optional. Stretches a drawing made in other coordinates (see "Method B"). |
-| `details` | Fills the details table. |
+| `details` | Fills the details table; grouped definitions can override fields per piece under `details.groups`. |
 
 Any number can be a plain number or an expression string such as `"H + W/2"`.
 
@@ -103,8 +103,21 @@ positions.
 For multi-piece artwork, give every cut and crease a `dimensionGroup`, reusing the same
 group name for entries belonging to one piece. Each group is dimensioned using only its
 own cut bounds and crease positions, so separate pieces on one artboard do not share
-overall or fold dimensions.
+overall or fold dimensions. The app also adds a separate details table for each group,
+stacked below the artboard and labeled with that group's name. By default, each table's
+board length and width use its group's cut bounds.
 Grouped label overrides can be keyed by group name under `autoDimensionValues.groups`.
+
+Use `details.groups` to override a piece's table title or details:
+
+    "details": {
+      "groups": {
+        "top": { "title": "Lid", "boardLength": "L + 2*H", "boardWidth": "W + H" },
+        "bottom": { "title": "Tray", "creasing": ["H", "W", "H"] }
+      }
+    }
+
+Supported per-group overrides are `title`, `creasing`, `boardLength` and `boardWidth`.
 
 ## Two ways to keep a drawing flexible
 

@@ -481,6 +481,21 @@ function buildKeylineModel(def, p, opts) {
   });
   const artW = x1 - x0, artH = y1 - y0;
   const holesOut = holes.map((h) => ({ cx: h.cx * k - x0, cy: h.cy * k - y0, rx: h.rx * k, ry: h.ry * k }));
+  const orderedDimensionGroups = [...dimensionCutSegs.entries()].map(([id, groupSegs]) => {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    KC.flattenSegs(groupSegs).forEach((sp) => sp.pts.forEach(([x, y]) => {
+      minX = Math.min(minX, x); minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x); maxY = Math.max(maxY, y);
+    }));
+    if (![minX, minY, maxX, maxY].every(Number.isFinite)) {
+      throw new Error(`Keyline "${def.id}" has an empty dimension group "${id}".`);
+    }
+    return {
+      id,
+      bounds: { minX, minY, maxX, maxY },
+      creases: dimensionCreaseLines.get(id) || [],
+    };
+  }).sort((a, b) => a.bounds.minY - b.bounds.minY);
 
   const size = Math.max(artW, artH);
   const th = size / 70;
@@ -595,22 +610,6 @@ function buildKeylineModel(def, p, opts) {
       vDim(bounds.maxX + placement.rightOffset, bounds.minY, bounds.maxY, false, overallDimensionValue(values, "y"));
     };
 
-    const orderedDimensionGroups = [...dimensionCutSegs.entries()].map(([id, groupSegs]) => {
-      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-      KC.flattenSegs(groupSegs).forEach((sp) => sp.pts.forEach(([x, y]) => {
-        minX = Math.min(minX, x); minY = Math.min(minY, y);
-        maxX = Math.max(maxX, x); maxY = Math.max(maxY, y);
-      }));
-      if (![minX, minY, maxX, maxY].every(Number.isFinite)) {
-        throw new Error(`Keyline "${def.id}" has an empty dimension group "${id}".`);
-      }
-      return {
-        id,
-        bounds: { minX, minY, maxX, maxY },
-        creases: dimensionCreaseLines.get(id) || [],
-      };
-    }).sort((a, b) => a.bounds.minY - b.bounds.minY);
-
     if (!orderedDimensionGroups.length) {
       renderDimensionSet(
         { minX: 0, minY: 0, maxX: artW, maxY: artH },
@@ -713,20 +712,39 @@ function buildKeylineModel(def, p, opts) {
     });
   }
 
-  // details frame: same layout as the RSC
+  // Each separated piece gets its own details frame below the artwork.
   const dt = def.details || {};
-  const creasing = (dt.creasing || []).map((e) => t(ev(e, env) * k)).join("-");
-  const boardLen = dt.boardLength !== undefined ? ev(dt.boardLength, env) * k : artW;
-  const boardWid = dt.boardWidth !== undefined ? ev(dt.boardWidth, env) * k : artH;
-  const rows = [
-    [["Size (OD):", `${f(L)} x ${f(W)} x ${f(H)} ${u}`], ["Plies:", `${p.ply} ply`]],
-    [["Creasing dimension:", creasing ? `${creasing} ${u}` : "-"], ["Date:", KC.fmtDate(p.date || "")]],
-    [["Board length:", `${f(boardLen)} ${u}`], ["Board width:", `${f(boardWid)} ${u}`]],
-    ...KC.profileRows(opts && opts.profile),
-  ];
-  const title = String(p.job || "").trim() || def.title || `${String(def.name || def.id).toUpperCase()} KEYLINE`;
+  const baseTitle = String(p.job || "").trim() || def.title || `${String(def.name || def.id).toUpperCase()} KEYLINE`;
   const fy2 = opts.dims ? artH + g1 + dimensionExtraBottom + th * 3 : artH + th * 2.5;
-  KC.addDetailsFrame(items, { th, u, title, rows, artW, fy: fy2 });
+  const detailGroups = orderedDimensionGroups.length > 1 ? orderedDimensionGroups : [null];
+  let detailY = fy2;
+  detailGroups.forEach((group) => {
+    const groupDetailsValue = group && dt.groups && dt.groups[group.id];
+    const groupDetails = groupDetailsValue && typeof groupDetailsValue === "object" && !Array.isArray(groupDetailsValue)
+      ? groupDetailsValue
+      : {};
+    const groupBounds = group && group.bounds;
+    const groupWidth = groupBounds ? groupBounds.maxX - groupBounds.minX : artW;
+    const groupHeight = groupBounds ? groupBounds.maxY - groupBounds.minY : artH;
+    const creasingValues = groupDetails.creasing !== undefined ? groupDetails.creasing : dt.creasing;
+    const creasing = (creasingValues || []).map((e) => t(ev(e, env) * k)).join("-");
+    const boardLenExpr = groupDetails.boardLength !== undefined ? groupDetails.boardLength : dt.boardLength;
+    const boardWidExpr = groupDetails.boardWidth !== undefined ? groupDetails.boardWidth : dt.boardWidth;
+    const boardLen = boardLenExpr !== undefined ? ev(boardLenExpr, env) * k : groupWidth;
+    const boardWid = boardWidExpr !== undefined ? ev(boardWidExpr, env) * k : groupHeight;
+    const rows = [
+      [["Size (OD):", `${f(L)} x ${f(W)} x ${f(H)} ${u}`], ["Plies:", `${p.ply} ply`]],
+      [["Creasing dimension:", creasing ? `${creasing} ${u}` : "-"], ["Date:", KC.fmtDate(p.date || "")]],
+      [["Board length:", `${f(boardLen)} ${u}`], ["Board width:", `${f(boardWid)} ${u}`]],
+      ...KC.profileRows(opts && opts.profile),
+    ];
+    const groupLabel = group
+      ? String(groupDetails.title || group.id).replace(/[-_]+/g, " ").replace(/\b[a-z]/g, (letter) => letter.toUpperCase())
+      : "";
+    const title = group ? `${baseTitle} - ${groupLabel}` : baseTitle;
+    KC.addDetailsFrame(items, { th, u, title, rows, artW: groupWidth, fy: detailY });
+    detailY += (rows.length + 1) * th * 2.2 + (group ? th : 0);
+  });
   return KC.finalizeModel(items, u, size, th, artH);
 }
 
