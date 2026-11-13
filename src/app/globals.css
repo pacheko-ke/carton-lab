@@ -919,6 +919,14 @@ input {
   box-shadow: 0 25px 70px rgba(0, 0, 0, 0.22);
 }
 
+.account-plan-card.is-upgrade {
+  border-color: rgba(57, 169, 237, 0.4);
+  background:
+    radial-gradient(ellipse at 100% 0, rgba(57, 169, 237, 0.12), transparent 22rem),
+    rgba(16, 34, 54, 0.96);
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.22), 0 0 35px rgba(57, 169, 237, 0.08);
+}
+
 .account-profile-card {
   display: grid;
   gap: 22px;

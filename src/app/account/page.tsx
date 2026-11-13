@@ -130,11 +130,16 @@ async function AccountContent({ searchParams }: AccountPageProps) {
           </Link>
         </section>
 
-        <section className="account-plan-card" aria-labelledby="plan-heading">
+        <section
+          className={`account-plan-card${premium ? "" : " is-upgrade"}`}
+          aria-labelledby="plan-heading"
+        >
           <div className="account-plan-heading">
             <div>
-              <span className="account-plan-kicker">CURRENT PLAN</span>
-              <h2 id="plan-heading">{premium ? "Premium" : "Free"}</h2>
+              <span className="account-plan-kicker">
+                {premium ? "CURRENT PLAN" : "PREMIUM PLAN"}
+              </span>
+              <h2 id="plan-heading">Premium</h2>
             </div>
             <span
               className={`account-plan-status${premium ? " is-premium" : ""}`}
@@ -144,21 +149,22 @@ async function AccountContent({ searchParams }: AccountPageProps) {
                 ? "Ending"
                 : premium
                   ? "Active"
-                  : "Current"}
+                  : "Upgrade available"}
             </span>
           </div>
 
           <p className="account-plan-price">
-            {complimentaryPremium ? "Granted" : premium ? "$5" : "$0"}
+            {complimentaryPremium ? "Granted" : "$5"}
             {!complimentaryPremium && <span> / month</span>}
           </p>
 
+          <ul className="account-feature-list">
+            <li>Access to every packaging keyline</li>
+            <li>PDF, SVG, and DXF exports for every keyline</li>
+          </ul>
+
           {premium ? (
             <>
-              <ul className="account-feature-list">
-                <li>Access to every packaging keyline</li>
-                <li>PDF, SVG, and DXF exports</li>
-              </ul>
               {complimentaryPremium && (
                 <p className="account-subscription-note">
                   Premium access is granted to this account; no paid
@@ -193,16 +199,15 @@ async function AccountContent({ searchParams }: AccountPageProps) {
             </>
           ) : (
             <>
-              <ul className="account-feature-list">
-                <li>RSC, Pizza, and Chicken Box keylines</li>
-                <li>PDF, SVG, and DXF exports for available keylines</li>
-                <li>Premium keylines are locked</li>
-              </ul>
+              <p className="account-subscription-note">
+                Your current plan is Free. Upgrade to unlock the complete
+                Premium library.
+              </p>
               {isPaystackBillingConfigured() && (
                 <form action={startPremiumCheckout}>
                   <input type="hidden" name="paymentMethod" value="card" />
                   <button className="button button-large" type="submit">
-                    Upgrade to Premium with Paystack <span>→</span>
+                    Get everything with Premium <span>→</span>
                   </button>
                 </form>
               )}
