@@ -22,6 +22,7 @@ document.addEventListener("keydown", (event) => {
 const FIELDS = ["boxType", "L", "W", "H", "unit", "ply", "crease", "bwadd", "glue", "slot", "dims", "prec", "color"];
 const NUMERIC = ["L", "W", "H", "crease", "bwadd", "glue", "slot"];
 const STORE_KEY = "rscKeyline.v4"; // bumped so new defaults (e.g. brown carton colour) replace old saved values
+const RSC_DEFAULTS_MM = { L: 300, W: 200, H: 150 };
 const DESIGNER_TOUR_KEY = "cartonlab.designer-tour.dismissed.v1";
 const DESIGNER_TOUR_STEPS = [
   {
@@ -163,11 +164,21 @@ function keylineInputDefault(inp, unit) {
   return String(+(inp.default * (unit === "in" ? 1 / 25.4 : 1)).toFixed(unit === "in" ? 3 : 1));
 }
 
-function applyKeylineDefaults(type) {
-  const def = KEYLINES[type];
-  if (!def) return;
+function applyKeylineDefaults(type, resetRsc = false) {
   const unit = $("unit").value;
   const precision = unit === "in" ? 3 : 1;
+  if (type === "rsc") {
+    if (resetRsc) {
+      Object.entries(RSC_DEFAULTS_MM).forEach(([field, value]) => {
+        const converted = unit === "mm" ? value : value / 25.4;
+        $(field).value = +converted.toFixed(precision);
+      });
+    }
+    return;
+  }
+
+  const def = KEYLINES[type];
+  if (!def) return;
   ["L", "W", "H"].forEach((field) => {
     const ref = def.params && def.params["ref" + field];
     const value = typeof ref === "number" ? ref : Number(ref);
@@ -1229,7 +1240,7 @@ $("boxType").addEventListener("change", () => {
   activeKeylineCategory = keylineCategoryFor($("boxType").value);
   renderKeylinePicker();
   view.auto = true;
-  applyKeylineDefaults($("boxType").value);
+  applyKeylineDefaults($("boxType").value, true);
   buildKeylineInputs();
   render(true);
 });
