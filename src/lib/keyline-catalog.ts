@@ -76,12 +76,24 @@ import seaFreight from "./keyline-definitions/seafreight.json";
 import selfLockTray from "./keyline-definitions/selflocktray.json";
 import tray from "./keyline-definitions/tray.json";
 
+type FoldingDefinition = {
+  type: string;
+  wallWidths: Array<string | number>;
+  wallHeight: string | number;
+  topFlapDepths: Array<string | number>;
+  bottomFlapDepths: Array<string | number>;
+  glueFlapWidth?: string | number;
+  slotGap?: string | number;
+  foldOrder: string[];
+};
+
 type KeylineDefinition = {
   id: string;
   name: string;
   source?: string;
   category?: string;
   title?: string;
+  folding?: FoldingDefinition;
 };
 
 const definitions: KeylineDefinition[] = [

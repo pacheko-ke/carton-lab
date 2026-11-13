@@ -101,11 +101,14 @@
   .carton3d-launch svg{width:17px;height:17px}
   .carton3d-launch:hover:not(:disabled){border-color:#0f6cbd;background:#f8fbff;color:#0f6cbd}
   .carton3d-launch:disabled{cursor:not-allowed;opacity:.5}
-  .carton3d-launch:focus-visible,.carton3d-close:focus-visible,.carton3d-control:focus-visible,.carton3d-scene:focus-visible{outline:2px solid #0f6cbd;outline-offset:2px}
+  .carton3d-launch:focus-visible,.carton3d-replay:focus-visible,.carton3d-close:focus-visible,.carton3d-control:focus-visible,.carton3d-scene:focus-visible{outline:2px solid #0f6cbd;outline-offset:2px}
   .carton3d-viewer[hidden]{display:none}
   .carton3d-viewer{position:absolute;top:12px;right:12px;z-index:20;display:grid;grid-template-rows:34px minmax(0,1fr) 54px;width:clamp(220px,25%,320px);height:clamp(205px,25%,280px);overflow:hidden;border:1px solid #cbd5e1;border-radius:12px;background:#fff;color:#1e293b;box-shadow:0 8px 26px rgba(15,23,42,.2)}
   .carton3d-header{display:flex;align-items:center;justify-content:space-between;padding:0 9px 0 12px;border-bottom:1px solid #e2e8f0;background:#f8fafc}
   .carton3d-header h2{margin:0;font-size:12px;font-weight:650}
+  .carton3d-replay{display:grid;width:25px;height:25px;place-items:center;margin-left:auto;margin-right:4px;border:0;border-radius:6px;background:transparent;color:#475569;font-size:15px;line-height:1}
+  .carton3d-replay:hover:not(:disabled){background:#e2e8f0;color:#0f172a}
+  .carton3d-replay:disabled{cursor:not-allowed;opacity:.45}
   .carton3d-close{display:grid;width:25px;height:25px;place-items:center;border:0;border-radius:6px;background:transparent;color:#475569;font-size:19px;line-height:1}
   .carton3d-close:hover{background:#e2e8f0;color:#0f172a}
   .carton3d-scene{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
@@ -121,7 +124,8 @@
     .carton3d-launch:hover:not(:disabled){border-color:#38bdf8;background:#172b3d;color:#bae6fd}
     .carton3d-viewer{border-color:#475569;background:#fff;color:#1e293b}
     .carton3d-header,.carton3d-footer{border-color:#cbd5e1;background:#f8fafc}
-    .carton3d-close{color:#475569}
+    .carton3d-replay,.carton3d-close{color:#475569}
+    .carton3d-replay:hover:not(:disabled){background:#e2e8f0;color:#0f172a}
     .carton3d-close:hover{background:#e2e8f0;color:#0f172a}
     .carton3d-dimensions,.carton3d-zoom-level{color:#475569}
     .carton3d-control{border-color:#cbd5e1;background:#fff;color:#334155}

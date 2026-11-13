@@ -10,6 +10,35 @@
     "scaleX": "(L / refL + W / refW) / 2",
     "scaleY": "(W / refW + H / refH) / 2"
   },
+  "folding": {
+    "type": "slotted-box",
+    "wallWidths": [
+      "300 * scaleX",
+      "200 * scaleX",
+      "300 * scaleX",
+      "200 * scaleX"
+    ],
+    "wallHeight": "153 * scaleY",
+    "topFlapDepths": [
+      "203 * scaleY",
+      "151.5 * scaleY",
+      "203 * scaleY",
+      "151.5 * scaleY"
+    ],
+    "bottomFlapDepths": [
+      "203 * scaleY",
+      "151.5 * scaleY",
+      "203 * scaleY",
+      "151.5 * scaleY"
+    ],
+    "glueFlapWidth": "35 * scaleX",
+    "slotGap": "1.5 * scaleX",
+    "foldOrder": [
+      "walls",
+      "bottom-flaps",
+      "top-flaps"
+    ]
+  },
   "map": {
     "x": [
       [

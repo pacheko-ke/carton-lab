@@ -32,6 +32,7 @@ Reload the extension. The new keyline appears in the **Box type** list. No code 
 | `require` | Optional checks: `{ "expr": "L > slot", "message": "..." }`. A false check shows the message instead of a drawing. |
 | `cuts` | The solid cut lines: paths, rectangles, circles, ellipses. Shapes inside the outline become holes. |
 | `creases` | The dashed fold lines. |
+| `folding` | Optional 3D assembly metadata: four wall widths, wall height, flap depths, glue flap, slots and fold order. |
 | `dimensionGroup` | Optional property on cut and crease entries. Entries with the same group get a separate dimension set. |
 | `dimensions` | Optional extra dimension lines: `{ "value": "H", "x1": 0, "y1": 0, "x2": 0, "y2": "H" }`. |
 | `renderDimensions` | Set to `true` to draw the definition's `dimensions` in addition to automatic crease dimensions. |
@@ -82,6 +83,28 @@ turn the conversion off and use numbers exactly as typed.
 
     { "x1": "0", "y1": "H", "x2": "bl", "y2": "H" }
     { "d": "M0 {H} L{bl} {H}" }                                       same thing, as path data
+
+## 3D folding
+
+The designer currently animates the built-in RSC and keylines with explicit `folding` metadata.
+For a `slotted-box`, describe four wall panels in net order, their heights, the top/bottom
+flap depths and the order in which the walls and flaps fold. Values may use the keyline's
+`L`, `W`, `H` and calculated `params`.
+
+    "folding": {
+      "type": "slotted-box",
+      "wallWidths": ["L", "W", "L", "W"],
+      "wallHeight": "H",
+      "topFlapDepths": ["W", "H", "W", "H"],
+      "bottomFlapDepths": ["W", "H", "W", "H"],
+      "glueFlapWidth": "35 * scaleX",
+      "slotGap": "1.5 * scaleX",
+      "foldOrder": ["walls", "bottom-flaps", "top-flaps"]
+    }
+
+The definition must include four positive wall widths and four positive depths for each flap
+row. Glue flap width and slot gap are optional. Keylines without folding metadata do not
+currently have a 3D fold animation.
 
 ## details
 

@@ -423,6 +423,7 @@ function showError(msg) {
   $("preview").innerHTML = "";
   const carton3DViewer = $("carton3dViewer");
   if (carton3DViewer) carton3DViewer.hidden = true;
+  cancelCarton3DFoldAnimation();
   const carton3DOpen = $("carton3dOpen");
   if (carton3DOpen) {
     carton3DOpen.hidden = false;
@@ -446,7 +447,7 @@ function showError(msg) {
    contain the whole drawing, whatever the view. */
 const view = { auto: true, s: 1, cx: 0, cy: 0 };
 const MAX_ZOOM_OVER_FIT = 120;
-const carton3DView = { yaw: -0.7, pitch: 0.55, zoom: 1, drag: null };
+const carton3DView = { yaw: -0.7, pitch: 0.55, zoom: 1, progress: 1, drag: null, animationFrame: null, keylineType: null };
 let selectedItem = null;
 let editPoints = [];
 let undoStack = [];
@@ -496,75 +497,333 @@ function adjustCarton3DZoom(factor) {
   carton3DView.zoom = Math.max(0.5, Math.min(3, carton3DView.zoom * factor));
   renderCarton3D();
 }
+function cancelCarton3DFoldAnimation() {
+  if (carton3DView.animationFrame !== null) {
+    cancelAnimationFrame(carton3DView.animationFrame);
+    carton3DView.animationFrame = null;
+  }
+}
+function animateCartonFold() {
+  cancelCarton3DFoldAnimation();
+  carton3DView.keylineType = readParams().type;
+  carton3DView.progress = 0;
+  renderCarton3D();
+  if ($("carton3dReplay").disabled) return;
+  const startedAt = performance.now();
+  const duration = 2200;
+  const step = (now) => {
+    carton3DView.progress = Math.min(1, (now - startedAt) / duration);
+    renderCarton3D();
+    if (carton3DView.progress < 1) carton3DView.animationFrame = requestAnimationFrame(step);
+    else carton3DView.animationFrame = null;
+  };
+  carton3DView.animationFrame = requestAnimationFrame(step);
+}
+function foldValue(expression, env, unitFactor, label) {
+  const value = typeof expression === "number" ? expression : evalExpr(expression, env);
+  if (!Number.isFinite(value)) throw new Error(`Invalid ${label} in fold metadata.`);
+  return value * unitFactor;
+}
+function cartonFoldConfig(params) {
+  if (params.type === "rsc") {
+    const geometry = compute(params);
+    if (geometry.error) return null;
+    return {
+      wallWidths: [geometry.L, geometry.W, geometry.L, geometry.W],
+      wallHeight: geometry.H,
+      topFlapDepths: [geometry.F, geometry.F, geometry.F, geometry.F],
+      bottomFlapDepths: [geometry.F, geometry.F, geometry.F, geometry.F],
+      glueFlapWidth: geometry.G,
+      glueTrim: Math.max(0, geometry.cut[0][1] - geometry.F),
+      slotGap: geometry.s,
+      foldOrder: ["walls", "bottom-flaps", "top-flaps"],
+    };
+  }
+
+  const definition = KEYLINES[params.type];
+  const folding = definition && definition.folding;
+  if (!folding || folding.type !== "slotted-box") return null;
+
+  const unitFactor = definition.units === "any" ? 1 : params.unit === "in" ? 1 / 25.4 : 1;
+  const env = {
+    L: params.L / unitFactor,
+    W: params.W / unitFactor,
+    H: params.H / unitFactor,
+    pi: Math.PI,
+  };
+  (definition.inputs || []).forEach((input) => {
+    const raw = params.inputs && params.inputs[input.id] !== undefined
+      ? params.inputs[input.id]
+      : input.default * unitFactor;
+    env[input.id] = raw / unitFactor;
+  });
+  Object.keys(definition.params || {}).forEach((name) => {
+    const expression = definition.params[name];
+    env[name] = typeof expression === "number" ? expression : evalExpr(expression, env);
+  });
+
+  const wallWidths = (folding.wallWidths || []).map((value, index) =>
+    foldValue(value, env, unitFactor, `wall ${index + 1} width`));
+  const topFlapDepths = (folding.topFlapDepths || []).map((value, index) =>
+    foldValue(value, env, unitFactor, `top flap ${index + 1} depth`));
+  const bottomFlapDepths = (folding.bottomFlapDepths || []).map((value, index) =>
+    foldValue(value, env, unitFactor, `bottom flap ${index + 1} depth`));
+  const wallHeight = foldValue(folding.wallHeight, env, unitFactor, "wall height");
+  const glueFlapWidth = folding.glueFlapWidth === undefined
+    ? 0
+    : foldValue(folding.glueFlapWidth, env, unitFactor, "glue flap width");
+  const slotGap = folding.slotGap === undefined
+    ? 0
+    : foldValue(folding.slotGap, env, unitFactor, "slot gap");
+  if (
+    wallWidths.length !== 4 ||
+    topFlapDepths.length !== wallWidths.length ||
+    bottomFlapDepths.length !== wallWidths.length ||
+    ![...wallWidths, wallHeight, ...topFlapDepths, ...bottomFlapDepths].every((value) => value > 0) ||
+    glueFlapWidth < 0 ||
+    slotGap < 0 ||
+    !Array.isArray(folding.foldOrder)
+  ) {
+    throw new Error(`Keyline "${params.type}" has incomplete fold metadata.`);
+  }
+  return { wallWidths, wallHeight, topFlapDepths, bottomFlapDepths, glueFlapWidth, slotGap, foldOrder: folding.foldOrder };
+}
+function cartonFoldPanels(params) {
+  const config = cartonFoldConfig(params);
+  if (!config) return null;
+  const panels = [];
+  const height = config.wallHeight;
+  const netPoint = (x, y) => [x, 0, height - y];
+  const stageWindow = (stage, stagger) => {
+    const index = config.foldOrder.indexOf(stage);
+    if (index < 0) throw new Error(`Fold order is missing the "${stage}" stage.`);
+    const start = 0.04 + index * 0.31 + stagger;
+    return { start, end: Math.min(1, start + 0.36) };
+  };
+  const addPanel = (panel) => {
+    panels.push(panel);
+    return panel;
+  };
+
+  const walls = [];
+  let x = 0;
+  config.wallWidths.forEach((width, index) => {
+    const xEnd = x + width;
+    const window = stageWindow("walls", Math.max(0, index - 1) * 0.025);
+    const wall = addPanel({
+      id: `wall-${index + 1}`,
+      kind: "wall",
+      index,
+      points: [
+        netPoint(x, 0),
+        netPoint(xEnd, 0),
+        netPoint(xEnd, height),
+        netPoint(x, height),
+      ],
+      parent: index === 0 ? null : walls[index - 1],
+      hinge: index === 0 ? null : [netPoint(x, height), netPoint(x, 0)],
+      angle: index === 0 ? 0 : Math.PI / 2,
+      start: window.start,
+      end: window.end,
+    });
+    walls.push(wall);
+
+    const inset = config.slotGap / 2;
+    const flapStart = x + (index === 0 ? 0 : inset);
+    const flapEnd = xEnd - (index === config.wallWidths.length - 1 ? 0 : inset);
+    if (flapEnd <= flapStart) throw new Error("Fold metadata leaves no room for a flap.");
+    const topWindow = stageWindow("top-flaps", 0);
+    const bottomWindow = stageWindow("bottom-flaps", 0);
+    const topDepth = config.topFlapDepths[index];
+    const bottomDepth = config.bottomFlapDepths[index];
+    addPanel({
+      id: `top-flap-${index + 1}`,
+      kind: "top-flap",
+      index,
+      points: [
+        netPoint(flapStart, 0),
+        netPoint(flapEnd, 0),
+        netPoint(flapEnd, -topDepth),
+        netPoint(flapStart, -topDepth),
+      ],
+      parent: wall,
+      hinge: [netPoint(flapStart, 0), netPoint(flapEnd, 0)],
+      angle: -Math.PI / 2,
+      start: topWindow.start,
+      end: topWindow.end,
+    });
+    addPanel({
+      id: `bottom-flap-${index + 1}`,
+      kind: "bottom-flap",
+      index,
+      points: [
+        netPoint(flapStart, height),
+        netPoint(flapEnd, height),
+        netPoint(flapEnd, height + bottomDepth),
+        netPoint(flapStart, height + bottomDepth),
+      ],
+      parent: wall,
+      hinge: [netPoint(flapStart, height), netPoint(flapEnd, height)],
+      angle: Math.PI / 2,
+      start: bottomWindow.start,
+      end: bottomWindow.end,
+    });
+    x = xEnd;
+  });
+
+  if (config.glueFlapWidth > 0) {
+    const trim = Math.min(config.glueTrim || 0, config.glueFlapWidth / 2, height / 4);
+    const glueWindow = stageWindow("walls", 0.1);
+    addPanel({
+      id: "glue-flap",
+      kind: "glue-flap",
+      index: 0,
+      points: [
+        netPoint(-config.glueFlapWidth, trim),
+        netPoint(-config.glueFlapWidth + trim, 0),
+        netPoint(0, 0),
+        netPoint(0, height),
+        netPoint(-config.glueFlapWidth + trim, height),
+        netPoint(-config.glueFlapWidth, height - trim),
+      ],
+      parent: walls[0],
+      hinge: [netPoint(0, height), netPoint(0, 0)],
+      angle: -Math.PI / 2,
+      start: glueWindow.start,
+      end: glueWindow.end,
+    });
+  }
+  return { config, panels };
+}
+function rotateAroundHinge(point, hinge, angle) {
+  const [a, b] = hinge;
+  const axis = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+  const axisLength = Math.hypot(axis[0], axis[1], axis[2]);
+  if (axisLength < 1e-8 || Math.abs(angle) < 1e-8) return point;
+  const u = axis.map((value) => value / axisLength);
+  const v = [point[0] - a[0], point[1] - a[1], point[2] - a[2]];
+  const cross = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+  const dot = u[0] * v[0] + u[1] * v[1] + u[2] * v[2];
+  const cosine = Math.cos(angle), sine = Math.sin(angle);
+  return [
+    a[0] + v[0] * cosine + cross[0] * sine + u[0] * dot * (1 - cosine),
+    a[1] + v[1] * cosine + cross[1] * sine + u[1] * dot * (1 - cosine),
+    a[2] + v[2] * cosine + cross[2] * sine + u[2] * dot * (1 - cosine),
+  ];
+}
+function transformFoldPoint(panel, point, progress) {
+  let result = point;
+  for (let currentPanel = panel; currentPanel; currentPanel = currentPanel.parent) {
+    if (!currentPanel.hinge) continue;
+    const t = Math.max(0, Math.min(1, (progress - currentPanel.start) / (currentPanel.end - currentPanel.start)));
+    const eased = t * t * (3 - 2 * t);
+    result = rotateAroundHinge(result, currentPanel.hinge, currentPanel.angle * eased);
+  }
+  return result;
+}
+function renderCarton3DMessage(message, controlsEnabled) {
+  const svg = $("carton3dScene");
+  const label = document.createElementNS(GRID_NS, "text");
+  label.setAttribute("x", "140");
+  label.setAttribute("y", "75");
+  label.setAttribute("text-anchor", "middle");
+  label.setAttribute("fill", "#64748b");
+  label.setAttribute("font-size", "11");
+  label.textContent = message;
+  svg.replaceChildren(label);
+  ["carton3dReplay", "carton3dRotateLeft", "carton3dRotateRight", "carton3dZoomOut", "carton3dZoomIn"].forEach((id) => {
+    $(id).disabled = !controlsEnabled;
+  });
+}
 function renderCarton3D() {
   const viewer = $("carton3dViewer");
   if (!viewer || viewer.hidden || !current) return;
 
   const p = readParams();
-  const length = Number(p.L), width = Number(p.W), height = Number(p.H);
-  if (![length, width, height].every((value) => Number.isFinite(value) && value > 0)) return;
+  const modelChanged = carton3DView.keylineType !== p.type;
+  carton3DView.keylineType = p.type;
+  if (modelChanged) {
+    animateCartonFold();
+    return;
+  }
 
-  const vertices = [
-    [-length / 2, -height / 2, -width / 2],
-    [ length / 2, -height / 2, -width / 2],
-    [ length / 2, -height / 2,  width / 2],
-    [-length / 2, -height / 2,  width / 2],
-    [-length / 2,  height / 2, -width / 2],
-    [ length / 2,  height / 2, -width / 2],
-    [ length / 2,  height / 2,  width / 2],
-    [-length / 2,  height / 2,  width / 2],
-  ];
+  $("carton3dDimensions").textContent = `${fmt(p.L, p.unit)} × ${fmt(p.W, p.unit)} × ${fmt(p.H, p.unit)} ${p.unit}`;
+  let scene;
+  try {
+    scene = cartonFoldPanels(p);
+  } catch (error) {
+    console.error("Could not build the 3D fold view:", error);
+    renderCarton3DMessage(`Fold data error: ${error.message}`, false);
+    return;
+  }
+  if (!scene) {
+    $("carton3dScene").setAttribute("aria-label", `Fold animation is not configured for ${p.type}.`);
+    renderCarton3DMessage("Fold animation not configured for this keyline", false);
+    return;
+  }
+  renderCarton3DMessage("", true);
+
   const cosYaw = Math.cos(carton3DView.yaw), sinYaw = Math.sin(carton3DView.yaw);
   const cosPitch = Math.cos(carton3DView.pitch), sinPitch = Math.sin(carton3DView.pitch);
-  const projected = vertices.map(([x, y, z]) => {
-    const rotatedX = x * cosYaw - z * sinYaw;
-    const rotatedZ = x * sinYaw + z * cosYaw;
+  const project = ([x, y, z]) => {
+    const rotatedX = x * cosYaw - y * sinYaw;
+    const rotatedY = x * sinYaw + y * cosYaw;
     return {
       x: rotatedX,
-      y: -(y * cosPitch - rotatedZ * sinPitch),
-      depth: y * sinPitch + rotatedZ * cosPitch,
+      y: -(z * cosPitch + rotatedY * sinPitch),
+      depth: -rotatedY * cosPitch + z * sinPitch,
     };
-  });
-  const minX = Math.min(...projected.map((point) => point.x));
-  const maxX = Math.max(...projected.map((point) => point.x));
-  const minY = Math.min(...projected.map((point) => point.y));
-  const maxY = Math.max(...projected.map((point) => point.y));
-  const boundsWidth = Math.max(maxX - minX, 1);
-  const boundsHeight = Math.max(maxY - minY, 1);
-  const scale = Math.min(230 / boundsWidth, 112 / boundsHeight) * carton3DView.zoom;
-  const points = projected.map((point) => ({
-    x: 140 + (point.x - (minX + maxX) / 2) * scale,
-    y: 75 + (point.y - (minY + maxY) / 2) * scale,
-    depth: point.depth,
-  }));
+  };
+  const flatPoints = scene.panels.flatMap((panel) => panel.points.map(project));
+  const fitScale = (points) => {
+    const minX = Math.min(...points.map((point) => point.x));
+    const maxX = Math.max(...points.map((point) => point.x));
+    const minY = Math.min(...points.map((point) => point.y));
+    const maxY = Math.max(...points.map((point) => point.y));
+    return Math.min(230 / Math.max(maxX - minX, 1), 112 / Math.max(maxY - minY, 1));
+  };
+  const flatScale = fitScale(flatPoints);
+  const faces = scene.panels.map((panel) => {
+    const projected = panel.points.map((point) => project(transformFoldPoint(panel, point, carton3DView.progress)));
+    return {
+      panel,
+      points: projected,
+      depth: projected.reduce((sum, point) => sum + point.depth, 0) / projected.length,
+    };
+  }).sort((a, b) => a.depth - b.depth);
+  const finalPoints = scene.panels.flatMap((panel) =>
+    panel.points.map((point) => project(transformFoldPoint(panel, point, 1))));
+  const currentPoints = faces.flatMap((face) => face.points);
+  const targetScale = flatScale + (fitScale(finalPoints) - flatScale) *
+    carton3DView.progress * carton3DView.progress * (3 - 2 * carton3DView.progress);
+  const scale = Math.min(fitScale(currentPoints), targetScale) * carton3DView.zoom;
   const palette = p.color === "white"
-    ? { top: "#f8fafc", front: "#e2e8f0", right: "#cbd5e1", back: "#dbe4ec", left: "#d1d9e0", bottom: "#94a3b8", edge: "#64748b" }
-    : { top: "#f2d5b0", front: "#d5ad81", right: "#bc8e5e", back: "#c29769", left: "#c59462", bottom: "#9f754c", edge: "#705139" };
-  const faces = [
-    { points: [4, 5, 6, 7], color: palette.top },
-    { points: [3, 2, 6, 7], color: palette.front },
-    { points: [1, 2, 6, 5], color: palette.right },
-    { points: [0, 1, 5, 4], color: palette.back },
-    { points: [0, 3, 7, 4], color: palette.left },
-    { points: [0, 1, 2, 3], color: palette.bottom },
-  ].map((face) => ({
-    ...face,
-    depth: face.points.reduce((sum, index) => sum + points[index].depth, 0) / face.points.length,
-  })).sort((a, b) => a.depth - b.depth);
-
+    ? { walls: ["#e2e8f0", "#cbd5e1", "#f1f5f9", "#dbe4ec"], top: "#f8fafc", bottom: "#cbd5e1", glue: "#dbe4ec", edge: "#64748b" }
+    : { walls: ["#d5ad81", "#bc8e5e", "#d5ad81", "#bc8e5e"], top: "#f2d5b0", bottom: "#c29769", glue: "#c59462", edge: "#705139" };
+  const minX = Math.min(...currentPoints.map((point) => point.x));
+  const maxX = Math.max(...currentPoints.map((point) => point.x));
+  const minY = Math.min(...currentPoints.map((point) => point.y));
+  const maxY = Math.max(...currentPoints.map((point) => point.y));
+  const centerX = (minX + maxX) / 2, centerY = (minY + maxY) / 2;
   const svg = $("carton3dScene");
-  const polygon = (face) => {
+  const polygons = faces.map((face) => {
     const element = document.createElementNS(GRID_NS, "polygon");
-    element.setAttribute("points", face.points.map((index) => `${points[index].x},${points[index].y}`).join(" "));
-    element.setAttribute("fill", face.color);
+    element.setAttribute("data-fold-panel", face.panel.id);
+    element.setAttribute("points", face.points.map((point) =>
+      `${140 + (point.x - centerX) * scale},${75 + (point.y - centerY) * scale}`).join(" "));
+    const color = face.panel.kind === "wall"
+      ? palette.walls[face.panel.index % palette.walls.length]
+      : face.panel.kind === "top-flap" ? palette.top
+        : face.panel.kind === "bottom-flap" ? palette.bottom
+          : palette.glue;
+    element.setAttribute("fill", color);
     element.setAttribute("stroke", palette.edge);
-    element.setAttribute("stroke-width", "1.25");
+    element.setAttribute("stroke-width", "1.1");
     element.setAttribute("stroke-linejoin", "round");
     return element;
-  };
-  svg.replaceChildren(...faces.map(polygon));
-  svg.setAttribute("aria-label", `Interactive 3D carton, ${fmt(length, p.unit)} by ${fmt(width, p.unit)} by ${fmt(height, p.unit)} ${p.unit}. Drag to rotate; use the mouse wheel or controls to zoom.`);
-  $("carton3dDimensions").textContent = `${fmt(length, p.unit)} × ${fmt(width, p.unit)} × ${fmt(height, p.unit)} ${p.unit}`;
+  });
+  svg.setAttribute("aria-label", `Animated ${p.type} carton, ${fmt(p.L, p.unit)} by ${fmt(p.W, p.unit)} by ${fmt(p.H, p.unit)} ${p.unit}. Drag to rotate; use the mouse wheel or controls to zoom.`);
+  svg.replaceChildren(...polygons);
   $("carton3dZoomLevel").textContent = `${Math.round(carton3DView.zoom * 100)}%`;
 }
 function setPreview(markup) {
@@ -1416,15 +1675,17 @@ function initializeCarton3D() {
     viewer.hidden = false;
     open.hidden = true;
     open.setAttribute("aria-expanded", "true");
-    renderCarton3D();
+    animateCartonFold();
     scene.focus();
   });
   close.addEventListener("click", () => {
+    cancelCarton3DFoldAnimation();
     viewer.hidden = true;
     open.hidden = false;
     open.setAttribute("aria-expanded", "false");
     open.focus();
   });
+  $("carton3dReplay").addEventListener("click", animateCartonFold);
   viewer.addEventListener("keydown", (event) => {
     if (event.key === "Escape") close.click();
   });
