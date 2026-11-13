@@ -84,7 +84,6 @@ type FoldingDefinition = {
   bottomFlapDepths: Array<string | number>;
   glueFlapWidth?: string | number;
   slotGap?: string | number;
-  foldOrder: string[];
 };
 
 type KeylineDefinition = {

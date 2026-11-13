@@ -536,7 +536,6 @@ function cartonFoldConfig(params) {
       glueFlapWidth: geometry.G,
       glueTrim: Math.max(0, geometry.cut[0][1] - geometry.F),
       slotGap: geometry.s,
-      foldOrder: ["walls", "bottom-flaps", "top-flaps"],
     };
   }
 
@@ -581,24 +580,25 @@ function cartonFoldConfig(params) {
     bottomFlapDepths.length !== wallWidths.length ||
     ![...wallWidths, wallHeight, ...topFlapDepths, ...bottomFlapDepths].every((value) => value > 0) ||
     glueFlapWidth < 0 ||
-    slotGap < 0 ||
-    !Array.isArray(folding.foldOrder)
+    slotGap < 0
   ) {
     throw new Error(`Keyline "${params.type}" has incomplete fold metadata.`);
   }
-  return { wallWidths, wallHeight, topFlapDepths, bottomFlapDepths, glueFlapWidth, slotGap, foldOrder: folding.foldOrder };
+  return { wallWidths, wallHeight, topFlapDepths, bottomFlapDepths, glueFlapWidth, slotGap };
 }
 function cartonFoldPanels(params) {
   const config = cartonFoldConfig(params);
   if (!config) return null;
   const panels = [];
+  const flapPanels = [];
   const height = config.wallHeight;
   const netPoint = (x, y) => [x, 0, height - y];
-  const stageWindow = (stage, stagger) => {
-    const index = config.foldOrder.indexOf(stage);
-    if (index < 0) throw new Error(`Fold order is missing the "${stage}" stage.`);
-    const start = 0.04 + index * 0.31 + stagger;
-    return { start, end: Math.min(1, start + 0.36) };
+  const assignFoldWindows = (sequence, start, end) => {
+    const step = (end - start) / sequence.length;
+    sequence.forEach((panel, index) => {
+      panel.start = start + step * index;
+      panel.end = start + step * (index + 1);
+    });
   };
   const addPanel = (panel) => {
     panels.push(panel);
@@ -609,11 +609,11 @@ function cartonFoldPanels(params) {
   let x = 0;
   config.wallWidths.forEach((width, index) => {
     const xEnd = x + width;
-    const window = stageWindow("walls", Math.max(0, index - 1) * 0.025);
     const wall = addPanel({
       id: `wall-${index + 1}`,
       kind: "wall",
       index,
+      creasePosition: x,
       points: [
         netPoint(x, 0),
         netPoint(xEnd, 0),
@@ -623,8 +623,8 @@ function cartonFoldPanels(params) {
       parent: index === 0 ? null : walls[index - 1],
       hinge: index === 0 ? null : [netPoint(x, height), netPoint(x, 0)],
       angle: index === 0 ? 0 : Math.PI / 2,
-      start: window.start,
-      end: window.end,
+      start: 0,
+      end: 1,
     });
     walls.push(wall);
 
@@ -632,14 +632,14 @@ function cartonFoldPanels(params) {
     const flapStart = x + (index === 0 ? 0 : inset);
     const flapEnd = xEnd - (index === config.wallWidths.length - 1 ? 0 : inset);
     if (flapEnd <= flapStart) throw new Error("Fold metadata leaves no room for a flap.");
-    const topWindow = stageWindow("top-flaps", 0);
-    const bottomWindow = stageWindow("bottom-flaps", 0);
     const topDepth = config.topFlapDepths[index];
     const bottomDepth = config.bottomFlapDepths[index];
-    addPanel({
+    flapPanels.push(addPanel({
       id: `top-flap-${index + 1}`,
       kind: "top-flap",
       index,
+      creasePosition: (flapStart + flapEnd) / 2,
+      foldDepth: topDepth,
       points: [
         netPoint(flapStart, 0),
         netPoint(flapEnd, 0),
@@ -649,13 +649,15 @@ function cartonFoldPanels(params) {
       parent: wall,
       hinge: [netPoint(flapStart, 0), netPoint(flapEnd, 0)],
       angle: -Math.PI / 2,
-      start: topWindow.start,
-      end: topWindow.end,
-    });
-    addPanel({
+      start: 0,
+      end: 1,
+    }));
+    flapPanels.push(addPanel({
       id: `bottom-flap-${index + 1}`,
       kind: "bottom-flap",
       index,
+      creasePosition: (flapStart + flapEnd) / 2,
+      foldDepth: bottomDepth,
       points: [
         netPoint(flapStart, height),
         netPoint(flapEnd, height),
@@ -665,19 +667,20 @@ function cartonFoldPanels(params) {
       parent: wall,
       hinge: [netPoint(flapStart, height), netPoint(flapEnd, height)],
       angle: Math.PI / 2,
-      start: bottomWindow.start,
-      end: bottomWindow.end,
-    });
+      start: 0,
+      end: 1,
+    }));
     x = xEnd;
   });
 
+  let glueFlap = null;
   if (config.glueFlapWidth > 0) {
     const trim = Math.min(config.glueTrim || 0, config.glueFlapWidth / 2, height / 4);
-    const glueWindow = stageWindow("walls", 0.1);
-    addPanel({
+    glueFlap = addPanel({
       id: "glue-flap",
       kind: "glue-flap",
       index: 0,
+      creasePosition: 0,
       points: [
         netPoint(-config.glueFlapWidth, trim),
         netPoint(-config.glueFlapWidth + trim, 0),
@@ -689,10 +692,26 @@ function cartonFoldPanels(params) {
       parent: walls[0],
       hinge: [netPoint(0, height), netPoint(0, 0)],
       angle: -Math.PI / 2,
-      start: glueWindow.start,
-      end: glueWindow.end,
+      start: 0,
+      end: 1,
     });
   }
+
+  const netCenter = x / 2;
+  const creaseOrder = (a, b) =>
+    Math.abs(a.creasePosition - netCenter) - Math.abs(b.creasePosition - netCenter) ||
+    a.creasePosition - b.creasePosition;
+  const wallFolds = walls.filter((wall) => wall.hinge);
+  if (glueFlap) wallFolds.push(glueFlap);
+  wallFolds.sort(creaseOrder);
+  assignFoldWindows(wallFolds, 0.04, 0.35);
+
+  flapPanels.sort((a, b) =>
+    a.foldDepth - b.foldDepth ||
+    creaseOrder(a, b) ||
+    a.index - b.index ||
+    (a.kind === b.kind ? 0 : a.kind === "top-flap" ? -1 : 1));
+  assignFoldWindows(flapPanels, 0.35, 0.99);
   return { config, panels };
 }
 function rotateAroundHinge(point, hinge, angle) {

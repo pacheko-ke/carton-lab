@@ -87,9 +87,8 @@ turn the conversion off and use numbers exactly as typed.
 ## 3D folding
 
 The designer currently animates the built-in RSC and keylines with explicit `folding` metadata.
-For a `slotted-box`, describe four wall panels in net order, their heights, the top/bottom
-flap depths and the order in which the walls and flaps fold. Values may use the keyline's
-`L`, `W`, `H` and calculated `params`.
+For a `slotted-box`, describe four wall panels in net order, their heights, and the top/bottom
+flap depths. Values may use the keyline's `L`, `W`, `H` and calculated `params`.
 
     "folding": {
       "type": "slotted-box",
@@ -98,13 +97,14 @@ flap depths and the order in which the walls and flaps fold. Values may use the 
       "topFlapDepths": ["W", "H", "W", "H"],
       "bottomFlapDepths": ["W", "H", "W", "H"],
       "glueFlapWidth": "35 * scaleX",
-      "slotGap": "1.5 * scaleX",
-      "foldOrder": ["walls", "bottom-flaps", "top-flaps"]
+      "slotGap": "1.5 * scaleX"
     }
 
 The definition must include four positive wall widths and four positive depths for each flap
-row. Glue flap width and slot gap are optional. Keylines without folding metadata do not
-currently have a 3D fold animation.
+row. Glue flap width and slot gap are optional. The animation uses crease lines as hinges,
+folds inward wall creases outward, then folds flap depths from shortest to longest. Flaps of
+equal depth fold from the crease nearest the center of the net outward. Keylines without
+folding metadata do not currently have a 3D fold animation.
 
 ## details
 

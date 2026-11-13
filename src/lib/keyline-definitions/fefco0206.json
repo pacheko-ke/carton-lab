@@ -32,12 +32,7 @@
       "151.5 * scaleY"
     ],
     "glueFlapWidth": "35 * scaleX",
-    "slotGap": "1.5 * scaleX",
-    "foldOrder": [
-      "walls",
-      "bottom-flaps",
-      "top-flaps"
-    ]
+    "slotGap": "1.5 * scaleX"
   },
   "map": {
     "x": [
