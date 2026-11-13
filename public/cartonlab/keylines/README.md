@@ -104,7 +104,8 @@ The definition must include four positive wall widths and four positive depths f
 row. Glue flap width and slot gap are optional. The animation uses crease lines as hinges,
 folds inward wall creases outward, then folds flap depths from shortest to longest. Flaps of
 equal depth fold from the crease nearest the center of the net outward. Keylines without
-folding metadata do not currently have a 3D fold animation.
+folding metadata do not currently have a 3D fold animation. In the zero-thickness viewer,
+longer flaps receive a small outward offset so they render as the outer layer.
 
 ## details
 

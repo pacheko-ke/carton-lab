@@ -802,14 +802,43 @@ function renderCarton3D() {
     return Math.min(230 / Math.max(maxX - minX, 1), 112 / Math.max(maxY - minY, 1));
   };
   const flatScale = fitScale(flatPoints);
+  const flapDepths = scene.panels
+    .filter((panel) => Number.isFinite(panel.foldDepth))
+    .map((panel) => panel.foldDepth);
+  const shortestFlap = Math.min(...flapDepths);
+  const flapDepthRange = Math.max(...flapDepths) - shortestFlap;
   const faces = scene.panels.map((panel) => {
-    const projected = panel.points.map((point) => project(transformFoldPoint(panel, point, carton3DView.progress)));
+    const foldT = Math.max(0, Math.min(1,
+      (carton3DView.progress - panel.start) / (panel.end - panel.start)));
+    const foldEase = foldT * foldT * (3 - 2 * foldT);
+    const flapLayerOffset = Number.isFinite(panel.foldDepth) && flapDepthRange > 0
+      ? ((panel.foldDepth - shortestFlap) / flapDepthRange) * 3 * foldEase
+      : 0;
+    const outwardDirection = panel.kind === "top-flap" ? 1 : panel.kind === "bottom-flap" ? -1 : 0;
+    const projected = panel.points.map((point) => {
+      const foldedPoint = [...transformFoldPoint(panel, point, carton3DView.progress)];
+      foldedPoint[2] += flapLayerOffset * outwardDirection;
+      return project(foldedPoint);
+    });
     return {
       panel,
       points: projected,
       depth: projected.reduce((sum, point) => sum + point.depth, 0) / projected.length,
     };
   }).sort((a, b) => a.depth - b.depth);
+  let orderedFaces = faces;
+  if (carton3DView.progress >= 1) {
+    const outerFlapKind = carton3DView.pitch >= 0 ? "top-flap" : "bottom-flap";
+    const outerFlaps = faces
+      .filter((face) => face.panel.kind === outerFlapKind)
+      .sort((a, b) => a.panel.foldDepth - b.panel.foldDepth || a.depth - b.depth);
+    if (outerFlaps.length) {
+      orderedFaces = [
+        ...faces.filter((face) => face.panel.kind !== outerFlapKind),
+        ...outerFlaps,
+      ];
+    }
+  }
   const finalPoints = scene.panels.flatMap((panel) =>
     panel.points.map((point) => project(transformFoldPoint(panel, point, 1))));
   const currentPoints = faces.flatMap((face) => face.points);
@@ -825,7 +854,7 @@ function renderCarton3D() {
   const maxY = Math.max(...currentPoints.map((point) => point.y));
   const centerX = (minX + maxX) / 2, centerY = (minY + maxY) / 2;
   const svg = $("carton3dScene");
-  const polygons = faces.map((face) => {
+  const polygons = orderedFaces.map((face) => {
     const element = document.createElementNS(GRID_NS, "polygon");
     element.setAttribute("data-fold-panel", face.panel.id);
     element.setAttribute("points", face.points.map((point) =>
