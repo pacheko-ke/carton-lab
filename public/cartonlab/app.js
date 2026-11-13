@@ -8,6 +8,33 @@ const PLY_DEFAULTS_MM = { 3: { crease: 2, bwadd: 4 }, 5: { crease: 3, bwadd: 6 }
 
 let lastUnit = "mm";
 let current = null; // { model }
+let creatorProfile = { createdBy: "", companyName: "", address: "" };
+let resolveProfile;
+const profileReady = window.parent === window
+  ? Promise.resolve()
+  : new Promise((resolve) => { resolveProfile = resolve; });
+window.addEventListener("message", (event) => {
+  if (
+    window.parent === window ||
+    event.origin !== window.location.origin ||
+    event.source !== window.parent ||
+    !event.data ||
+    event.data.type !== "cartonlab:profile" ||
+    !event.data.profile ||
+    typeof event.data.profile.createdBy !== "string" ||
+    typeof event.data.profile.companyName !== "string" ||
+    typeof event.data.profile.address !== "string"
+  ) {
+    return;
+  }
+
+  creatorProfile = {
+    createdBy: event.data.profile.createdBy.slice(0, 100),
+    companyName: event.data.profile.companyName.slice(0, 100),
+    address: event.data.profile.address.slice(0, 120),
+  };
+  resolveProfile();
+});
 // Values of the keyline-specific inputs (such as "Notch size"), as typed, in the unit in use:
 // { keylineId: { inputId: "text" } }
 let kvals = {};
@@ -940,11 +967,21 @@ function render(animate) {
     if (p.type === "rsc") {
       const g = compute(p);
       if (g.error) return showError(g.error);
-      model = buildModel(g, { dims: p.dims, prec: p.prec, color: p.color });
+      model = buildModel(g, {
+        dims: p.dims,
+        prec: p.prec,
+        color: p.color,
+        profile: creatorProfile,
+      });
     } else {
       const def = KEYLINES[p.type];
       if (!def) return showError("This keyline is not available.");
-      model = buildKeylineModel(def, p, { dims: p.dims, prec: p.prec, color: p.color });
+      model = buildKeylineModel(def, p, {
+        dims: p.dims,
+        prec: p.prec,
+        color: p.color,
+        profile: creatorProfile,
+      });
     }
   } catch (e) {
     return showError(e.message);
@@ -1153,6 +1190,8 @@ async function init() {
       );
     });
   }
+
+  await profileReady;
 
   Object.keys(KEYLINES).forEach((id) => {
     const opt = document.createElement("option");

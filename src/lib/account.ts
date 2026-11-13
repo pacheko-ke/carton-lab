@@ -13,6 +13,8 @@ export async function requireVerifiedUser() {
     select: {
       id: true,
       name: true,
+      companyName: true,
+      address: true,
       email: true,
       emailVerified: true,
       premiumAccessGranted: true,

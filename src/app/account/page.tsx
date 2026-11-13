@@ -12,9 +12,13 @@ import {
 } from "@/lib/billing";
 import { isDarajaAvailableForUser } from "@/lib/daraja";
 import BrandIcon from "../brand-icon";
+import { updateAccountProfile } from "../auth-actions";
 
 type AccountPageProps = {
-  searchParams: Promise<{ billing?: string | string[] }>;
+  searchParams: Promise<{
+    billing?: string | string[];
+    profile?: string | string[];
+  }>;
 };
 
 const billingMessages: Record<string, string> = {
@@ -72,6 +76,9 @@ async function AccountContent({ searchParams }: AccountPageProps) {
   const message = Array.isArray(params.billing)
     ? undefined
     : billingMessages[params.billing ?? ""];
+  const profileUpdated =
+    params.profile === "updated" ||
+    (Array.isArray(params.profile) && params.profile.includes("updated"));
 
   return (
     <main className="account-page">
@@ -103,6 +110,61 @@ async function AccountContent({ searchParams }: AccountPageProps) {
             {message}
           </p>
         )}
+        {profileUpdated && (
+          <p className="account-notice" role="status">
+            Your account details have been updated.
+          </p>
+        )}
+
+        <section
+          className="account-profile-card"
+          aria-labelledby="profile-heading"
+        >
+          <div>
+            <span className="account-plan-kicker">PROFILE DETAILS</span>
+            <h2 id="profile-heading">Your details</h2>
+            <p>These details are included in your keyline drawing.</p>
+          </div>
+          <form action={updateAccountProfile}>
+            <label className="account-profile-field" htmlFor="profile-name">
+              Name
+              <input
+                id="profile-name"
+                name="name"
+                type="text"
+                autoComplete="name"
+                maxLength={100}
+                defaultValue={user.name ?? ""}
+                required
+              />
+            </label>
+            <label className="account-profile-field" htmlFor="profile-company">
+              Company name
+              <input
+                id="profile-company"
+                name="companyName"
+                type="text"
+                autoComplete="organization"
+                maxLength={100}
+                defaultValue={user.companyName ?? ""}
+              />
+            </label>
+            <label className="account-profile-field" htmlFor="profile-address">
+              Address
+              <textarea
+                id="profile-address"
+                name="address"
+                autoComplete="street-address"
+                maxLength={120}
+                rows={3}
+                defaultValue={user.address ?? ""}
+              />
+            </label>
+            <button className="button button-large" type="submit">
+              Save details
+            </button>
+          </form>
+        </section>
 
         <section className="account-plan-card" aria-labelledby="plan-heading">
           <div className="account-plan-heading">

@@ -4,7 +4,15 @@ import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { signOutOfCartonLab } from "../auth-actions";
 
-export default function AppFrame() {
+type AppFrameProps = {
+  profile: {
+    createdBy: string;
+    companyName: string;
+    address: string;
+  };
+};
+
+export default function AppFrame({ profile }: AppFrameProps) {
   const router = useRouter();
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const signOutFormRef = useRef<HTMLFormElement>(null);
@@ -47,6 +55,12 @@ export default function AppFrame() {
         className="h-full w-full border-0"
         src="/cartonlab/app.html"
         title="CartonLab Lightweight 2.0"
+        onLoad={(event) =>
+          event.currentTarget.contentWindow?.postMessage(
+            { type: "cartonlab:profile", profile },
+            window.location.origin,
+          )
+        }
       />
     </>
   );

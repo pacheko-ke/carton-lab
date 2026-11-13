@@ -1,7 +1,10 @@
 "use server";
 
-import { signIn, signOut } from "@/auth";
+import { auth, signIn, signOut } from "@/auth";
 import { isGoogleAuthConfigured } from "@/auth-config";
+import { prisma } from "@/lib/prisma";
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 export async function signInWithGoogle() {
   if (!isGoogleAuthConfigured()) {
@@ -12,4 +15,42 @@ export async function signInWithGoogle() {
 
 export async function signOutOfCartonLab() {
   await signOut({ redirectTo: "/" });
+}
+
+export async function updateAccountProfile(formData: FormData) {
+  const session = await auth();
+  if (!session?.user.id || !session.user.isEmailVerified) {
+    redirect("/login");
+  }
+
+  const readField = (name: string, maxLength: number) => {
+    const value = formData.get(name);
+    if (typeof value !== "string") {
+      throw new Error(`Missing ${name} value.`);
+    }
+
+    const trimmed = value.trim().replace(/\s+/g, " ");
+    if (trimmed.length > maxLength) {
+      throw new Error(`${name} must be ${maxLength} characters or fewer.`);
+    }
+    return trimmed;
+  };
+
+  const name = readField("name", 100);
+  if (!name) {
+    throw new Error("Name is required.");
+  }
+
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: {
+      name,
+      companyName: readField("companyName", 100) || null,
+      address: readField("address", 120) || null,
+    },
+  });
+
+  revalidatePath("/account");
+  revalidatePath("/app");
+  redirect("/account?profile=updated");
 }

@@ -37,6 +37,15 @@ function fmtDate(iso) {
   return m ? `${m[3]}-${MONTHS[+m[2] - 1]}-${m[1]}` : "";
 }
 
+function profileRows(profile) {
+  if (!profile) return [];
+
+  return [
+    [["Created By:", profile.createdBy || "-"], ["Company:", profile.companyName || "-"]],
+    [["Address:", ""], ["", profile.address || "-"]],
+  ];
+}
+
 const r4 = (v) => +v.toFixed(4);
 
 /* ---------- Geometry ----------
@@ -189,6 +198,7 @@ function buildModel(g, opts) {
     [["Size (OD):", `${f(g.L0)} x ${f(g.W0)} x ${f(g.H0)} ${u}`], ["Plies:", `${g.ply} ply`]],
     [["Creasing dimension:", `${t(g.creaseFlap)}-${t(g.H)}-${t(g.creaseFlap)} ${u}`], ["Date:", fmtDate(g.date)]],
     [["Board length:", `${f(g.boardLen)} ${u}`], ["Board width:", `${f(g.boardWid)} ${u}`]],
+    ...profileRows(opts && opts.profile),
   ];
   const fy = (opts && opts.dims) ? g.Ht + g1 + th * 3 : g.Ht + th * 2.5;
   addDetailsFrame(items, { th, u, title: g.job || "RSC BOX KEYLINE", rows, artW: g.total, fy });
@@ -196,7 +206,7 @@ function buildModel(g, opts) {
 }
 
 /* Details frame (title block) shared by every keyline type.
-   c = { th, u, title, rows: [[[label,value],[label,value]], x3], artW, fy } */
+   c = { th, u, title, rows: [[[label,value],[label,value]], ...], artW, fy } */
 function addDetailsFrame(items, c) {
   const { th, u, title, rows, artW, fy } = c;
   const line = (layer, x1, y1, x2, y2) => items.push({ t: "line", layer, x1, y1, x2, y2 });
@@ -210,9 +220,13 @@ function addDetailsFrame(items, c) {
   const colW = Math.max(artW / 2, need[0], need[1], titleNeed / 2);
   const frameW = colW * 2;
 
-  items.push({ t: "poly", layer: "INFO", closed: true, pts: [[0, fy], [frameW, fy], [frameW, fy + 4 * rh], [0, fy + 4 * rh]] });
-  [1, 2, 3].forEach((i) => line("INFO", 0, fy + i * rh, frameW, fy + i * rh));
-  line("INFO", colW, fy + rh, colW, fy + 4 * rh);
+  const rowCount = rows.length;
+  const bottom = fy + (rowCount + 1) * rh;
+  items.push({ t: "poly", layer: "INFO", closed: true, pts: [[0, fy], [frameW, fy], [frameW, bottom], [0, bottom]] });
+  Array.from({ length: rowCount }, (_, i) => i + 1).forEach((i) =>
+    line("INFO", 0, fy + i * rh, frameW, fy + i * rh),
+  );
+  line("INFO", colW, fy + rh, colW, bottom);
 
   text("INFO", pad, fy + rh * 0.68, title, { bold: true, size: th * 1.15 });
   text("INFO", frameW - pad, fy + rh * 0.68, "Units: " + u, { anchor: "end" });
@@ -523,5 +537,5 @@ function toPDF(m) {
 }
 
 if (typeof module !== "undefined") {
-  module.exports = { compute, buildModel, addDetailsFrame, finalizeModel, flattenSegs, toSVG, toAnimatedSVG, toDXF, toPDF, fmt, fmtDate, tw };
+  module.exports = { compute, buildModel, addDetailsFrame, finalizeModel, flattenSegs, toSVG, toAnimatedSVG, toDXF, toPDF, fmt, fmtDate, profileRows, tw };
 }

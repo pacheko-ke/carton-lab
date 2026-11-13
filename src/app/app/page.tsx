@@ -17,11 +17,17 @@ export default function CartonLabApp() {
 }
 
 async function AuthenticatedCartonLabApp() {
-  await requireVerifiedUser();
+  const user = await requireVerifiedUser();
 
   return (
     <main className="app-shell">
-      <AppFrame />
+      <AppFrame
+        profile={{
+          createdBy: user.name ?? "",
+          companyName: user.companyName ?? "",
+          address: user.address ?? "",
+        }}
+      />
     </main>
   );
 }
