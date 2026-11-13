@@ -70,9 +70,7 @@ export async function startPremiumCheckout(formData: FormData) {
       plan.amount !== PREMIUM_PRICE * 100 ||
       plan.interval !== "monthly"
     ) {
-      throw new Error(
-        "The configured Paystack plan must be active and charge $5 USD monthly.",
-      );
+      redirect("/account?billing=plan-mismatch");
     }
     amount = PREMIUM_PRICE;
     currency = PREMIUM_CURRENCY;

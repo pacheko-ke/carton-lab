@@ -31,6 +31,8 @@ const billingMessages: Record<string, string> = {
     "Your subscription was cancelled. Premium access remains until the paid period ends.",
   "not-active": "No active Premium subscription was found.",
   "already-premium": "Your Premium subscription is already active.",
+  "plan-mismatch":
+    "Paystack's selected plan must match $5 USD per month. Check that PAYSTACK_PLAN_CODE points to a USD 5 monthly plan in the same Live Paystack account as your API key.",
 };
 
 export default function AccountPage(props: AccountPageProps) {
