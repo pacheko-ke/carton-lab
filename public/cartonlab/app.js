@@ -262,6 +262,7 @@ function renderKeylinePicker() {
   if (!groups.has(activeKeylineCategory)) activeKeylineCategory = keylineCategoryFor(selectedType);
   if (!groups.has(activeKeylineCategory)) activeKeylineCategory = "RSC";
   choices.classList.toggle("keyline-choices-flower", activeKeylineCategory === "Flower");
+  choices.classList.toggle("keyline-choices-slotted", activeKeylineCategory === "Slotted Boxes");
 
   tabs.replaceChildren();
   const tabButtons = [];

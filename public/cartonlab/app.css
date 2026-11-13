@@ -51,6 +51,8 @@
 }
   @media (max-width: 767px){
     .keyline-choices{grid-template-columns:1fr}
+    .keyline-choices-slotted{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .keyline-choices-slotted .keyline-choice{border-radius:.6rem}
     #preview{height:min(76vh,640px);height:min(76svh,640px);min-height:360px}
   }
   @media print{
