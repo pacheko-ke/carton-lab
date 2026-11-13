@@ -120,13 +120,6 @@ export async function POST(request: Request) {
     );
   }
 
-  if (String(callback.ResultCode) !== "0") {
-    await prisma.billingCheckout.deleteMany({
-      where: { txRef: checkout.txRef },
-    });
-    return NextResponse.json({ received: true, successful: false });
-  }
-
   const query = await queryStkPush({
     checkoutRequestId: callback.CheckoutRequestID,
   });
@@ -140,13 +133,36 @@ export async function POST(request: Request) {
       { status: 503 },
     );
   }
-  if (query.ResultCode === undefined) {
+  if (
+    query.ResultCode === undefined ||
+    String(query.ResultCode) !== String(callback.ResultCode)
+  ) {
     return NextResponse.json(
-      { error: "Daraja has not returned the final M-Pesa result yet." },
+      { error: "Daraja has not confirmed the final M-Pesa result yet." },
       { status: 503 },
     );
   }
   if (String(query.ResultCode) !== "0") {
+    const providerTransactionId = `daraja-failed-${checkout.txRef}`;
+    await prisma.billingPayment.upsert({
+      where: { providerTransactionId },
+      create: {
+        userId: checkout.user.id,
+        provider: "daraja",
+        providerTransactionId,
+        reference: checkout.txRef,
+        paymentMethod: "mpesa",
+        status: "failed",
+        amount: checkout.amount,
+        currency: checkout.currency,
+      },
+      update: {
+        status: "failed",
+        amount: checkout.amount,
+        currency: checkout.currency,
+        paidAt: null,
+      },
+    });
     await prisma.billingCheckout.deleteMany({
       where: { txRef: checkout.txRef },
     });
@@ -185,12 +201,38 @@ export async function POST(request: Request) {
   const existing = await prisma.subscription.findUnique({
     where: { providerSubscriptionId: providerTransactionId },
   });
-  if (existing && existing.userId !== checkout.user.id) {
+  const existingPayment = await prisma.billingPayment.findUnique({
+    where: { providerTransactionId },
+  });
+  if (
+    (existing && existing.userId !== checkout.user.id) ||
+    (existingPayment && existingPayment.userId !== checkout.user.id)
+  ) {
     return NextResponse.json(
       { error: "The M-Pesa receipt is already linked to another account." },
       { status: 409 },
     );
   }
+  await prisma.billingPayment.upsert({
+    where: { providerTransactionId },
+    create: {
+      userId: checkout.user.id,
+      provider: "daraja",
+      providerTransactionId,
+      reference: checkout.txRef,
+      paymentMethod: "mpesa",
+      status: "success",
+      amount: checkout.amount,
+      currency: checkout.currency,
+      paidAt,
+    },
+    update: {
+      status: "success",
+      amount: checkout.amount,
+      currency: checkout.currency,
+      paidAt,
+    },
+  });
   if (existing?.providerEventCreatedAt && existing.providerEventCreatedAt >= paidAt) {
     await prisma.billingCheckout.deleteMany({ where: { txRef: checkout.txRef } });
     return NextResponse.json({ received: true, duplicate: true });

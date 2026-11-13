@@ -17,6 +17,17 @@ type PaystackSubscription = {
   subscription_code: string;
 };
 
+type PaystackTransaction = {
+  amount: number;
+  currency: string;
+  customer: { email: string };
+  paid_at: string | null;
+  reference: string;
+  status: string;
+  subscription?: { subscription_code?: string } | string | null;
+  metadata?: unknown;
+};
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -29,6 +40,7 @@ function subscriptionCode(data: Record<string, unknown>) {
   const nested = isRecord(data.subscription) ? data.subscription : undefined;
   return (
     readString(data.subscription_code) ??
+    readString(data.subscription) ??
     (nested ? readString(nested.subscription_code) : undefined)
   );
 }
@@ -243,6 +255,122 @@ async function updateLocalSubscription(
   }
 }
 
+async function recordPaystackPayment(
+  event: "charge.success" | "charge.failed",
+  data: Record<string, unknown>,
+  planCode: string,
+) {
+  const reference = readString(data.reference);
+  if (!reference) return;
+
+  const expectedStatus = event === "charge.success" ? "success" : "failed";
+  const transaction = await paystackRequest<PaystackTransaction>(
+    `/transaction/verify/${encodeURIComponent(reference)}`,
+  );
+  if (
+    !transaction ||
+    transaction.reference !== reference ||
+    transaction.status !== expectedStatus ||
+    transaction.amount !== 500 ||
+    transaction.currency !== "USD" ||
+    typeof transaction.customer?.email !== "string" ||
+    !transaction.customer.email
+  ) {
+    return;
+  }
+
+  const checkout = await prisma.billingCheckout.findUnique({
+    where: { txRef: reference },
+    include: { user: true },
+  });
+  if (
+    checkout &&
+    (checkout.paymentMethod !== "card" || checkout.planId !== planCode)
+  ) {
+    return;
+  }
+
+  const subscription =
+    typeof transaction.subscription === "string"
+      ? transaction.subscription
+      : transaction.subscription?.subscription_code ??
+        subscriptionCode(data);
+  const linkedSubscription = subscription
+    ? await prisma.subscription.findUnique({
+        where: { providerSubscriptionId: subscription },
+        include: { user: true },
+      })
+    : null;
+  if (
+    linkedSubscription &&
+    linkedSubscription.providerPlanId !== planCode
+  ) {
+    return;
+  }
+
+  const metadataUserId =
+    (isRecord(transaction.metadata)
+      ? readString(transaction.metadata.cartonlabUserId)
+      : undefined) ??
+    (isRecord(data.metadata)
+      ? readString(data.metadata.cartonlabUserId)
+      : undefined);
+  const metadataUser = metadataUserId
+    ? await prisma.user.findUnique({
+        where: { id: metadataUserId },
+        select: { id: true, email: true, emailVerified: true },
+      })
+    : null;
+  const user = checkout?.user ?? linkedSubscription?.user ?? metadataUser;
+  if (
+    (checkout &&
+      linkedSubscription &&
+      checkout.user.id !== linkedSubscription.user.id) ||
+    !user?.emailVerified ||
+    user.email?.toLowerCase() !== transaction.customer.email.toLowerCase() ||
+    (metadataUserId && metadataUserId !== user.id)
+  ) {
+    return;
+  }
+  if (
+    isRecord(data.metadata) &&
+    typeof data.metadata.cartonlabUserId === "string" &&
+    data.metadata.cartonlabUserId !== user.id
+  ) {
+    return;
+  }
+
+  const providerTransactionId = `paystack-${reference}`;
+  const existingPayment = await prisma.billingPayment.findUnique({
+    where: { providerTransactionId },
+  });
+  if (existingPayment && existingPayment.userId !== user.id) return;
+
+  const paidAt = transaction.paid_at ? new Date(transaction.paid_at) : null;
+  const validPaidAt =
+    paidAt && !Number.isNaN(paidAt.getTime()) ? paidAt : null;
+  await prisma.billingPayment.upsert({
+    where: { providerTransactionId },
+    create: {
+      userId: user.id,
+      provider: "paystack",
+      providerTransactionId,
+      reference,
+      paymentMethod: "card",
+      status: expectedStatus,
+      amount: transaction.amount,
+      currency: transaction.currency,
+      paidAt: expectedStatus === "success" ? validPaidAt ?? eventDate(data) : null,
+    },
+    update: {
+      status: expectedStatus,
+      amount: transaction.amount,
+      currency: transaction.currency,
+      paidAt: expectedStatus === "success" ? validPaidAt ?? eventDate(data) : null,
+    },
+  });
+}
+
 export async function POST(request: Request) {
   if (!process.env.PAYSTACK_SECRET_KEY) {
     return NextResponse.json(
@@ -278,6 +406,8 @@ export async function POST(request: Request) {
       "invoice.payment_failed",
       "subscription.not_renew",
       "subscription.disable",
+      "charge.success",
+      "charge.failed",
     ];
     if (subscriptionEvents.includes(payload.event)) {
       return NextResponse.json(
@@ -304,6 +434,11 @@ export async function POST(request: Request) {
     payload.event === "subscription.disable"
   ) {
     await updateLocalSubscription(payload.event, payload.data, planCode);
+  } else if (
+    payload.event === "charge.success" ||
+    payload.event === "charge.failed"
+  ) {
+    await recordPaystackPayment(payload.event, payload.data, planCode);
   }
 
   return NextResponse.json({ received: true });

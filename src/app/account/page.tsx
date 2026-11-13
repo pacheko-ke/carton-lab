@@ -13,6 +13,7 @@ import {
 import { isDarajaAvailableForUser } from "@/lib/daraja";
 import BrandIcon from "../brand-icon";
 import { updateAccountProfile } from "../auth-actions";
+import { isAdminEmail } from "@/lib/admin";
 
 type AccountPageProps = {
   searchParams: Promise<{
@@ -89,9 +90,16 @@ async function AccountContent({ searchParams }: AccountPageProps) {
           </span>
           <span>CartonLab Lightweight 2.0</span>
         </Link>
-        <Link href="/app" className="account-back-link">
-          Back to designer
-        </Link>
+        <nav className="account-header-links" aria-label="Account navigation">
+          {isAdminEmail(user.email) && (
+            <Link href="/admin" className="account-back-link">
+              Metrics
+            </Link>
+          )}
+          <Link href="/app" className="account-back-link">
+            Back to designer
+          </Link>
+        </nav>
       </header>
 
       <section className="account-content">

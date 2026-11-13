@@ -10,6 +10,21 @@ accounts are saved in PostgreSQL through Prisma. New users can sign in only when
 Google returns a verified email; access to `/app` and its assets is checked
 against the verified user record.
 
+## System metrics
+
+The `/admin` dashboard shows account verification, Premium access, subscription
+health, recent checkouts, and confirmed payment activity. It is restricted to
+verified Google accounts listed in the comma-separated `ADMIN_EMAILS`
+environment variable; without an allowlist, access is denied. Configure the
+same setting locally and in Vercel for each administrator.
+
+Confirmed Paystack card charges and provider-verified Daraja M-Pesa successes
+and failures are recorded after the billing-payment migration is deployed.
+Historical payment records were not retained, so payment totals start
+accumulating after deployment. Subscribe the Paystack webhook to
+`charge.success` and `charge.failed` in addition to the subscription and
+invoice events listed below.
+
 ## Plans and billing
 
 Every verified account starts on the Free plan. Free accounts can use RSC,
@@ -30,7 +45,8 @@ role, contact, and address; company name can be set once and is then locked.
 3. Configure the Paystack webhook URL as
    `https://cartonlab-web.vercel.app/api/paystack/webhook`. Subscribe to
    `subscription.create`, `subscription.not_renew`, `subscription.disable`,
-   `invoice.update`, and `invoice.payment_failed`.
+   `invoice.update`, `invoice.payment_failed`, `charge.success`, and
+   `charge.failed`.
 4. Apply the Prisma migrations with `npx prisma migrate deploy`. Vercel
    production builds apply pending migrations automatically.
 
@@ -83,6 +99,7 @@ paid period end.
    AUTH_GOOGLE_ID=<Google OAuth client ID>
    AUTH_GOOGLE_SECRET=<Google OAuth client secret>
    POSTGRES_PRISMA_URL=<PostgreSQL connection string>
+   ADMIN_EMAILS=<verified admin email addresses, comma-separated>
    PAYSTACK_SECRET_KEY=<Paystack server-side secret key>
    PAYSTACK_PLAN_CODE=<Paystack plan code for $5 USD per month>
    PAYSTACK_WEBHOOK_SECRET=<Paystack webhook signing secret>

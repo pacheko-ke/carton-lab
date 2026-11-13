@@ -714,6 +714,172 @@ input {
   padding: 72px 0 96px;
 }
 
+.account-header-links {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.admin-header {
+  width: min(1200px, calc(100% - 40px));
+}
+
+.admin-content {
+  width: min(1200px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 58px 0 96px;
+}
+
+.admin-content .account-intro {
+  max-width: 720px;
+}
+
+.admin-content .account-intro p {
+  line-height: 1.7;
+}
+
+.admin-metrics {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 13px;
+  margin-top: 30px;
+}
+
+.admin-metric {
+  display: grid;
+  min-height: 124px;
+  align-content: start;
+  gap: 12px;
+  padding: 19px;
+  border: 1px solid rgba(163, 194, 220, 0.16);
+  border-radius: 12px;
+  background: rgba(16, 34, 54, 0.88);
+}
+
+.admin-metric > span,
+.admin-metric small {
+  color: #96aabe;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.admin-metric strong {
+  color: #eff6fc;
+  font-size: 30px;
+  letter-spacing: -0.05em;
+}
+
+.admin-metric small {
+  margin-top: -6px;
+  overflow-wrap: anywhere;
+}
+
+.admin-panel {
+  min-width: 0;
+  margin-top: 22px;
+  padding: 23px;
+  border: 1px solid rgba(163, 194, 220, 0.16);
+  border-radius: 14px;
+  background: rgba(16, 34, 54, 0.9);
+}
+
+.admin-panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.admin-panel-heading h2 {
+  margin: 7px 0 0;
+  color: #eff6fc;
+  font-size: 20px;
+  letter-spacing: -0.04em;
+}
+
+.admin-panel-heading > span {
+  color: #96aabe;
+  font-size: 10px;
+}
+
+.admin-table-wrap {
+  overflow-x: auto;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.admin-table th {
+  padding: 11px 12px;
+  border-bottom: 1px solid rgba(195, 216, 235, 0.14);
+  color: #91a6ba;
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.admin-table td {
+  max-width: 280px;
+  padding: 13px 12px;
+  border-bottom: 1px solid rgba(195, 216, 235, 0.08);
+  color: #d7e5f1;
+  font-size: 11px;
+  vertical-align: top;
+}
+
+.admin-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.admin-table td small {
+  display: block;
+  margin-top: 5px;
+  color: #91a6ba;
+  font-size: 10px;
+}
+
+.admin-table .admin-reference {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-status {
+  color: #f0c987;
+  text-transform: capitalize;
+}
+
+.admin-status.is-success {
+  color: #8de0c1;
+}
+
+.admin-status.is-failed {
+  color: #ff9a9a;
+}
+
+.admin-panel-note {
+  margin: 14px 0 0;
+  color: #91a6ba;
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.admin-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 20px;
+}
+
+.admin-columns .admin-panel {
+  margin-top: 20px;
+}
+
 .account-intro .eyebrow {
   font-size: 9px;
 }
@@ -1249,6 +1415,14 @@ input {
 }
 
 @media (max-width: 900px) {
+  .admin-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .admin-columns {
+    grid-template-columns: 1fr;
+  }
+
   .hero-section {
     grid-template-columns: minmax(0, 0.85fr) minmax(350px, 1fr);
     gap: 15px;
@@ -1268,6 +1442,18 @@ input {
 }
 
 @media (max-width: 700px) {
+  .admin-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-panel {
+    padding: 17px;
+  }
+
+  .account-header-links {
+    gap: 12px;
+  }
+
   .site-header,
   .site-footer,
   .auth-header {
@@ -1391,6 +1577,14 @@ input {
 }
 
 @media (max-width: 390px) {
+  .account-header-links {
+    gap: 8px;
+  }
+
+  .account-header-links .account-back-link {
+    font-size: 10px;
+  }
+
   .brand-lockup {
     gap: 7px;
     font-size: 12px;
