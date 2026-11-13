@@ -41,7 +41,8 @@ function profileRows(profile) {
   if (!profile) return [];
 
   return [
-    [["Created By:", profile.createdBy || "-"], ["Company:", profile.companyName || "-"]],
+    [["Created By:", profile.createdBy || "-"], ["Role:", profile.role || "-"]],
+    [["Company:", profile.companyName || "-"], ["Contact:", profile.contact || "-"]],
     [["Address:", ""], ["", profile.address || "-"]],
   ];
 }

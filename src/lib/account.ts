@@ -14,6 +14,8 @@ export async function requireVerifiedUser() {
       id: true,
       name: true,
       companyName: true,
+      role: true,
+      contact: true,
       address: true,
       email: true,
       emailVerified: true,

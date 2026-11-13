@@ -1,3 +1,4 @@
+import { createHmac, timingSafeEqual } from "node:crypto";
 import type { Subscription } from "@prisma/client";
 
 export const PREMIUM_PRICE = 5;
@@ -5,24 +6,19 @@ export const PREMIUM_CURRENCY = "USD";
 export const MPESA_PROVIDER_PLAN_ID = "mpesa-monthly";
 export const MPESA_CURRENCY = "KES";
 
-export function isFlutterwaveBillingConfigured() {
+export function isPaystackBillingConfigured() {
   return Boolean(
-    process.env.FLW_SECRET_KEY &&
-      process.env.FLW_PAYMENT_PLAN_ID &&
-      process.env.FLW_SECRET_HASH,
+    process.env.PAYSTACK_SECRET_KEY &&
+      process.env.PAYSTACK_PLAN_CODE,
   );
 }
 
-export function getFlutterwavePlanId() {
-  const planId = process.env.FLW_PAYMENT_PLAN_ID;
-  if (
-    !planId ||
-    !/^[1-9]\d*$/.test(planId) ||
-    Number(planId) > 2_147_483_647
-  ) {
-    throw new Error("FLW_PAYMENT_PLAN_ID must be a positive 32-bit integer.");
+export function getPaystackPlanCode() {
+  const planCode = process.env.PAYSTACK_PLAN_CODE;
+  if (!planCode || !/^PLN_[A-Za-z0-9]+$/.test(planCode)) {
+    throw new Error("PAYSTACK_PLAN_CODE must be a valid Paystack plan code.");
   }
-  return planId;
+  return planCode;
 }
 
 export function hasPremiumAccess(
@@ -37,10 +33,10 @@ export function hasPremiumAccess(
   now = new Date(),
 ) {
   if (premiumAccessGranted) return true;
-  const planId = process.env.FLW_PAYMENT_PLAN_ID;
+  const planCode = process.env.PAYSTACK_PLAN_CODE;
   return subscriptions.some(
     (subscription) =>
-      ((Boolean(planId) && subscription.providerPlanId === planId) ||
+      ((Boolean(planCode) && subscription.providerPlanId === planCode) ||
         subscription.providerPlanId === MPESA_PROVIDER_PLAN_ID) &&
       (subscription.status === "active" ||
         (subscription.status === "cancelled" &&
@@ -107,22 +103,23 @@ export function getApplicationUrl() {
   return "http://localhost:3000";
 }
 
-type FlutterwaveEnvelope<T> = {
-  status?: string;
+type PaystackEnvelope<T> = {
+  status?: boolean;
   message?: string;
   data?: T;
 };
 
-export async function flutterwaveRequest<T>(
+export async function paystackRequest<T>(
   path: string,
   options: RequestInit = {},
-): Promise<T> {
-  const secretKey = process.env.FLW_SECRET_KEY;
+  allowEmptyData = false,
+): Promise<T | undefined> {
+  const secretKey = process.env.PAYSTACK_SECRET_KEY;
   if (!secretKey) {
-    throw new Error("FLW_SECRET_KEY is not configured.");
+    throw new Error("PAYSTACK_SECRET_KEY is not configured.");
   }
 
-  const response = await fetch(`https://api.flutterwave.com/v3${path}`, {
+  const response = await fetch(`https://api.paystack.co${path}`, {
     ...options,
     headers: {
       Authorization: `Bearer ${secretKey}`,
@@ -131,11 +128,73 @@ export async function flutterwaveRequest<T>(
     },
     cache: "no-store",
   });
-  const result = (await response.json()) as FlutterwaveEnvelope<T>;
-  if (!response.ok || result.status !== "success" || result.data === undefined) {
+  const result = (await response.json()) as PaystackEnvelope<T>;
+  if (
+    !response.ok ||
+    result.status !== true ||
+    (!allowEmptyData && result.data === undefined)
+  ) {
     throw new Error(
-      `Flutterwave request failed (${response.status}): ${result.message ?? "Unexpected response."}`,
+      `Paystack request failed (${response.status}): ${result.message ?? "Unexpected response."}`,
     );
   }
   return result.data;
+}
+
+export function isValidPaystackWebhookSignature(
+  rawBody: Buffer,
+  paystackSignature: string | null,
+  legacySignature: string | null,
+) {
+  const webhookSecret = process.env.PAYSTACK_WEBHOOK_SECRET;
+  if (webhookSecret && paystackSignature) {
+    let timestamp: number | undefined;
+    const signatures: string[] = [];
+    for (const part of paystackSignature.split(",")) {
+      const separator = part.indexOf("=");
+      if (separator < 0) continue;
+      const key = part.slice(0, separator).trim();
+      const value = part.slice(separator + 1).trim();
+      if (key === "t") {
+        if (timestamp !== undefined || !/^\d+$/.test(value)) {
+          timestamp = NaN;
+          break;
+        }
+        timestamp = Number(value);
+      } else if (key === "v1") {
+        const colon = value.indexOf(":");
+        if (colon >= 0) signatures.push(value.slice(colon + 1));
+      }
+    }
+
+    if (
+      timestamp !== undefined &&
+      Number.isFinite(timestamp) &&
+      Math.abs(Math.floor(Date.now() / 1000) - timestamp) <= 300
+    ) {
+      const expected = createHmac("sha512", webhookSecret)
+        .update(`${timestamp}.`)
+        .update(rawBody)
+        .digest();
+      if (
+        signatures.some((signature) => {
+          if (!/^[0-9a-f]{128}$/.test(signature)) return false;
+          return timingSafeEqual(expected, Buffer.from(signature, "hex"));
+        })
+      ) {
+        return true;
+      }
+    }
+  }
+
+  const secretKey = process.env.PAYSTACK_SECRET_KEY;
+  if (
+    !secretKey ||
+    !legacySignature ||
+    !/^[0-9a-f]{128}$/.test(legacySignature)
+  ) {
+    return false;
+  }
+  const expected = createHmac("sha512", secretKey).update(rawBody).digest();
+  return timingSafeEqual(expected, Buffer.from(legacySignature, "hex"));
 }

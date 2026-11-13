@@ -3,14 +3,14 @@
 import { randomUUID } from "node:crypto";
 import { requireVerifiedUser } from "@/lib/account";
 import {
-  flutterwaveRequest,
   getCurrentUsdToKesRate,
   getApplicationUrl,
-  getFlutterwavePlanId,
+  getPaystackPlanCode,
   hasPremiumAccess,
-  isFlutterwaveBillingConfigured,
+  isPaystackBillingConfigured,
   MPESA_CURRENCY,
   MPESA_PROVIDER_PLAN_ID,
+  paystackRequest,
   PREMIUM_CURRENCY,
   PREMIUM_PRICE,
 } from "@/lib/billing";
@@ -22,22 +22,20 @@ import {
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 
-type FlutterwavePlan = {
+type PaystackPlan = {
   amount: number;
   currency: string;
   interval: string;
-  status: string;
+  plan_code: string;
 };
 
-type CheckoutResponse = {
-  link: string;
+type PaystackCheckout = {
+  authorization_url: string;
 };
 
 export async function startPremiumCheckout(formData: FormData) {
   const user = await requireVerifiedUser();
-  if (
-    hasPremiumAccess(user.subscriptions, user.premiumAccessGranted)
-  ) {
+  if (hasPremiumAccess(user.subscriptions, user.premiumAccessGranted)) {
     redirect("/account?billing=already-premium");
   }
   if (!user.email) {
@@ -57,22 +55,23 @@ export async function startPremiumCheckout(formData: FormData) {
   let phoneNumber: string | undefined;
 
   if (paymentMethod === "card") {
-    if (!isFlutterwaveBillingConfigured()) {
-      throw new Error("Flutterwave card billing is not fully configured.");
+    if (!isPaystackBillingConfigured()) {
+      throw new Error("Paystack billing is not fully configured.");
     }
 
-    planId = getFlutterwavePlanId();
-    const plan = await flutterwaveRequest<FlutterwavePlan>(
-      `/payment-plans/${planId}`,
+    planId = getPaystackPlanCode();
+    const plan = await paystackRequest<PaystackPlan>(
+      `/plan/${encodeURIComponent(planId)}`,
     );
     if (
-      plan.status !== "active" ||
+      !plan ||
+      plan.plan_code !== planId ||
       plan.currency !== PREMIUM_CURRENCY ||
-      plan.amount !== PREMIUM_PRICE ||
+      plan.amount !== PREMIUM_PRICE * 100 ||
       plan.interval !== "monthly"
     ) {
       throw new Error(
-        "The configured Flutterwave plan must be active and charge $5 USD monthly.",
+        "The configured Paystack plan must be active and charge $5 USD monthly.",
       );
     }
     amount = PREMIUM_PRICE;
@@ -91,24 +90,24 @@ export async function startPremiumCheckout(formData: FormData) {
   }
 
   const txRef = `cartonlab-${user.id}-${randomUUID()}`;
-  await prisma.billingCheckout.create({
-    data: {
-      txRef,
-      userId: user.id,
-      planId,
-      paymentMethod,
-      amount,
-      currency,
-      exchangeRate,
-      rateDate,
-      phoneNumber,
-    },
-  });
-
   if (paymentMethod === "mpesa") {
     if (!phoneNumber) {
       throw new Error("Enter the M-Pesa phone number to charge.");
     }
+    await prisma.billingCheckout.create({
+      data: {
+        txRef,
+        userId: user.id,
+        planId,
+        paymentMethod,
+        amount,
+        currency,
+        exchangeRate,
+        rateDate,
+        phoneNumber,
+      },
+    });
+
     const stkPush = await initiateStkPush({
       phoneNumber,
       amount,
@@ -124,71 +123,85 @@ export async function startPremiumCheckout(formData: FormData) {
     redirect("/account?billing=mpesa-prompt-sent");
   }
 
-  const checkout = await flutterwaveRequest<CheckoutResponse>("/payments", {
-    method: "POST",
-    body: JSON.stringify({
-      tx_ref: txRef,
+  const checkout = await paystackRequest<PaystackCheckout>(
+    "/transaction/initialize",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        email: user.email,
+        amount: String(PREMIUM_PRICE * 100),
+        currency: PREMIUM_CURRENCY,
+        plan: planId,
+        reference: txRef,
+        callback_url: `${getApplicationUrl()}/account?billing=checkout-complete`,
+        metadata: {
+          cartonlabUserId: user.id,
+          planCode: planId,
+        },
+      }),
+    },
+  );
+  if (!checkout?.authorization_url) {
+    throw new Error("Paystack did not return a checkout URL.");
+  }
+  const checkoutUrl = new URL(checkout.authorization_url);
+  if (
+    checkoutUrl.protocol !== "https:" ||
+    checkoutUrl.hostname !== "checkout.paystack.com"
+  ) {
+    throw new Error("Paystack returned an unexpected checkout URL.");
+  }
+
+  await prisma.billingCheckout.create({
+    data: {
+      txRef,
+      userId: user.id,
+      planId,
+      paymentMethod,
       amount,
       currency,
-      payment_options: "card",
-      payment_plan: Number(planId),
-      redirect_url: `${getApplicationUrl()}/account?billing=checkout-complete`,
-      customer: {
-        email: user.email,
-        name: user.name ?? undefined,
-      },
-      meta: {
-        cartonlabUserId: user.id,
-        ...(exchangeRate === undefined ? {} : { usdKesRate: exchangeRate }),
-      },
-      customizations: {
-        title: "CartonLab Premium",
-        description: "Premium access — $5 USD per month",
-      },
-    }),
+    },
   });
-
-  const validatedUrl = new URL(checkout.link);
-  if (
-    validatedUrl.protocol !== "https:" ||
-    validatedUrl.hostname !== "checkout.flutterwave.com"
-  ) {
-    throw new Error("Flutterwave returned an unexpected checkout URL.");
-  }
-  const checkoutUrl = validatedUrl.toString();
-  redirect(checkoutUrl);
+  redirect(checkoutUrl.toString());
 }
 
 export async function cancelPremiumSubscription() {
   const user = await requireVerifiedUser();
-  const planId = process.env.FLW_PAYMENT_PLAN_ID;
-  if (!planId) {
-    throw new Error("FLW_PAYMENT_PLAN_ID is not configured.");
-  }
-
+  const planId = getPaystackPlanCode();
   const subscription = user.subscriptions.find(
     (item) =>
       item.providerPlanId === planId &&
       item.status === "active" &&
+      !item.cancelAtPeriodEnd &&
       item.currentPeriodEnd !== null &&
       item.currentPeriodEnd > new Date(),
   );
   if (!subscription) {
     redirect("/account?billing=not-active");
   }
+  if (!subscription.providerSubscriptionToken) {
+    throw new Error("Paystack subscription cancellation is not available.");
+  }
 
-  const cancellation = await flutterwaveRequest<{ status: string }>(
-    `/subscriptions/${subscription.providerSubscriptionId}/cancel`,
-    { method: "PUT" },
+  const cancellation = await paystackRequest<unknown>(
+    "/subscription/disable",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        code: subscription.providerSubscriptionId,
+        token: subscription.providerSubscriptionToken,
+      }),
+    },
+    true,
   );
-  if (!["cancelled", "deactivated"].includes(cancellation.status.toLowerCase())) {
-    throw new Error("Flutterwave did not confirm the subscription cancellation.");
+  if (cancellation === false) {
+    throw new Error("Paystack did not confirm the subscription cancellation.");
   }
 
   await prisma.subscription.update({
     where: { id: subscription.id },
     data: {
-      status: "cancelled",
+      status: "active",
       cancelAtPeriodEnd: true,
       providerEventCreatedAt: new Date(),
     },

@@ -1,0 +1,3 @@
+ALTER TABLE "User"
+ADD COLUMN "role" TEXT,
+ADD COLUMN "contact" TEXT;

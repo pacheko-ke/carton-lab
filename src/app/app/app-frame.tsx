@@ -8,6 +8,8 @@ type AppFrameProps = {
   profile: {
     createdBy: string;
     companyName: string;
+    role: string;
+    contact: string;
     address: string;
   };
 };

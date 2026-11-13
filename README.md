@@ -16,23 +16,27 @@ Every verified account starts on the Free plan. Free accounts can use RSC,
 Pizza, and Chicken Box keylines; Premium keyline definitions are served only
 after a payment is verified (and, for card billing, its active subscription
 is confirmed). Premium is $5 USD per month and includes every keyline.
-Recurring billing is card-only through Flutterwave. Daraja M-Pesa
+Recurring card billing is handled by Paystack. Daraja M-Pesa
 checkout is a one-time payment for one month, so customers renew manually. Its
 KES amount is calculated at checkout from the latest available USD/KES
 reference rate and rounded to the nearest whole shilling. The `/account` page
-shows the verified plan and its limits.
+shows the verified plan and its limits. Account holders can update their name,
+role, contact, and address; company name can be set once and is then locked.
 
-1. In Flutterwave, create an active **$5 USD monthly** payment plan. The plan
-   currency, amount, and interval must match exactly.
-2. Set `FLW_SECRET_KEY` and `FLW_SECRET_HASH` in the local environment and
-   Vercel. To enable recurring card billing, also set
-   `FLW_PAYMENT_PLAN_ID` to the active $5 USD monthly plan.
-3. Configure the Flutterwave webhook URL as
-   `https://cartonlab-web.vercel.app/api/flutterwave/webhook`, enable
-   `charge.completed` and `subscription.cancelled`, and set the webhook secret
-   hash to `FLW_SECRET_HASH` in the local environment and Vercel Production.
-4. Apply the Prisma migration with `npx prisma migrate deploy`. Vercel
+1. In Paystack, create an active **$5 USD monthly** payment plan. Paystack
+   amounts use the currency's subunit, so the plan amount is 500 cents.
+2. Set `PAYSTACK_SECRET_KEY`, `PAYSTACK_PLAN_CODE`, and
+   `PAYSTACK_WEBHOOK_SECRET` in the local environment and Vercel.
+3. Configure the Paystack webhook URL as
+   `https://cartonlab-web.vercel.app/api/paystack/webhook`. Subscribe to
+   `subscription.create`, `subscription.not_renew`, `subscription.disable`,
+   `invoice.update`, and `invoice.payment_failed`.
+4. Apply the Prisma migrations with `npx prisma migrate deploy`. Vercel
    production builds apply pending migrations automatically.
+
+Existing Flutterwave subscriptions cannot be transferred to Paystack. Cancel
+any live Flutterwave subscriptions in its dashboard before retiring the old
+integration; customers must complete a new Paystack checkout.
 
 For Daraja M-Pesa, create a Lipa Na M-Pesa Online app in the Safaricom Daraja
 portal and set `DARAJA_ENV`, `DARAJA_CONSUMER_KEY`,
@@ -56,9 +60,10 @@ provides published reference rates, not live settlement quotes; checkout
 fails if the service is unavailable or its latest rate is more than seven
 days old. Premium is not granted from a browser redirect: the Daraja callback
 is checked against the STK Push query API before access is activated. Card
-subscriptions also require Flutterwave transaction and subscription
-verification. Cancelled card subscriptions retain access through their paid
-period end.
+subscriptions are activated only after Paystack confirms the active
+subscription and plan. Renewal, failed payment, and cancellation events update
+the local subscription; scheduled cancellations retain access through the
+paid period end.
 
 ## Configure Google sign-in
 
@@ -78,9 +83,9 @@ period end.
    AUTH_GOOGLE_ID=<Google OAuth client ID>
    AUTH_GOOGLE_SECRET=<Google OAuth client secret>
    POSTGRES_PRISMA_URL=<PostgreSQL connection string>
-   FLW_SECRET_KEY=<Flutterwave server-side secret key>
-   FLW_PAYMENT_PLAN_ID=<Flutterwave plan ID for $5 USD per month>
-   FLW_SECRET_HASH=<Flutterwave webhook secret hash>
+   PAYSTACK_SECRET_KEY=<Paystack server-side secret key>
+   PAYSTACK_PLAN_CODE=<Paystack plan code for $5 USD per month>
+   PAYSTACK_WEBHOOK_SECRET=<Paystack webhook signing secret>
    DARAJA_ENV=sandbox
    DARAJA_CONSUMER_KEY=<Daraja consumer key>
    DARAJA_CONSUMER_SECRET=<Daraja consumer secret>

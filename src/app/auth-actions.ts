@@ -23,8 +23,13 @@ export async function updateAccountProfile(formData: FormData) {
     redirect("/login");
   }
 
-  const readField = (name: string, maxLength: number) => {
+  const readField = (
+    name: string,
+    maxLength: number,
+    required = false,
+  ) => {
     const value = formData.get(name);
+    if (value === null && !required) return "";
     if (typeof value !== "string") {
       throw new Error(`Missing ${name} value.`);
     }
@@ -36,7 +41,7 @@ export async function updateAccountProfile(formData: FormData) {
     return trimmed;
   };
 
-  const name = readField("name", 100);
+  const name = readField("name", 100, true);
   if (!name) {
     throw new Error("Name is required.");
   }
@@ -45,10 +50,19 @@ export async function updateAccountProfile(formData: FormData) {
     where: { id: session.user.id },
     data: {
       name,
-      companyName: readField("companyName", 100) || null,
+      role: readField("role", 100) || null,
+      contact: readField("contact", 120) || null,
       address: readField("address", 120) || null,
     },
   });
+
+  const companyName = readField("companyName", 100);
+  if (companyName) {
+    await prisma.user.updateMany({
+      where: { id: session.user.id, companyName: null },
+      data: { companyName },
+    });
+  }
 
   revalidatePath("/account");
   revalidatePath("/app");

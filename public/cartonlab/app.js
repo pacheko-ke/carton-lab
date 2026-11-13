@@ -8,7 +8,13 @@ const PLY_DEFAULTS_MM = { 3: { crease: 2, bwadd: 4 }, 5: { crease: 3, bwadd: 6 }
 
 let lastUnit = "mm";
 let current = null; // { model }
-let creatorProfile = { createdBy: "", companyName: "", address: "" };
+let creatorProfile = {
+  createdBy: "",
+  companyName: "",
+  role: "",
+  contact: "",
+  address: "",
+};
 let resolveProfile;
 const profileReady = window.parent === window
   ? Promise.resolve()
@@ -23,6 +29,8 @@ window.addEventListener("message", (event) => {
     !event.data.profile ||
     typeof event.data.profile.createdBy !== "string" ||
     typeof event.data.profile.companyName !== "string" ||
+    typeof event.data.profile.role !== "string" ||
+    typeof event.data.profile.contact !== "string" ||
     typeof event.data.profile.address !== "string"
   ) {
     return;
@@ -31,6 +39,8 @@ window.addEventListener("message", (event) => {
   creatorProfile = {
     createdBy: event.data.profile.createdBy.slice(0, 100),
     companyName: event.data.profile.companyName.slice(0, 100),
+    role: event.data.profile.role.slice(0, 100),
+    contact: event.data.profile.contact.slice(0, 120),
     address: event.data.profile.address.slice(0, 120),
   };
   resolveProfile();

@@ -25,6 +25,8 @@ async function AuthenticatedCartonLabApp() {
         profile={{
           createdBy: user.name ?? "",
           companyName: user.companyName ?? "",
+          role: user.role ?? "",
+          contact: user.contact ?? "",
           address: user.address ?? "",
         }}
       />

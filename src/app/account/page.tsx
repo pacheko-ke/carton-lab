@@ -7,7 +7,7 @@ import {
 import { requireVerifiedUser } from "@/lib/account";
 import {
   hasPremiumAccess,
-  isFlutterwaveBillingConfigured,
+  isPaystackBillingConfigured,
   MPESA_PROVIDER_PLAN_ID,
 } from "@/lib/billing";
 import { isDarajaAvailableForUser } from "@/lib/daraja";
@@ -23,7 +23,7 @@ type AccountPageProps = {
 
 const billingMessages: Record<string, string> = {
   "checkout-complete":
-    "Checkout completed. Premium access will appear after Flutterwave verifies your payment.",
+    "Checkout completed. Premium access will appear after Paystack verifies your payment.",
   "mpesa-prompt-sent":
     "An M-Pesa payment prompt was sent to your phone. Premium access will appear after Daraja confirms the payment.",
   cancelled:
@@ -58,8 +58,8 @@ async function AccountContent({ searchParams }: AccountPageProps) {
   const activeSubscription = user.subscriptions
     .filter(
       (subscription) =>
-        ((Boolean(process.env.FLW_PAYMENT_PLAN_ID) &&
-          subscription.providerPlanId === process.env.FLW_PAYMENT_PLAN_ID) ||
+        ((Boolean(process.env.PAYSTACK_PLAN_CODE) &&
+          subscription.providerPlanId === process.env.PAYSTACK_PLAN_CODE) ||
           subscription.providerPlanId === MPESA_PROVIDER_PLAN_ID) &&
         (subscription.status === "active" ||
           (subscription.status === "cancelled" &&
@@ -138,15 +138,45 @@ async function AccountContent({ searchParams }: AccountPageProps) {
                 required
               />
             </label>
-            <label className="account-profile-field" htmlFor="profile-company">
-              Company name
+            {user.companyName ? (
+              <div className="account-profile-field">
+                Company name
+                <p className="account-profile-value">{user.companyName}</p>
+              </div>
+            ) : (
+              <label className="account-profile-field" htmlFor="profile-company">
+                Company name
+                <span>Can be set once and cannot be changed later.</span>
+                <input
+                  id="profile-company"
+                  name="companyName"
+                  type="text"
+                  autoComplete="organization"
+                  maxLength={100}
+                />
+              </label>
+            )}
+            <label className="account-profile-field" htmlFor="profile-role">
+              Role
               <input
-                id="profile-company"
-                name="companyName"
+                id="profile-role"
+                name="role"
                 type="text"
-                autoComplete="organization"
+                autoComplete="organization-title"
                 maxLength={100}
-                defaultValue={user.companyName ?? ""}
+                defaultValue={user.role ?? ""}
+              />
+            </label>
+            <label className="account-profile-field" htmlFor="profile-contact">
+              Contact
+              <input
+                id="profile-contact"
+                name="contact"
+                type="text"
+                autoComplete="tel"
+                maxLength={120}
+                placeholder="Phone or email"
+                defaultValue={user.contact ?? ""}
               />
             </label>
             <label className="account-profile-field" htmlFor="profile-address">
@@ -218,6 +248,7 @@ async function AccountContent({ searchParams }: AccountPageProps) {
                   </p>
                 )}
               {activeSubscription?.status === "active" &&
+                !activeSubscription.cancelAtPeriodEnd &&
                 activeSubscription.providerPlanId !== MPESA_PROVIDER_PLAN_ID && (
                   <form action={cancelPremiumSubscription}>
                     <button className="button button-large" type="submit">
@@ -233,11 +264,11 @@ async function AccountContent({ searchParams }: AccountPageProps) {
                 <li>PDF, SVG, and DXF exports for available keylines</li>
                 <li>Premium keylines are locked</li>
               </ul>
-              {isFlutterwaveBillingConfigured() && (
+              {isPaystackBillingConfigured() && (
                 <form action={startPremiumCheckout}>
                   <input type="hidden" name="paymentMethod" value="card" />
                   <button className="button button-large" type="submit">
-                    Upgrade to Premium with card <span>→</span>
+                    Upgrade to Premium with Paystack <span>→</span>
                   </button>
                 </form>
               )}
@@ -263,7 +294,7 @@ async function AccountContent({ searchParams }: AccountPageProps) {
                   </button>
                 </form>
               )}
-              {!isFlutterwaveBillingConfigured() &&
+              {!isPaystackBillingConfigured() &&
                 !isDarajaAvailableForUser(user.email) && (
                   <p className="account-billing-unavailable" role="status">
                     Premium checkout is not available yet.
