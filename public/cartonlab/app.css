@@ -96,3 +96,37 @@
   @media(max-width:640px){
     .designer-tour{right:10px;bottom:10px;width:calc(100vw - 20px);padding:14px}
   }
+
+  .carton3d-launch{position:absolute;top:12px;right:12px;z-index:11;display:inline-flex;align-items:center;gap:7px;min-height:36px;padding:0 11px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#334155;font:inherit;font-size:12px;font-weight:650;box-shadow:0 2px 6px rgba(15,23,42,.12);transition:border-color .15s,background-color .15s}
+  .carton3d-launch svg{width:17px;height:17px}
+  .carton3d-launch:hover:not(:disabled){border-color:#0f6cbd;background:#f8fbff;color:#0f6cbd}
+  .carton3d-launch:disabled{cursor:not-allowed;opacity:.5}
+  .carton3d-launch:focus-visible,.carton3d-close:focus-visible,.carton3d-control:focus-visible,.carton3d-scene:focus-visible{outline:2px solid #0f6cbd;outline-offset:2px}
+  .carton3d-viewer[hidden]{display:none}
+  .carton3d-viewer{position:absolute;top:12px;right:12px;z-index:20;display:grid;grid-template-rows:34px minmax(0,1fr) 54px;width:clamp(220px,25%,320px);height:clamp(205px,25%,280px);overflow:hidden;border:1px solid #cbd5e1;border-radius:12px;background:#fff;color:#1e293b;box-shadow:0 8px 26px rgba(15,23,42,.2)}
+  .carton3d-header{display:flex;align-items:center;justify-content:space-between;padding:0 9px 0 12px;border-bottom:1px solid #e2e8f0;background:#f8fafc}
+  .carton3d-header h2{margin:0;font-size:12px;font-weight:650}
+  .carton3d-close{display:grid;width:25px;height:25px;place-items:center;border:0;border-radius:6px;background:transparent;color:#475569;font-size:19px;line-height:1}
+  .carton3d-close:hover{background:#e2e8f0;color:#0f172a}
+  .carton3d-scene{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+  .carton3d-scene:active{cursor:grabbing}
+  .carton3d-footer{display:grid;grid-template-rows:18px 30px;justify-items:center;align-content:center;gap:2px;padding:2px 8px;border-top:1px solid #e2e8f0;background:#f8fafc}
+  .carton3d-dimensions{overflow:hidden;max-width:100%;color:#475569;font-size:10px;font-variant-numeric:tabular-nums;text-overflow:ellipsis;white-space:nowrap}
+  .carton3d-controls{display:flex;align-items:center;justify-content:center;gap:4px}
+  .carton3d-control{display:grid;width:27px;height:27px;place-items:center;border:1px solid #cbd5e1;border-radius:6px;background:#fff;color:#334155;font:inherit;font-size:14px;line-height:1}
+  .carton3d-control:hover{border-color:#0f6cbd;background:#eff6ff;color:#0f6cbd}
+  .carton3d-zoom-level{min-width:34px;color:#475569;text-align:center;font-size:10px;font-variant-numeric:tabular-nums}
+  @media(prefers-color-scheme:dark){
+    .carton3d-launch{border-color:#475569;background:#1e293b;color:#e2e8f0}
+    .carton3d-launch:hover:not(:disabled){border-color:#38bdf8;background:#172b3d;color:#bae6fd}
+    .carton3d-viewer{border-color:#475569;background:#fff;color:#1e293b}
+    .carton3d-header,.carton3d-footer{border-color:#cbd5e1;background:#f8fafc}
+    .carton3d-close{color:#475569}
+    .carton3d-close:hover{background:#e2e8f0;color:#0f172a}
+    .carton3d-dimensions,.carton3d-zoom-level{color:#475569}
+    .carton3d-control{border-color:#cbd5e1;background:#fff;color:#334155}
+    .carton3d-control:hover{border-color:#0f6cbd;background:#eff6ff;color:#0f6cbd}
+  }
+  @media(max-width:640px){
+    .carton3d-viewer{width:clamp(200px,58%,260px);height:clamp(205px,38%,270px)}
+  }

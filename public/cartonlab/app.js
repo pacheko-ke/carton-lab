@@ -421,6 +421,14 @@ function showError(msg) {
   err.textContent = msg;
   err.hidden = false;
   $("preview").innerHTML = "";
+  const carton3DViewer = $("carton3dViewer");
+  if (carton3DViewer) carton3DViewer.hidden = true;
+  const carton3DOpen = $("carton3dOpen");
+  if (carton3DOpen) {
+    carton3DOpen.hidden = false;
+    carton3DOpen.disabled = true;
+    carton3DOpen.setAttribute("aria-expanded", "false");
+  }
   current = null;
   selectedItem = null;
   undoStack = []; redoStack = [];
@@ -438,6 +446,7 @@ function showError(msg) {
    contain the whole drawing, whatever the view. */
 const view = { auto: true, s: 1, cx: 0, cy: 0 };
 const MAX_ZOOM_OVER_FIT = 120;
+const carton3DView = { yaw: -0.7, pitch: 0.55, zoom: 1, drag: null };
 let selectedItem = null;
 let editPoints = [];
 let undoStack = [];
@@ -483,6 +492,81 @@ function applyView() {
   updateArtworkControls(svg);
   $("zoomPct").textContent = Math.round((view.s / actualScale()) * 100) + "%";
 }
+function adjustCarton3DZoom(factor) {
+  carton3DView.zoom = Math.max(0.5, Math.min(3, carton3DView.zoom * factor));
+  renderCarton3D();
+}
+function renderCarton3D() {
+  const viewer = $("carton3dViewer");
+  if (!viewer || viewer.hidden || !current) return;
+
+  const p = readParams();
+  const length = Number(p.L), width = Number(p.W), height = Number(p.H);
+  if (![length, width, height].every((value) => Number.isFinite(value) && value > 0)) return;
+
+  const vertices = [
+    [-length / 2, -height / 2, -width / 2],
+    [ length / 2, -height / 2, -width / 2],
+    [ length / 2, -height / 2,  width / 2],
+    [-length / 2, -height / 2,  width / 2],
+    [-length / 2,  height / 2, -width / 2],
+    [ length / 2,  height / 2, -width / 2],
+    [ length / 2,  height / 2,  width / 2],
+    [-length / 2,  height / 2,  width / 2],
+  ];
+  const cosYaw = Math.cos(carton3DView.yaw), sinYaw = Math.sin(carton3DView.yaw);
+  const cosPitch = Math.cos(carton3DView.pitch), sinPitch = Math.sin(carton3DView.pitch);
+  const projected = vertices.map(([x, y, z]) => {
+    const rotatedX = x * cosYaw - z * sinYaw;
+    const rotatedZ = x * sinYaw + z * cosYaw;
+    return {
+      x: rotatedX,
+      y: -(y * cosPitch - rotatedZ * sinPitch),
+      depth: y * sinPitch + rotatedZ * cosPitch,
+    };
+  });
+  const minX = Math.min(...projected.map((point) => point.x));
+  const maxX = Math.max(...projected.map((point) => point.x));
+  const minY = Math.min(...projected.map((point) => point.y));
+  const maxY = Math.max(...projected.map((point) => point.y));
+  const boundsWidth = Math.max(maxX - minX, 1);
+  const boundsHeight = Math.max(maxY - minY, 1);
+  const scale = Math.min(230 / boundsWidth, 112 / boundsHeight) * carton3DView.zoom;
+  const points = projected.map((point) => ({
+    x: 140 + (point.x - (minX + maxX) / 2) * scale,
+    y: 75 + (point.y - (minY + maxY) / 2) * scale,
+    depth: point.depth,
+  }));
+  const palette = p.color === "white"
+    ? { top: "#f8fafc", front: "#e2e8f0", right: "#cbd5e1", back: "#dbe4ec", left: "#d1d9e0", bottom: "#94a3b8", edge: "#64748b" }
+    : { top: "#f2d5b0", front: "#d5ad81", right: "#bc8e5e", back: "#c29769", left: "#c59462", bottom: "#9f754c", edge: "#705139" };
+  const faces = [
+    { points: [4, 5, 6, 7], color: palette.top },
+    { points: [3, 2, 6, 7], color: palette.front },
+    { points: [1, 2, 6, 5], color: palette.right },
+    { points: [0, 1, 5, 4], color: palette.back },
+    { points: [0, 3, 7, 4], color: palette.left },
+    { points: [0, 1, 2, 3], color: palette.bottom },
+  ].map((face) => ({
+    ...face,
+    depth: face.points.reduce((sum, index) => sum + points[index].depth, 0) / face.points.length,
+  })).sort((a, b) => a.depth - b.depth);
+
+  const svg = $("carton3dScene");
+  const polygon = (face) => {
+    const element = document.createElementNS(GRID_NS, "polygon");
+    element.setAttribute("points", face.points.map((index) => `${points[index].x},${points[index].y}`).join(" "));
+    element.setAttribute("fill", face.color);
+    element.setAttribute("stroke", palette.edge);
+    element.setAttribute("stroke-width", "1.25");
+    element.setAttribute("stroke-linejoin", "round");
+    return element;
+  };
+  svg.replaceChildren(...faces.map(polygon));
+  svg.setAttribute("aria-label", `Interactive 3D carton, ${fmt(length, p.unit)} by ${fmt(width, p.unit)} by ${fmt(height, p.unit)} ${p.unit}. Drag to rotate; use the mouse wheel or controls to zoom.`);
+  $("carton3dDimensions").textContent = `${fmt(length, p.unit)} × ${fmt(width, p.unit)} × ${fmt(height, p.unit)} ${p.unit}`;
+  $("carton3dZoomLevel").textContent = `${Math.round(carton3DView.zoom * 100)}%`;
+}
 function setPreview(markup) {
   $("preview").innerHTML = markup;
   const svg = $("preview").querySelector("svg");
@@ -509,6 +593,7 @@ function setPreview(markup) {
     updateArtworkControls(svg);
   }
   applyView();
+  renderCarton3D();
 }
 function gridStep() {
   const value = parseFloat($("gridSpacing").value);
@@ -1072,6 +1157,7 @@ function render(animate) {
     return showError(e.message);
   }
   $("error").hidden = true;
+  $("carton3dOpen").disabled = false;
   selectedItem = null;
   current = { model };
   setPreview(animate === true ? toAnimatedSVG(model) : toSVG(model, "preview"));
@@ -1314,7 +1400,72 @@ function initializeDesignerTour() {
   if (!dismissed) window.setTimeout(() => startDesignerTour(), 450);
 }
 
+function initializeCarton3D() {
+  const open = $("carton3dOpen");
+  const close = $("carton3dClose");
+  const viewer = $("carton3dViewer");
+  const scene = $("carton3dScene");
+  const rotate = (yaw, pitch = 0) => {
+    carton3DView.yaw += yaw;
+    carton3DView.pitch = Math.max(-1.15, Math.min(1.15, carton3DView.pitch + pitch));
+    renderCarton3D();
+  };
+
+  open.addEventListener("click", () => {
+    if (!current) return;
+    viewer.hidden = false;
+    open.hidden = true;
+    open.setAttribute("aria-expanded", "true");
+    renderCarton3D();
+    scene.focus();
+  });
+  close.addEventListener("click", () => {
+    viewer.hidden = true;
+    open.hidden = false;
+    open.setAttribute("aria-expanded", "false");
+    open.focus();
+  });
+  viewer.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") close.click();
+  });
+  $("carton3dRotateLeft").addEventListener("click", () => rotate(-Math.PI / 12));
+  $("carton3dRotateRight").addEventListener("click", () => rotate(Math.PI / 12));
+  $("carton3dZoomOut").addEventListener("click", () => adjustCarton3DZoom(1 / 1.15));
+  $("carton3dZoomIn").addEventListener("click", () => adjustCarton3DZoom(1.15));
+
+  scene.addEventListener("pointerdown", (event) => {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    carton3DView.drag = { x: event.clientX, y: event.clientY };
+    scene.setPointerCapture(event.pointerId);
+    event.preventDefault();
+  });
+  scene.addEventListener("pointermove", (event) => {
+    if (!carton3DView.drag) return;
+    const dx = event.clientX - carton3DView.drag.x;
+    const dy = event.clientY - carton3DView.drag.y;
+    carton3DView.drag = { x: event.clientX, y: event.clientY };
+    rotate(dx * 0.012, dy * 0.012);
+  });
+  scene.addEventListener("pointerup", () => { carton3DView.drag = null; });
+  scene.addEventListener("pointercancel", () => { carton3DView.drag = null; });
+  scene.addEventListener("wheel", (event) => {
+    event.preventDefault();
+    adjustCarton3DZoom(event.deltaY < 0 ? 1.12 : 1 / 1.12);
+  }, { passive: false });
+  scene.addEventListener("keydown", (event) => {
+    if (event.key === "ArrowLeft") rotate(-Math.PI / 24);
+    else if (event.key === "ArrowRight") rotate(Math.PI / 24);
+    else if (event.key === "ArrowUp") rotate(0, -Math.PI / 24);
+    else if (event.key === "ArrowDown") rotate(0, Math.PI / 24);
+    else if (event.key === "+" || event.key === "=") adjustCarton3DZoom(1.15);
+    else if (event.key === "-") adjustCarton3DZoom(1 / 1.15);
+    else return;
+    event.preventDefault();
+  });
+}
+
 async function init() {
+  initializeCarton3D();
   const accountControls = $("appAccountControls");
   // Fetch only the definitions permitted by the server-verified account plan.
   let loadErrors = [];

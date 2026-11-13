@@ -160,6 +160,27 @@
           </button>
           <button id="zoomActual" type="button" class="tool !w-auto px-1.5 text-xs font-semibold" title="Actual size, 1:1 (1)" aria-label="Actual size">1:1</button>
         </div>
+        <button id="carton3dOpen" type="button" class="carton3d-launch" aria-controls="carton3dViewer" aria-expanded="false" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z"/><path d="m4.3 7.7 7.7 4.4 7.7-4.4M12 12v9"/></svg>
+          3D view
+        </button>
+        <aside id="carton3dViewer" class="carton3d-viewer" role="region" aria-label="Interactive 3D carton view" hidden>
+          <header class="carton3d-header">
+            <h2>3D carton view</h2>
+            <button id="carton3dClose" type="button" class="carton3d-close" aria-label="Exit 3D view" title="Exit 3D view">&times;</button>
+          </header>
+          <svg id="carton3dScene" class="carton3d-scene" viewBox="0 0 280 150" role="img" aria-label="3D carton. Drag to rotate; use the mouse wheel to zoom." tabindex="0"></svg>
+          <footer class="carton3d-footer">
+            <span id="carton3dDimensions" class="carton3d-dimensions"></span>
+            <div class="carton3d-controls" aria-label="3D view controls">
+              <button id="carton3dRotateLeft" type="button" class="carton3d-control" aria-label="Rotate left" title="Rotate left">&olarr;</button>
+              <button id="carton3dZoomOut" type="button" class="carton3d-control" aria-label="Zoom out" title="Zoom out">&minus;</button>
+              <span id="carton3dZoomLevel" class="carton3d-zoom-level">100%</span>
+              <button id="carton3dZoomIn" type="button" class="carton3d-control" aria-label="Zoom in" title="Zoom in">+</button>
+              <button id="carton3dRotateRight" type="button" class="carton3d-control" aria-label="Rotate right" title="Rotate right">&orarr;</button>
+            </div>
+          </footer>
+        </aside>
         <div data-tour="canvas-tools" class="absolute bottom-11 left-3 z-10 flex items-center gap-2 rounded-lg border border-slate-200 bg-white/95 px-2 py-1 text-xs text-slate-700 shadow-sm">
           <button id="undoEdit" type="button" class="tool !w-auto px-1.5 text-xs" title="Undo geometry edit (Ctrl+Z)" aria-label="Undo geometry edit" disabled>Undo</button>
           <button id="redoEdit" type="button" class="tool !w-auto px-1.5 text-xs" title="Redo geometry edit (Ctrl+Y)" aria-label="Redo geometry edit" disabled>Redo</button>
