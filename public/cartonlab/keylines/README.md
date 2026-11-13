@@ -103,9 +103,9 @@ positions.
 For multi-piece artwork, give every cut and crease a `dimensionGroup`, reusing the same
 group name for entries belonging to one piece. Each group is dimensioned using only its
 own cut bounds and crease positions, so separate pieces on one artboard do not share
-overall or fold dimensions. The app also adds a separate details table for each group,
-stacked below the artboard and labeled with that group's name. By default, each table's
-board length and width use its group's cut bounds.
+overall or fold dimensions. The app adds a separate details table directly below each
+group, labeled with that group's name, and moves subsequent groups down to make room.
+By default, each table's board length and width use its group's cut bounds.
 Grouped label overrides can be keyed by group name under `autoDimensionValues.groups`.
 
 Use `details.groups` to override a piece's table title or details:
