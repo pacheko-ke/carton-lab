@@ -1,6 +1,24 @@
 "use strict";
 
 const $ = (id) => document.getElementById(id);
+const editableSelector = "input, textarea, select, [contenteditable='true']";
+
+document.addEventListener("contextmenu", (event) => {
+  if (!(event.target instanceof Element) || !event.target.closest(editableSelector)) {
+    event.preventDefault();
+  }
+}, true);
+document.addEventListener("keydown", (event) => {
+  const key = event.key.toLowerCase();
+  const modifier = event.ctrlKey || event.metaKey;
+  const devToolsShortcut =
+    event.key === "F12" ||
+    (modifier && event.shiftKey && ["i", "j", "c", "k"].includes(key)) ||
+    (modifier && key === "u") ||
+    (event.metaKey && event.altKey && ["i", "j", "c"].includes(key));
+
+  if (devToolsShortcut) event.preventDefault();
+}, true);
 const FIELDS = ["boxType", "L", "W", "H", "unit", "ply", "crease", "bwadd", "glue", "slot", "dims", "prec", "color"];
 const NUMERIC = ["L", "W", "H", "crease", "bwadd", "glue", "slot"];
 const STORE_KEY = "rscKeyline.v4"; // bumped so new defaults (e.g. brown carton colour) replace old saved values

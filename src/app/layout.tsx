@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import InspectionGuard from "./inspection-guard";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -13,7 +14,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className="h-full">
-      <body className="h-full">{children}</body>
+      <body className="h-full">
+        <InspectionGuard />
+        {children}
+      </body>
     </html>
   );
 }
