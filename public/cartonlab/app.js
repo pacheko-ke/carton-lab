@@ -22,6 +22,39 @@ document.addEventListener("keydown", (event) => {
 const FIELDS = ["boxType", "L", "W", "H", "unit", "ply", "crease", "bwadd", "glue", "slot", "dims", "prec", "color"];
 const NUMERIC = ["L", "W", "H", "crease", "bwadd", "glue", "slot"];
 const STORE_KEY = "rscKeyline.v4"; // bumped so new defaults (e.g. brown carton colour) replace old saved values
+const DESIGNER_TOUR_KEY = "cartonlab.designer-tour.dismissed.v1";
+const DESIGNER_TOUR_STEPS = [
+  {
+    targets: ['[data-tour="box-type"]'],
+    title: "Choose a box",
+    description: "Pick a category, then choose the box style you want to start from.",
+  },
+  {
+    targets: ['[data-tour="box-size"]'],
+    title: "Set the dimensions",
+    description: "Enter the outside length, width and height, then choose millimetres or inches. The job name is optional.",
+  },
+  {
+    targets: ['[data-tour="board-settings"]', '[data-tour="keyline-settings"]'],
+    title: "Adjust the build",
+    description: "Set board ply and date, then review keyline options. Dimension marks and carton colour are Premium features.",
+  },
+  {
+    targets: ['[data-tour="preview"]'],
+    title: "Work on the preview",
+    description: "Click a cut or crease to reveal edit handles, then drag to adjust it. Press T for text, I for an image, or Ctrl+V to paste an image.",
+  },
+  {
+    targets: ['[data-tour="canvas-tools"]', '[data-tour="zoom-tools"]'],
+    title: "Navigate and edit",
+    description: "Undo, redo, grid, snap and spacing are at the lower left. Zoom, fit and 1:1 controls are at the lower right.",
+  },
+  {
+    targets: ['[data-tour="exports"]'],
+    title: "Export your keyline",
+    description: "Download PDF, SVG or DXF, or print and share your finished keyline here.",
+  },
+];
 const PLY_DEFAULTS_MM = { 3: { crease: 2, bwadd: 4 }, 5: { crease: 3, bwadd: 6 } };
 
 let premiumFeaturesEnabled = false;
@@ -1201,6 +1234,75 @@ $("boxType").addEventListener("change", () => {
   render(true);
 });
 
+let designerTourStep = 0;
+let designerTourTargets = [];
+let designerTourReturnFocus = false;
+
+function showDesignerTourStep(index) {
+  const step = DESIGNER_TOUR_STEPS[index];
+  if (!step) return;
+
+  designerTourTargets.forEach((target) => target.classList.remove("designer-tour-highlight"));
+  designerTourStep = index;
+  designerTourTargets = step.targets
+    .map((selector) => document.querySelector(selector))
+    .filter(Boolean);
+  designerTourTargets.forEach((target) => target.classList.add("designer-tour-highlight"));
+
+  $("designerTourProgress").textContent = `${index + 1} of ${DESIGNER_TOUR_STEPS.length}`;
+  $("designerTourTitle").textContent = step.title;
+  $("designerTourDescription").textContent = step.description;
+  $("designerTourPrevious").disabled = index === 0;
+  $("designerTourNext").textContent =
+    index === DESIGNER_TOUR_STEPS.length - 1 ? "Finish" : "Next";
+
+  designerTourTargets[0]?.scrollIntoView({
+    behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+    block: "center",
+    inline: "nearest",
+  });
+}
+
+function startDesignerTour(returnFocus = false) {
+  designerTourReturnFocus = returnFocus;
+  $("designerTour").hidden = false;
+  $("designerHelp").setAttribute("aria-expanded", "true");
+  showDesignerTourStep(0);
+}
+
+function closeDesignerTour() {
+  designerTourTargets.forEach((target) => target.classList.remove("designer-tour-highlight"));
+  designerTourTargets = [];
+  $("designerTour").hidden = true;
+  $("designerHelp").setAttribute("aria-expanded", "false");
+  try {
+    localStorage.setItem(DESIGNER_TOUR_KEY, "dismissed");
+  } catch (_) { /* storage unavailable */ }
+  if (designerTourReturnFocus) $("designerHelp").focus({ preventScroll: true });
+  designerTourReturnFocus = false;
+}
+
+function initializeDesignerTour() {
+  $("designerHelp").addEventListener("click", () => startDesignerTour(true));
+  $("designerTourClose").addEventListener("click", closeDesignerTour);
+  $("designerTourPrevious").addEventListener("click", () => {
+    if (designerTourStep > 0) showDesignerTourStep(designerTourStep - 1);
+  });
+  $("designerTourNext").addEventListener("click", () => {
+    if (designerTourStep === DESIGNER_TOUR_STEPS.length - 1) closeDesignerTour();
+    else showDesignerTourStep(designerTourStep + 1);
+  });
+  document.addEventListener("keydown", (event) => {
+    if (!$("designerTour").hidden && event.key === "Escape") closeDesignerTour();
+  });
+
+  let dismissed = false;
+  try {
+    dismissed = localStorage.getItem(DESIGNER_TOUR_KEY) === "dismissed";
+  } catch (_) { /* storage unavailable */ }
+  if (!dismissed) window.setTimeout(() => startDesignerTour(), 450);
+}
+
 async function init() {
   const accountControls = $("appAccountControls");
   // Fetch only the definitions permitted by the server-verified account plan.
@@ -1262,5 +1364,6 @@ async function init() {
   buildKeylineInputs();
   render(true);
   if (loadErrors.length) console.warn("Keyline definitions not loaded:", loadErrors);
+  initializeDesignerTour();
 }
 init();

@@ -11,6 +11,9 @@
   <header class="flex items-center gap-3 px-3 pt-5 md:px-6">
     <img src="/cartonlab-icon.png" alt="" class="h-9 w-9" />
     <h1 class="text-xl font-semibold tracking-tight">CartonLab Lightweight 2.0</h1>
+    <button id="designerHelp" type="button" class="designer-help-button" aria-label="Open the designer quick tour" aria-controls="designerTour" aria-expanded="false" title="Take a quick designer tour">
+      <span aria-hidden="true">?</span> Help
+    </button>
     <div id="appAccountControls" class="app-account-controls" hidden>
       <a id="appAccountPlan" class="app-account-plan" href="/account" target="_top">
         <span class="app-account-plan-indicator" aria-hidden="true"></span>
@@ -23,7 +26,7 @@
   <main class="grid items-start gap-5 px-3 py-5 md:px-6 lg:grid-cols-[340px_minmax(0,1fr)]">
     <aside class="flex flex-col gap-3">
 
-      <section class="card">
+      <section class="card" data-tour="box-type">
         <h2 class="card-title">Box type</h2>
         <div id="keylineTabs" class="keyline-tabs" role="tablist" aria-label="Keyline categories"></div>
         <div id="keylineChoices" class="keyline-choices" role="tabpanel" aria-live="polite"></div>
@@ -39,7 +42,7 @@
         </label>
       </section>
 
-      <section class="card">
+      <section class="card" data-tour="box-size">
         <h2 class="card-title">Box size (OD)</h2>
         <div class="flex flex-col gap-3">
           <div class="grid grid-cols-3 gap-2">
@@ -56,7 +59,7 @@
         </div>
       </section>
 
-      <section class="card">
+      <section class="card" data-tour="board-settings">
         <h2 class="card-title">Board</h2>
         <div class="flex flex-col gap-3">
           <div class="grid grid-cols-2 gap-2">
@@ -77,7 +80,7 @@
         </div>
       </section>
 
-      <section class="card">
+      <section class="card" data-tour="keyline-settings">
         <h2 class="card-title">Keyline</h2>
         <div class="flex flex-col gap-3">
           <div class="rsc-only grid grid-cols-2 gap-2">
@@ -109,7 +112,7 @@
         </div>
       </section>
 
-      <div class="grid grid-cols-2 gap-2">
+      <div class="grid grid-cols-2 gap-2" data-tour="exports">
         <button id="dlPdf" class="btn btn-primary col-span-2">
           <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
           Download PDF
@@ -143,7 +146,7 @@
     <section class="min-w-0 lg:sticky lg:top-4">
       <div id="error" hidden class="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-red-200"></div>
       <div class="relative">
-        <div class="absolute bottom-3 right-3 z-10 flex items-center gap-0.5 rounded-lg border border-slate-200 bg-white/95 p-1 text-slate-700 shadow-sm">
+        <div data-tour="zoom-tools" class="absolute bottom-3 right-3 z-10 flex items-center gap-0.5 rounded-lg border border-slate-200 bg-white/95 p-1 text-slate-700 shadow-sm">
           <button id="zoomOut" type="button" class="tool" title="Zoom out (-)" aria-label="Zoom out">
             <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/><line x1="8" x2="14" y1="11" y2="11"/></svg>
           </button>
@@ -157,7 +160,7 @@
           </button>
           <button id="zoomActual" type="button" class="tool !w-auto px-1.5 text-xs font-semibold" title="Actual size, 1:1 (1)" aria-label="Actual size">1:1</button>
         </div>
-        <div class="absolute bottom-11 left-3 z-10 flex items-center gap-2 rounded-lg border border-slate-200 bg-white/95 px-2 py-1 text-xs text-slate-700 shadow-sm">
+        <div data-tour="canvas-tools" class="absolute bottom-11 left-3 z-10 flex items-center gap-2 rounded-lg border border-slate-200 bg-white/95 px-2 py-1 text-xs text-slate-700 shadow-sm">
           <button id="undoEdit" type="button" class="tool !w-auto px-1.5 text-xs" title="Undo geometry edit (Ctrl+Z)" aria-label="Undo geometry edit" disabled>Undo</button>
           <button id="redoEdit" type="button" class="tool !w-auto px-1.5 text-xs" title="Redo geometry edit (Ctrl+Y)" aria-label="Redo geometry edit" disabled>Redo</button>
           <span class="mx-1 h-4 w-px bg-slate-200"></span>
@@ -166,10 +169,25 @@
           <label class="inline-flex items-center gap-1" title="Grid spacing in the selected unit">Step <input id="gridSpacing" type="number" min="0.01" step="any" value="1" style="width:4.25rem" class="input !px-1.5 !py-1 text-xs"></label>
         </div>
         <p class="pointer-events-none absolute bottom-3 left-3 z-10 text-[11px] text-slate-400">T text &middot; I image &middot; Ctrl+V paste image &middot; select overlay and press Delete to remove</p>
-        <div id="preview" tabindex="0" aria-label="Keyline preview" class="relative h-[calc(100vh-7rem)] min-h-[420px] cursor-grab touch-none select-none overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-brand/40 active:cursor-grabbing dark:border-slate-700 [&_svg]:block [&_svg]:h-full [&_svg]:w-full"></div>
+        <div id="preview" data-tour="preview" tabindex="0" aria-label="Keyline preview" class="relative h-[calc(100vh-7rem)] min-h-[420px] cursor-grab touch-none select-none overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-brand/40 active:cursor-grabbing dark:border-slate-700 [&_svg]:block [&_svg]:h-full [&_svg]:w-full"></div>
       </div>
     </section>
   </main>
+
+  <aside id="designerTour" class="designer-tour" role="region" aria-label="Designer quick tour" hidden>
+    <div class="designer-tour-heading" aria-live="polite" aria-atomic="true">
+      <p id="designerTourProgress" class="designer-tour-progress"></p>
+      <h2 id="designerTourTitle"></h2>
+      <p id="designerTourDescription" class="designer-tour-description"></p>
+    </div>
+    <div class="designer-tour-actions">
+      <button id="designerTourClose" type="button" class="designer-tour-skip">Skip tour</button>
+      <div class="designer-tour-navigation">
+        <button id="designerTourPrevious" type="button" class="designer-tour-secondary">Back</button>
+        <button id="designerTourNext" type="button" class="designer-tour-primary">Next</button>
+      </div>
+    </div>
+  </aside>
 
   <div id="printArea" hidden aria-hidden="true"></div>
   <input id="artworkImageFile" type="file" accept="image/*" hidden />
