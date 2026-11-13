@@ -31,12 +31,12 @@ Every verified account starts on the Free plan. Free accounts can use RSC,
 Pizza, and Chicken Box keylines; Premium keyline definitions are served only
 after a payment is verified (and, for card billing, its active subscription
 is confirmed). Premium is $5 USD per month and includes every keyline.
-Recurring card billing is handled by Paystack. Daraja M-Pesa
-checkout is a one-time payment for one month, so customers renew manually. Its
-KES amount is calculated at checkout from the latest available USD/KES
-reference rate and rounded to the nearest whole shilling. The `/account` page
-shows the verified plan and its limits. Account holders can update their name,
-role, contact, and address; company name can be set once and is then locked.
+Recurring card billing is handled by Paystack. New Daraja M-Pesa checkouts are
+temporarily disabled; callbacks for any already-started payments continue to be
+verified, and existing paid periods remain valid until they expire. The
+`/account` page shows plan details and links to the separate profile editor at
+`/account/profile`. Account holders can update their name, role, contact, and
+address; company name can be set once and is then locked.
 
 1. In Paystack, create an active **$5 USD monthly** payment plan. Paystack
    amounts use the currency's subunit, so the plan amount is 500 cents.
@@ -54,8 +54,9 @@ Existing Flutterwave subscriptions cannot be transferred to Paystack. Cancel
 any live Flutterwave subscriptions in its dashboard before retiring the old
 integration; customers must complete a new Paystack checkout.
 
-For Daraja M-Pesa, create a Lipa Na M-Pesa Online app in the Safaricom Daraja
-portal and set `DARAJA_ENV`, `DARAJA_CONSUMER_KEY`,
+Daraja callback verification for already-started M-Pesa checkouts requires a
+Lipa Na M-Pesa Online app in the Safaricom Daraja portal and the
+`DARAJA_ENV`, `DARAJA_CONSUMER_KEY`,
 `DARAJA_CONSUMER_SECRET`, `DARAJA_SHORTCODE`, `DARAJA_PASSKEY`, and
 `DARAJA_CALLBACK_URL` from that app. The callback URL must be a public HTTPS
 endpoint ending in `/api/daraja/callback`; for local sandbox testing, expose
@@ -70,16 +71,14 @@ and instructions for STK Push simulation.
 Set `DARAJA_TRANSACTION_TYPE=CustomerBuyGoodsOnline` if the business shortcode
 is a Buy Goods/Till number; the default is `CustomerPayBillOnline`.
 
-The USD/KES quote is fetched without caching for each M-Pesa checkout and its
-rate, date, and KES charge are recorded for callback verification. Frankfurter
-provides published reference rates, not live settlement quotes; checkout
-fails if the service is unavailable or its latest rate is more than seven
-days old. Premium is not granted from a browser redirect: the Daraja callback
-is checked against the STK Push query API before access is activated. Card
-subscriptions are activated only after Paystack confirms the active
-subscription and plan. Renewal, failed payment, and cancellation events update
-the local subscription; scheduled cancellations retain access through the
-paid period end.
+Each M-Pesa checkout records its USD/KES quote, rate date, and KES charge for
+callback verification. Premium is not granted from a browser redirect: the
+Daraja callback is checked against the STK Push query API before access is
+activated. This callback processing remains enabled for checkouts already in
+progress, but new M-Pesa checkouts are disabled. Card subscriptions are
+activated only after Paystack confirms the active subscription and plan.
+Renewal, failed payment, and cancellation events update the local subscription;
+scheduled cancellations retain access through the paid period end.
 
 ## Configure Google sign-in
 

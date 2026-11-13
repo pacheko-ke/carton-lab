@@ -3,22 +3,14 @@
 import { randomUUID } from "node:crypto";
 import { requireVerifiedUser } from "@/lib/account";
 import {
-  getCurrentUsdToKesRate,
   getApplicationUrl,
   getPaystackPlanCode,
   hasPremiumAccess,
   isPaystackBillingConfigured,
-  MPESA_CURRENCY,
-  MPESA_PROVIDER_PLAN_ID,
   paystackRequest,
   PREMIUM_CURRENCY,
   PREMIUM_PRICE,
 } from "@/lib/billing";
-import {
-  initiateStkPush,
-  isDarajaAvailableForUser,
-  normalizeKenyanPhoneNumber,
-} from "@/lib/daraja";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 
@@ -43,84 +35,28 @@ export async function startPremiumCheckout(formData: FormData) {
   }
 
   const paymentMethod = formData.get("paymentMethod");
-  if (paymentMethod !== "card" && paymentMethod !== "mpesa") {
-    throw new Error("Choose a supported Premium payment method.");
+  if (paymentMethod !== "card") {
+    redirect("/account?billing=mpesa-unavailable");
+  }
+  if (!isPaystackBillingConfigured()) {
+    throw new Error("Paystack billing is not fully configured.");
   }
 
-  let planId: string;
-  let amount: number;
-  let currency: string;
-  let exchangeRate: number | undefined;
-  let rateDate: Date | undefined;
-  let phoneNumber: string | undefined;
-
-  if (paymentMethod === "card") {
-    if (!isPaystackBillingConfigured()) {
-      throw new Error("Paystack billing is not fully configured.");
-    }
-
-    planId = getPaystackPlanCode();
-    const plan = await paystackRequest<PaystackPlan>(
-      `/plan/${encodeURIComponent(planId)}`,
-    );
-    if (
-      !plan ||
-      plan.plan_code !== planId ||
-      plan.currency !== PREMIUM_CURRENCY ||
-      plan.amount !== PREMIUM_PRICE * 100 ||
-      plan.interval !== "monthly"
-    ) {
-      redirect("/account?billing=plan-mismatch");
-    }
-    amount = PREMIUM_PRICE;
-    currency = PREMIUM_CURRENCY;
-  } else {
-    if (!isDarajaAvailableForUser(user.email)) {
-      throw new Error("Daraja M-Pesa billing is not fully configured.");
-    }
-    phoneNumber = normalizeKenyanPhoneNumber(formData.get("phoneNumber"));
-    const quote = await getCurrentUsdToKesRate();
-    planId = MPESA_PROVIDER_PLAN_ID;
-    amount = quote.amountKes;
-    currency = MPESA_CURRENCY;
-    exchangeRate = quote.rate;
-    rateDate = quote.rateDate;
+  const planId = getPaystackPlanCode();
+  const plan = await paystackRequest<PaystackPlan>(
+    `/plan/${encodeURIComponent(planId)}`,
+  );
+  if (
+    !plan ||
+    plan.plan_code !== planId ||
+    plan.currency !== PREMIUM_CURRENCY ||
+    plan.amount !== PREMIUM_PRICE * 100 ||
+    plan.interval !== "monthly"
+  ) {
+    redirect("/account?billing=plan-mismatch");
   }
 
   const txRef = `cartonlab-${user.id}-${randomUUID()}`;
-  if (paymentMethod === "mpesa") {
-    if (!phoneNumber) {
-      throw new Error("Enter the M-Pesa phone number to charge.");
-    }
-    await prisma.billingCheckout.create({
-      data: {
-        txRef,
-        userId: user.id,
-        planId,
-        paymentMethod,
-        amount,
-        currency,
-        exchangeRate,
-        rateDate,
-        phoneNumber,
-      },
-    });
-
-    const stkPush = await initiateStkPush({
-      phoneNumber,
-      amount,
-      accountReference: "CartonLab",
-    });
-    await prisma.billingCheckout.update({
-      where: { txRef },
-      data: {
-        providerCheckoutRequestId: stkPush.checkoutRequestId,
-        providerMerchantRequestId: stkPush.merchantRequestId,
-      },
-    });
-    redirect("/account?billing=mpesa-prompt-sent");
-  }
-
   const checkout = await paystackRequest<PaystackCheckout>(
     "/transaction/initialize",
     {
@@ -155,9 +91,9 @@ export async function startPremiumCheckout(formData: FormData) {
       txRef,
       userId: user.id,
       planId,
-      paymentMethod,
-      amount,
-      currency,
+      paymentMethod: "card",
+      amount: PREMIUM_PRICE,
+      currency: PREMIUM_CURRENCY,
     },
   });
   redirect(checkoutUrl.toString());

@@ -65,6 +65,7 @@ export async function updateAccountProfile(formData: FormData) {
   }
 
   revalidatePath("/account");
+  revalidatePath("/account/profile");
   revalidatePath("/app");
-  redirect("/account?profile=updated");
+  redirect("/account/profile?profile=updated");
 }

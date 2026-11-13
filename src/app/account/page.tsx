@@ -10,23 +10,19 @@ import {
   isPaystackBillingConfigured,
   MPESA_PROVIDER_PLAN_ID,
 } from "@/lib/billing";
-import { isDarajaAvailableForUser } from "@/lib/daraja";
 import BrandIcon from "../brand-icon";
-import { updateAccountProfile } from "../auth-actions";
 import { isAdminEmail } from "@/lib/admin";
 
 type AccountPageProps = {
   searchParams: Promise<{
     billing?: string | string[];
-    profile?: string | string[];
   }>;
 };
 
 const billingMessages: Record<string, string> = {
   "checkout-complete":
     "Checkout completed. Premium access will appear after Paystack verifies your payment.",
-  "mpesa-prompt-sent":
-    "An M-Pesa payment prompt was sent to your phone. Premium access will appear after Daraja confirms the payment.",
+  "mpesa-unavailable": "M-Pesa checkout is temporarily unavailable.",
   cancelled:
     "Your subscription was cancelled. Premium access remains until the paid period ends.",
   "not-active": "No active Premium subscription was found.",
@@ -79,10 +75,6 @@ async function AccountContent({ searchParams }: AccountPageProps) {
   const message = Array.isArray(params.billing)
     ? undefined
     : billingMessages[params.billing ?? ""];
-  const profileUpdated =
-    params.profile === "updated" ||
-    (Array.isArray(params.profile) && params.profile.includes("updated"));
-
   return (
     <main className="account-page">
       <header className="account-header">
@@ -120,90 +112,22 @@ async function AccountContent({ searchParams }: AccountPageProps) {
             {message}
           </p>
         )}
-        {profileUpdated && (
-          <p className="account-notice" role="status">
-            Your account details have been updated.
-          </p>
-        )}
-
         <section
           className="account-profile-card"
           aria-labelledby="profile-heading"
         >
           <div>
             <span className="account-plan-kicker">PROFILE DETAILS</span>
-            <h2 id="profile-heading">Your details</h2>
-            <p>These details are included in your keyline drawing.</p>
+            <h2 id="profile-heading">Your account</h2>
+            <p>
+              {user.name || user.email || "Manage your profile"}
+              {user.companyName ? ` · ${user.companyName}` : ""}
+              . Update the details included in your keyline drawing.
+            </p>
           </div>
-          <form action={updateAccountProfile}>
-            <label className="account-profile-field" htmlFor="profile-name">
-              Name
-              <input
-                id="profile-name"
-                name="name"
-                type="text"
-                autoComplete="name"
-                maxLength={100}
-                defaultValue={user.name ?? ""}
-                required
-              />
-            </label>
-            {user.companyName ? (
-              <div className="account-profile-field">
-                Company name
-                <p className="account-profile-value">{user.companyName}</p>
-              </div>
-            ) : (
-              <label className="account-profile-field" htmlFor="profile-company">
-                Company name
-                <span>Can be set once and cannot be changed later.</span>
-                <input
-                  id="profile-company"
-                  name="companyName"
-                  type="text"
-                  autoComplete="organization"
-                  maxLength={100}
-                />
-              </label>
-            )}
-            <label className="account-profile-field" htmlFor="profile-role">
-              Role
-              <input
-                id="profile-role"
-                name="role"
-                type="text"
-                autoComplete="organization-title"
-                maxLength={100}
-                defaultValue={user.role ?? ""}
-              />
-            </label>
-            <label className="account-profile-field" htmlFor="profile-contact">
-              Contact
-              <input
-                id="profile-contact"
-                name="contact"
-                type="text"
-                autoComplete="tel"
-                maxLength={120}
-                placeholder="Phone or email"
-                defaultValue={user.contact ?? ""}
-              />
-            </label>
-            <label className="account-profile-field" htmlFor="profile-address">
-              Address
-              <textarea
-                id="profile-address"
-                name="address"
-                autoComplete="street-address"
-                maxLength={120}
-                rows={3}
-                defaultValue={user.address ?? ""}
-              />
-            </label>
-            <button className="button button-large" type="submit">
-              Save details
-            </button>
-          </form>
+          <Link className="button button-large" href="/account/profile">
+            Update profile <span>→</span>
+          </Link>
         </section>
 
         <section className="account-plan-card" aria-labelledby="plan-heading">
@@ -282,39 +206,11 @@ async function AccountContent({ searchParams }: AccountPageProps) {
                   </button>
                 </form>
               )}
-              {isDarajaAvailableForUser(user.email) && (
-                <form action={startPremiumCheckout}>
-                  <input type="hidden" name="paymentMethod" value="mpesa" />
-                  <label className="account-phone-label" htmlFor="mpesa-phone">
-                    M-Pesa phone number
-                    <input
-                      id="mpesa-phone"
-                      name="phoneNumber"
-                      type="tel"
-                      autoComplete="tel"
-                      inputMode="tel"
-                      placeholder="0712345678"
-                      pattern="[0-9+() -]{9,16}"
-                      maxLength={16}
-                      required
-                    />
-                  </label>
-                  <button className="button button-large" type="submit">
-                    Pay one month with M-Pesa <span>→</span>
-                  </button>
-                </form>
+              {!isPaystackBillingConfigured() && (
+                <p className="account-billing-unavailable" role="status">
+                  Premium checkout is not available yet.
+                </p>
               )}
-              {!isPaystackBillingConfigured() &&
-                !isDarajaAvailableForUser(user.email) && (
-                  <p className="account-billing-unavailable" role="status">
-                    Premium checkout is not available yet.
-                  </p>
-                )}
-              <p className="account-subscription-note">
-                M-Pesa is a one-time monthly payment. Its KES amount is
-                calculated from the latest available USD/KES reference rate at
-                checkout and does not renew automatically.
-              </p>
             </>
           )}
         </section>
