@@ -50,9 +50,12 @@ async function AccountContent({ searchParams }: AccountPageProps) {
     requireVerifiedUser(),
     searchParams,
   ]);
+  const now = new Date();
   const premium = hasPremiumAccess(
     user.subscriptions,
     user.premiumAccessGranted,
+    user.trialEndsAt,
+    now,
   );
   const activeSubscription = user.subscriptions
     .filter(
@@ -64,7 +67,7 @@ async function AccountContent({ searchParams }: AccountPageProps) {
           (subscription.status === "cancelled" &&
             subscription.cancelAtPeriodEnd)) &&
         subscription.currentPeriodEnd !== null &&
-        subscription.currentPeriodEnd > new Date(),
+        subscription.currentPeriodEnd > now,
     )
     .sort(
       (first, second) =>
@@ -72,6 +75,12 @@ async function AccountContent({ searchParams }: AccountPageProps) {
         (first.currentPeriodEnd?.getTime() ?? 0),
     )[0];
   const complimentaryPremium = user.premiumAccessGranted && !activeSubscription;
+  const trialActive = Boolean(
+    !user.premiumAccessGranted &&
+      !activeSubscription &&
+      user.trialEndsAt &&
+      user.trialEndsAt > now,
+  );
   const message = Array.isArray(params.billing)
     ? undefined
     : billingMessages[params.billing ?? ""];
@@ -147,24 +156,47 @@ async function AccountContent({ searchParams }: AccountPageProps) {
               <span aria-hidden="true" />
               {activeSubscription?.cancelAtPeriodEnd
                 ? "Ending"
-                : premium
+                : trialActive
+                  ? "Trial active"
+                  : premium
                   ? "Active"
                   : "Upgrade available"}
             </span>
           </div>
 
           <p className="account-plan-price">
-            {complimentaryPremium ? "Granted" : "$5"}
-            {!complimentaryPremium && <span> / month</span>}
+            {trialActive
+              ? "Free trial"
+              : complimentaryPremium
+                ? "Granted"
+                : "$5"}
+            {!trialActive && !complimentaryPremium && <span> / month</span>}
           </p>
 
           <ul className="account-feature-list">
             <li>Access to every packaging keyline</li>
             <li>PDF, SVG, and DXF exports for every keyline</li>
+            <li>Dimension markings and carton colour options</li>
           </ul>
 
           {premium ? (
             <>
+              {trialActive && user.trialEndsAt && (
+                <p className="account-subscription-note">
+                  Your 7-day Premium trial ends on{" "}
+                  {user.trialEndsAt.toLocaleDateString()}. If you subscribe
+                  now, Paystack starts charging $5/month immediately;
+                  otherwise, your account returns to Free after the trial.
+                </p>
+              )}
+              {trialActive && isPaystackBillingConfigured() && (
+                <form action={startPremiumCheckout}>
+                  <input type="hidden" name="paymentMethod" value="card" />
+                  <button className="button button-large" type="submit">
+                    Subscribe now for $5/month <span>→</span>
+                  </button>
+                </form>
+              )}
               {complimentaryPremium && (
                 <p className="account-subscription-note">
                   Premium access is granted to this account; no paid
@@ -200,6 +232,9 @@ async function AccountContent({ searchParams }: AccountPageProps) {
           ) : (
             <>
               <p className="account-subscription-note">
+                {user.trialEndsAt && user.trialEndsAt <= now
+                  ? "Your 7-day free trial has ended. "
+                  : ""}
                 Your current plan is Free. Upgrade to unlock the complete
                 Premium library.
               </p>

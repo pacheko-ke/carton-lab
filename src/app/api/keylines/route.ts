@@ -15,6 +15,7 @@ export async function GET() {
     select: {
       emailVerified: true,
       premiumAccessGranted: true,
+      trialEndsAt: true,
       subscriptions: true,
     },
   });
@@ -26,10 +27,12 @@ export async function GET() {
   const premium = hasPremiumAccess(
     user.subscriptions,
     user.premiumAccessGranted,
+    user.trialEndsAt,
   );
   return NextResponse.json(
     {
       plan: premium ? "premium" : "free",
+      trialEndsAt: user.trialEndsAt?.toISOString() ?? null,
       ...createKeylineCatalog(premium),
     },
     { headers: { "Cache-Control": "private, no-store" } },

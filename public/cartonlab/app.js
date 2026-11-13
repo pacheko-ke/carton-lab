@@ -6,6 +6,7 @@ const NUMERIC = ["L", "W", "H", "crease", "bwadd", "glue", "slot"];
 const STORE_KEY = "rscKeyline.v4"; // bumped so new defaults (e.g. brown carton colour) replace old saved values
 const PLY_DEFAULTS_MM = { 3: { crease: 2, bwadd: 4 }, 5: { crease: 3, bwadd: 6 } };
 
+let premiumFeaturesEnabled = false;
 let lastUnit = "mm";
 let current = null; // { model }
 let creatorProfile = {
@@ -87,12 +88,23 @@ function readParams() {
     glue: num("glue"), slot: num("slot"),
     date: $("date").value,
     job: $("job").value,
-    dims: $("dims").checked,
-    prec: parseInt($("prec").value, 10),
-    color: $("color").value,
+    dims: premiumFeaturesEnabled && $("dims").checked,
+    prec: premiumFeaturesEnabled ? parseInt($("prec").value, 10) : 1,
+    color: premiumFeaturesEnabled ? $("color").value : "brown",
     type: $("boxType").value,
     inputs: keylineInputValues($("boxType").value),
   };
+}
+
+function applyPremiumFeatureAccess() {
+  $("dims").disabled = !premiumFeaturesEnabled;
+  $("color").disabled = !premiumFeaturesEnabled;
+  $("prec").disabled = !premiumFeaturesEnabled;
+  $("premiumFeaturesNotice").hidden = premiumFeaturesEnabled;
+  if (!premiumFeaturesEnabled) {
+    $("dims").checked = false;
+    $("color").value = "brown";
+  }
 }
 
 /* ---- keyline-specific inputs: each JSON keyline may declare "inputs" (id, label, default in mm) ---- */
@@ -1186,6 +1198,13 @@ async function init() {
     LOCKED_KEYLINES[definition.id] = definition;
   });
   const plan = window.CARTONLAB_PLAN;
+  premiumFeaturesEnabled = plan === "premium";
+  if (typeof window.CARTONLAB_TRIAL_ENDS_AT === "string") {
+    const expiresIn = Date.parse(window.CARTONLAB_TRIAL_ENDS_AT) - Date.now();
+    if (Number.isFinite(expiresIn) && expiresIn > 0) {
+      window.setTimeout(() => window.location.reload(), expiresIn);
+    }
+  }
   if (plan === "free" || plan === "premium") {
     accountControls.hidden = false;
     $("appAccountPlanLabel").textContent =
@@ -1212,6 +1231,7 @@ async function init() {
   });
 
   loadInputs();
+  applyPremiumFeatureAccess();
   $("artworkTextSize").value = $("unit").value === "in" ? (24 / 25.4).toFixed(3) : "24";
   $("artworkSizeUnit").textContent = $("unit").value;
   if (!$("boxType").value) $("boxType").value = "rsc"; // a saved type that no longer exists

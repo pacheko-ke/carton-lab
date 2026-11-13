@@ -758,12 +758,16 @@ async function loadKeylines(base) {
     if (
       !Array.isArray(catalog.definitions) ||
       !Array.isArray(catalog.locked) ||
-      (catalog.plan !== "free" && catalog.plan !== "premium")
+      (catalog.plan !== "free" && catalog.plan !== "premium") ||
+      (catalog.trialEndsAt !== null &&
+        (typeof catalog.trialEndsAt !== "string" ||
+          !Number.isFinite(Date.parse(catalog.trialEndsAt))))
     ) {
       throw new Error("The verified keyline catalog is invalid.");
     }
 
     window.CARTONLAB_PLAN = catalog.plan;
+    window.CARTONLAB_TRIAL_ENDS_AT = catalog.trialEndsAt;
     window.CARTONLAB_LOCKED_KEYLINES = catalog.locked;
     for (const definition of catalog.definitions) {
       try {

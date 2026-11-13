@@ -20,6 +20,7 @@ export async function requireVerifiedUser() {
       email: true,
       emailVerified: true,
       premiumAccessGranted: true,
+      trialEndsAt: true,
       subscriptions: true,
     },
   });

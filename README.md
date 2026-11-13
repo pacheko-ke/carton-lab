@@ -27,14 +27,19 @@ invoice events listed below.
 
 ## Plans and billing
 
-Every verified account starts on the Free plan. Free accounts can use RSC,
-Pizza, and Chicken Box keylines; Premium keyline definitions are served only
-after a payment is verified (and, for card billing, its active subscription
-is confirmed). Premium is $5 USD per month and includes every keyline.
-Recurring card billing is handled by Paystack. New Daraja M-Pesa checkouts are
-temporarily disabled; callbacks for any already-started payments continue to be
-verified, and existing paid periods remain valid until they expire. The
-`/account` page shows plan details and links to the separate profile editor at
+New accounts receive a seven-day Premium trial without entering payment
+details. The trial starts when the account is created; after it expires, the
+account returns to Free unless the user subscribes. Accounts that already
+exist when this change is deployed do not receive a trial. Free accounts can
+use RSC, Pizza, and Chicken Box keylines; Premium keyline definitions are
+served only when a verified payment, active subscription, or trial grants
+access. Premium is $5 USD per month and includes every keyline, dimension
+markings, and carton colour options. Free accounts cannot show dimension
+markings or change the carton colour, which defaults to brown. Recurring card
+billing is handled by Paystack. New Daraja M-Pesa checkouts are temporarily
+disabled; callbacks for any already-started payments continue to be verified,
+and existing paid periods remain valid until they expire. The `/account` page
+shows plan details and links to the separate profile editor at
 `/account/profile`. Account holders can update their name, role, contact, and
 address; company name can be set once and is then locked.
 

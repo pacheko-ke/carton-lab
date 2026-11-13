@@ -3,6 +3,7 @@ import type { Subscription } from "@prisma/client";
 
 export const PREMIUM_PRICE = 5;
 export const PREMIUM_CURRENCY = "USD";
+export const PREMIUM_TRIAL_DAYS = 7;
 export const MPESA_PROVIDER_PLAN_ID = "mpesa-monthly";
 export const MPESA_CURRENCY = "KES";
 
@@ -21,14 +22,16 @@ export function getPaystackPlanCode() {
   return planCode;
 }
 
-export function hasPremiumAccess(
-  subscriptions: readonly Pick<
-    Subscription,
-    | "providerPlanId"
-    | "status"
-    | "currentPeriodEnd"
-    | "cancelAtPeriodEnd"
-  >[],
+type PremiumSubscription = Pick<
+  Subscription,
+  | "providerPlanId"
+  | "status"
+  | "currentPeriodEnd"
+  | "cancelAtPeriodEnd"
+>;
+
+export function hasPremiumSubscriptionAccess(
+  subscriptions: readonly PremiumSubscription[],
   premiumAccessGranted = false,
   now = new Date(),
 ) {
@@ -43,6 +46,18 @@ export function hasPremiumAccess(
           subscription.cancelAtPeriodEnd)) &&
       subscription.currentPeriodEnd !== null &&
       subscription.currentPeriodEnd > now,
+  );
+}
+
+export function hasPremiumAccess(
+  subscriptions: readonly PremiumSubscription[],
+  premiumAccessGranted = false,
+  trialEndsAt: Date | null = null,
+  now = new Date(),
+) {
+  return (
+    hasPremiumSubscriptionAccess(subscriptions, premiumAccessGranted, now) ||
+    (trialEndsAt !== null && trialEndsAt > now)
   );
 }
 

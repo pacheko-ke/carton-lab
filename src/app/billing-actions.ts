@@ -5,7 +5,7 @@ import { requireVerifiedUser } from "@/lib/account";
 import {
   getApplicationUrl,
   getPaystackPlanCode,
-  hasPremiumAccess,
+  hasPremiumSubscriptionAccess,
   isPaystackBillingConfigured,
   paystackRequest,
   PREMIUM_CURRENCY,
@@ -27,7 +27,9 @@ type PaystackCheckout = {
 
 export async function startPremiumCheckout(formData: FormData) {
   const user = await requireVerifiedUser();
-  if (hasPremiumAccess(user.subscriptions, user.premiumAccessGranted)) {
+  if (
+    hasPremiumSubscriptionAccess(user.subscriptions, user.premiumAccessGranted)
+  ) {
     redirect("/account?billing=already-premium");
   }
   if (!user.email) {

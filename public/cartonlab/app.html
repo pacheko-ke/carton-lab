@@ -86,17 +86,20 @@
           </div>
           <div id="kInputs" class="grid grid-cols-2 gap-2 empty:hidden"></div>
           <label class="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
-            <input id="dims" type="checkbox" checked class="h-4 w-4 rounded accent-brand" />
+            <input id="dims" type="checkbox" disabled aria-describedby="premiumFeaturesNotice" class="h-4 w-4 rounded accent-brand" />
             Show dimension marking around artwork
           </label>
           <label class="field">Carton colour
-            <select id="color" class="input">
+            <select id="color" disabled aria-describedby="premiumFeaturesNotice" class="input">
               <option value="brown" selected>Brown</option>
               <option value="white">White</option>
             </select>
           </label>
+          <p id="premiumFeaturesNotice" hidden class="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+            Dimension markings and carton colour options are Premium features.
+          </p>
           <label class="field">Dimension marking precision
-            <select id="prec" class="input">
+            <select id="prec" disabled aria-describedby="premiumFeaturesNotice" class="input">
               <option value="0">0 decimal places</option>
               <option value="1" selected>1 decimal place</option>
               <option value="2">2 decimal places</option>
