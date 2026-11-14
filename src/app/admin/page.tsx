@@ -210,7 +210,7 @@ async function AdminDashboard() {
             Account
           </Link>
           <Link href="/app" className="account-back-link">
-            Designer
+            Studio
           </Link>
         </nav>
       </header>

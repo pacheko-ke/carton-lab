@@ -86,7 +86,7 @@ turn the conversion off and use numbers exactly as typed.
 
 ## 3D folding
 
-The designer enables 3D folding for the built-in RSC and keylines with explicit `folding`
+The Studio enables 3D folding for the built-in RSC and keylines with explicit `folding`
 metadata. Other keylines remain available in 2D and their 3D button stays disabled until an exact
 folding rule is added. Crease lines alone do not identify panels, hinges, fold directions or
 fold order. The engine is data-driven, so future keylines can use either rule format below

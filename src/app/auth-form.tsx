@@ -113,7 +113,7 @@ export default async function AuthForm({ mode, error }: AuthFormProps) {
                 Signed in as <b>{session.user.name || session.user.email}</b>
               </p>
               <Link href="/app" className="button auth-submit">
-                Open the designer <span>→</span>
+                Open the Studio <span>→</span>
               </Link>
               <form action={signOutOfCartonLab}>
                 <button type="submit" className="auth-signout">Sign out</button>

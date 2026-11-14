@@ -100,7 +100,7 @@ async function AccountContent({ searchParams }: AccountPageProps) {
             </Link>
           )}
           <Link href="/app" className="account-back-link">
-            Back to designer
+            Back to Studio
           </Link>
         </nav>
       </header>

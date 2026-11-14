@@ -7,11 +7,11 @@
   <link rel="stylesheet" href="app.css" />
   <link rel="stylesheet" href="account-controls.css" />
 </head>
-<body class="min-h-screen bg-slate-100 font-sans text-slate-900 antialiased dark:bg-slate-900 dark:text-slate-100">
+<body class="min-h-screen font-sans antialiased">
   <header class="flex items-center gap-3 px-3 pt-5 md:px-6">
     <img src="/cartonlab-icon.png" alt="" class="h-9 w-9" />
     <h1 class="text-xl font-semibold tracking-tight">CartonLab Lightweight 2.0</h1>
-    <button id="designerHelp" type="button" class="designer-help-button" aria-label="Open the designer quick tour" aria-controls="designerTour" aria-expanded="false" title="Take a quick designer tour">
+    <button id="designerHelp" type="button" class="designer-help-button" aria-label="Open the Studio quick tour" aria-controls="designerTour" aria-expanded="false" title="Take a quick Studio tour">
       <span aria-hidden="true">?</span> Help
     </button>
     <div id="appAccountControls" class="app-account-controls" hidden>
@@ -196,7 +196,7 @@
     </section>
   </main>
 
-  <aside id="designerTour" class="designer-tour" role="region" aria-label="Designer quick tour" hidden>
+  <aside id="designerTour" class="designer-tour" role="region" aria-label="Studio quick tour" hidden>
     <div class="designer-tour-heading" aria-live="polite" aria-atomic="true">
       <p id="designerTourProgress" class="designer-tour-progress"></p>
       <h2 id="designerTourTitle"></h2>

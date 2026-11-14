@@ -56,7 +56,7 @@ export default function AppFrame({ profile }: AppFrameProps) {
         ref={iframeRef}
         className="h-full w-full border-0"
         src="/cartonlab/app.html"
-        title="CartonLab Lightweight 2.0"
+        title="CartonLab Studio"
         onLoad={(event) =>
           event.currentTarget.contentWindow?.postMessage(
             { type: "cartonlab:profile", profile },

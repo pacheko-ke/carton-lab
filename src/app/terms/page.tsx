@@ -22,7 +22,7 @@ export default function TermsPage() {
         <p className="terms-effective-date">Effective date: November 13, 2026</p>
         <p>
           These Terms of Use (“Terms”) apply to CartonLab Lightweight 2.0,
-          including its website, keyline designer, packaging templates, and
+          including its website, keyline Studio, packaging templates, and
           exported files (the “Service”). By accessing or using the Service, you
           agree to these Terms. If you do not agree, do not use the Service.
         </p>
