@@ -524,6 +524,144 @@ function foldValue(expression, env, unitFactor, label) {
   if (!Number.isFinite(value)) throw new Error(`Invalid ${label} in fold metadata.`);
   return value * unitFactor;
 }
+function foldingEnvironment(params, definition, unitFactor) {
+  const env = {
+    L: params.L / unitFactor,
+    W: params.W / unitFactor,
+    H: params.H / unitFactor,
+    pi: Math.PI,
+  };
+  (definition.inputs || []).forEach((input) => {
+    const raw = params.inputs && params.inputs[input.id] !== undefined
+      ? params.inputs[input.id]
+      : input.default * unitFactor;
+    env[input.id] = raw / unitFactor;
+  });
+  Object.keys(definition.params || {}).forEach((name) => {
+    const expression = definition.params[name];
+    env[name] = typeof expression === "number" ? expression : evalExpr(expression, env);
+  });
+  return env;
+}
+function cartonPanelNetworkPanels(folding, env, unitFactor) {
+  const definitions = folding.panels;
+  if (!Array.isArray(definitions) || definitions.length < 2) {
+    throw new Error("Panel-network fold metadata needs at least two panels.");
+  }
+  const byId = new Map();
+  definitions.forEach((definition) => {
+    if (!definition || typeof definition.id !== "string" || !definition.id || byId.has(definition.id)) {
+      throw new Error("Panel-network fold metadata has a missing or duplicate panel id.");
+    }
+    byId.set(definition.id, definition);
+  });
+  if (typeof folding.basePanel !== "string" || !byId.has(folding.basePanel)) {
+    throw new Error("Panel-network fold metadata must identify an existing base panel.");
+  }
+
+  const panels = definitions.map((definition, index) => {
+    if (!Array.isArray(definition.points) || definition.points.length < 3) {
+      throw new Error(`Fold panel "${definition.id}" needs at least three points.`);
+    }
+    const points = definition.points.map((point, pointIndex) => {
+      if (!Array.isArray(point) || point.length !== 2) {
+        throw new Error(`Fold panel "${definition.id}" has an invalid point ${pointIndex + 1}.`);
+      }
+      return [
+        foldValue(point[0], env, unitFactor, `panel "${definition.id}" x coordinate`),
+        0,
+        -foldValue(point[1], env, unitFactor, `panel "${definition.id}" y coordinate`),
+      ];
+    });
+    const isBase = definition.id === folding.basePanel;
+    const parentId = definition.parent;
+    if (isBase ? parentId !== undefined && parentId !== null : typeof parentId !== "string" || !byId.has(parentId)) {
+      throw new Error(`Fold panel "${definition.id}" has an invalid parent.`);
+    }
+    const hingeDefinition = definition.hinge;
+    if (isBase ? hingeDefinition !== undefined : !Array.isArray(hingeDefinition) || hingeDefinition.length !== 2) {
+      throw new Error(`Fold panel "${definition.id}" has an invalid hinge.`);
+    }
+    const hinge = isBase ? null : hingeDefinition.map((point, pointIndex) => {
+      if (!Array.isArray(point) || point.length !== 2) {
+        throw new Error(`Fold panel "${definition.id}" has an invalid hinge point ${pointIndex + 1}.`);
+      }
+      return [
+        foldValue(point[0], env, unitFactor, `panel "${definition.id}" hinge x coordinate`),
+        0,
+        -foldValue(point[1], env, unitFactor, `panel "${definition.id}" hinge y coordinate`),
+      ];
+    });
+    if (hinge && Math.hypot(
+      hinge[1][0] - hinge[0][0],
+      hinge[1][1] - hinge[0][1],
+      hinge[1][2] - hinge[0][2],
+    ) < 1e-8) {
+      throw new Error(`Fold panel "${definition.id}" has a zero-length hinge.`);
+    }
+    const order = isBase
+      ? 0
+      : foldValue(definition.order === undefined ? index : definition.order, env, 1, `panel "${definition.id}" fold order`);
+    if (!isBase && typeof definition.angle !== "number" && typeof definition.angle !== "string") {
+      throw new Error(`Fold panel "${definition.id}" needs an angle.`);
+    }
+    const angle = isBase
+      ? 0
+      : foldValue(definition.angle, env, 1, `panel "${definition.id}" fold angle`);
+    if (!Number.isFinite(order) || order < 0 || (!isBase && (!Number.isFinite(angle) || angle === 0))) {
+      throw new Error(`Fold panel "${definition.id}" needs a non-negative order and non-zero angle.`);
+    }
+    return {
+      id: definition.id,
+      kind: definition.kind || "panel",
+      index,
+      points,
+      parentId: isBase ? null : parentId,
+      hinge,
+      angle,
+      order,
+      start: 0,
+      end: 1,
+    };
+  });
+  const panelById = new Map(panels.map((panel) => [panel.id, panel]));
+  const base = panelById.get(folding.basePanel);
+  if (base.parentId !== null) throw new Error("The base fold panel cannot have a parent.");
+  const visiting = new Set();
+  const visited = new Set();
+  const visit = (panel) => {
+    if (visiting.has(panel.id)) throw new Error(`Fold panel hierarchy contains a cycle at "${panel.id}".`);
+    if (visited.has(panel.id)) return;
+    visiting.add(panel.id);
+    if (panel.parentId !== null) {
+      const parent = panelById.get(panel.parentId);
+      if (parent.order > panel.order) {
+        throw new Error(`Fold panel "${panel.id}" is ordered before its parent.`);
+      }
+      visit(parent);
+    }
+    visiting.delete(panel.id);
+    visited.add(panel.id);
+  };
+  panels.forEach(visit);
+  if (visited.size !== panels.length) throw new Error("Every fold panel must connect to the base panel.");
+  panels.forEach((panel) => {
+    panel.parent = panel.parentId === null ? null : panelById.get(panel.parentId);
+    delete panel.parentId;
+  });
+
+  const orders = [...new Set(panels.filter((panel) => panel.hinge).map((panel) => panel.order))]
+    .sort((a, b) => a - b);
+  if (orders.length === 0) throw new Error("Panel-network fold metadata has no fold hinges.");
+  const step = 0.95 / orders.length;
+  panels.forEach((panel) => {
+    if (!panel.hinge) return;
+    const orderIndex = orders.indexOf(panel.order);
+    panel.start = 0.04 + step * orderIndex;
+    panel.end = panel.start + step;
+  });
+  return panels;
+}
 function cartonFoldConfig(params) {
   if (params.type === "rsc") {
     const geometry = compute(params);
@@ -541,25 +679,14 @@ function cartonFoldConfig(params) {
 
   const definition = KEYLINES[params.type];
   const folding = definition && definition.folding;
-  if (!folding || folding.type !== "slotted-box") return null;
+  if (!folding) return null;
 
   const unitFactor = definition.units === "any" ? 1 : params.unit === "in" ? 1 / 25.4 : 1;
-  const env = {
-    L: params.L / unitFactor,
-    W: params.W / unitFactor,
-    H: params.H / unitFactor,
-    pi: Math.PI,
-  };
-  (definition.inputs || []).forEach((input) => {
-    const raw = params.inputs && params.inputs[input.id] !== undefined
-      ? params.inputs[input.id]
-      : input.default * unitFactor;
-    env[input.id] = raw / unitFactor;
-  });
-  Object.keys(definition.params || {}).forEach((name) => {
-    const expression = definition.params[name];
-    env[name] = typeof expression === "number" ? expression : evalExpr(expression, env);
-  });
+  const env = foldingEnvironment(params, definition, unitFactor);
+  if (folding.type === "panel-network") {
+    return { panels: cartonPanelNetworkPanels(folding, env, unitFactor) };
+  }
+  if (folding.type !== "slotted-box") return null;
 
   const wallWidths = (folding.wallWidths || []).map((value, index) =>
     foldValue(value, env, unitFactor, `wall ${index + 1} width`));
@@ -589,6 +716,7 @@ function cartonFoldConfig(params) {
 function cartonFoldPanels(params) {
   const config = cartonFoldConfig(params);
   if (!config) return null;
+  if (Array.isArray(config.panels)) return config;
   const panels = [];
   const flapPanels = [];
   const height = config.wallHeight;
@@ -863,7 +991,8 @@ function renderCarton3D() {
       ? palette.walls[face.panel.index % palette.walls.length]
       : face.panel.kind === "top-flap" ? palette.top
         : face.panel.kind === "bottom-flap" ? palette.bottom
-          : palette.glue;
+          : face.panel.kind === "glue-flap" ? palette.glue
+            : palette.top;
     element.setAttribute("fill", color);
     element.setAttribute("stroke", palette.edge);
     element.setAttribute("stroke-width", "1.1");

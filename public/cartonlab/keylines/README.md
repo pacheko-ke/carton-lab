@@ -86,9 +86,15 @@ turn the conversion off and use numbers exactly as typed.
 
 ## 3D folding
 
-The designer currently animates the built-in RSC and keylines with explicit `folding` metadata.
-For a `slotted-box`, describe four wall panels in net order, their heights, and the top/bottom
-flap depths. Values may use the keyline's `L`, `W`, `H` and calculated `params`.
+The designer animates the built-in RSC and keylines with explicit `folding` metadata. Crease
+lines are not enough to determine a 3D assembly: each keyline must identify its panels, hinges,
+fold directions and fold order. Unsupported keylines remain available in 2D and show that no
+fold animation is configured. The engine is data-driven, so future keylines can use either rule
+format below without adding rendering code.
+
+For regular four-wall cartons, use the `slotted-box` rule. Describe four wall panels in net order,
+their heights, and the top/bottom flap depths. Values may use the keyline's `L`, `W`, `H` and
+calculated `params`.
 
     "folding": {
       "type": "slotted-box",
@@ -100,12 +106,46 @@ flap depths. Values may use the keyline's `L`, `W`, `H` and calculated `params`.
       "slotGap": "1.5 * scaleX"
     }
 
-The definition must include four positive wall widths and four positive depths for each flap
-row. Glue flap width and slot gap are optional. The animation uses crease lines as hinges,
-folds inward wall creases outward, then folds flap depths from shortest to longest. Flaps of
-equal depth fold from the crease nearest the center of the net outward. Keylines without
-folding metadata do not currently have a 3D fold animation. In the zero-thickness viewer,
-longer flaps receive a small outward offset so they render as the outer layer.
+The definition must include four positive wall widths and four positive depths for each flap row.
+Glue flap width and slot gap are optional. The animation folds inward wall creases outward, then
+folds flap depths from shortest to longest. Flaps of equal depth fold from the crease nearest the
+center of the net outward. In the zero-thickness viewer, longer flaps receive a small outward
+offset so they render as the outer layer.
+
+For irregular keylines, use the generic `panel-network` rule. Coordinates are `[x, y]` points in
+the flat net, in millimetres (or the definition's `"units": "any"` coordinates). Each non-base
+panel is a polygon attached to a parent by a hinge line in the same net coordinates. `angle` is
+the signed fold angle in radians (`"pi / 2"` is a quarter turn); positive and negative values
+fold in opposite directions. `order` controls animation stages: panels with the same order fold
+together, and a child must not be ordered before its parent. Panel points and hinge coordinates
+may use the keyline's `L`, `W`, `H` and calculated params.
+
+    "folding": {
+      "type": "panel-network",
+      "basePanel": "base",
+      "panels": [
+        {
+          "id": "base",
+          "kind": "wall",
+          "points": [["0", "0"], ["L", "0"], ["L", "W"], ["0", "W"]]
+        },
+        {
+          "id": "side",
+          "kind": "wall",
+          "points": [["L", "0"], ["L + H", "0"], ["L + H", "W"], ["L", "W"]],
+          "parent": "base",
+          "hinge": [["L", "0"], ["L", "W"]],
+          "angle": "pi / 2",
+          "order": 1
+        }
+      ]
+    }
+
+The base panel has no parent or hinge. Every other panel needs a unique `id`, at least three
+points, an existing parent, a nonzero hinge line and a nonzero angle. Panel edges and hinge lines
+must meet in the flat design; the engine checks the rule structure but does not infer or repair
+incorrect geometry. The example is abbreviated for illustration; include every panel needed for
+the assembled object.
 
 ## details
 

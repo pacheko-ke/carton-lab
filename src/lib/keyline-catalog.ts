@@ -76,14 +76,26 @@ import seaFreight from "./keyline-definitions/seafreight.json";
 import selfLockTray from "./keyline-definitions/selflocktray.json";
 import tray from "./keyline-definitions/tray.json";
 
+type FoldValue = string | number;
+
 type FoldingDefinition = {
   type: string;
-  wallWidths: Array<string | number>;
-  wallHeight: string | number;
-  topFlapDepths: Array<string | number>;
-  bottomFlapDepths: Array<string | number>;
-  glueFlapWidth?: string | number;
-  slotGap?: string | number;
+  wallWidths?: FoldValue[];
+  wallHeight?: FoldValue;
+  topFlapDepths?: FoldValue[];
+  bottomFlapDepths?: FoldValue[];
+  glueFlapWidth?: FoldValue;
+  slotGap?: FoldValue;
+  basePanel?: string;
+  panels?: Array<{
+    id: string;
+    kind?: "wall" | "top-flap" | "bottom-flap" | "glue-flap" | "panel";
+    points: Array<[FoldValue, FoldValue]>;
+    parent?: string | null;
+    hinge?: [[FoldValue, FoldValue], [FoldValue, FoldValue]];
+    angle?: FoldValue;
+    order?: FoldValue;
+  }>;
 };
 
 type KeylineDefinition = {
