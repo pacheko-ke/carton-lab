@@ -293,6 +293,10 @@ function keylineCategoryFor(id) {
   return "Other";
 }
 
+function keylineCategoryLabel(category) {
+  return category === "RSC" ? "RSC 0201" : category;
+}
+
 function keylineGroups() {
   const groups = new Map([["RSC", ["rsc"]]]);
   [...Object.keys(KEYLINES), ...Object.keys(LOCKED_KEYLINES)].forEach((id) => {
@@ -451,11 +455,11 @@ function renderKeylinePicker() {
     button.setAttribute("aria-selected", String(category === activeKeylineCategory));
     button.tabIndex = category === activeKeylineCategory ? 0 : -1;
     if (FREE_KEYLINE_CATEGORIES.has(category)) {
-      button.textContent = category;
+      button.textContent = keylineCategoryLabel(category);
     } else {
       const label = document.createElement("span");
       label.className = "keyline-tab-label";
-      label.textContent = category;
+      label.textContent = keylineCategoryLabel(category);
       button.append(label, createPremiumBadge());
     }
     button.addEventListener("click", () => {
@@ -484,7 +488,7 @@ function renderKeylinePicker() {
 
   const heading = document.createElement("p");
   heading.className = "keyline-choice-heading";
-  heading.textContent = `${activeKeylineCategory} keylines`;
+  heading.textContent = `${keylineCategoryLabel(activeKeylineCategory)} keylines`;
   choices.appendChild(heading);
   ids.forEach((id) => {
     const def = id === "rsc"
