@@ -164,11 +164,11 @@ function keylineInputDefault(inp, unit) {
   return String(+(inp.default * (unit === "in" ? 1 / 25.4 : 1)).toFixed(unit === "in" ? 3 : 1));
 }
 
-function applyKeylineDefaults(type, resetRsc = false, preserveDimensions = false) {
+function applyKeylineDefaults(type, resetRsc = false) {
   const unit = $("unit").value;
   const precision = unit === "in" ? 3 : 1;
   if (type === "rsc") {
-    if (resetRsc && !preserveDimensions) {
+    if (resetRsc) {
       Object.entries(RSC_DEFAULTS_MM).forEach(([field, value]) => {
         const converted = unit === "mm" ? value : value / 25.4;
         $(field).value = +converted.toFixed(precision);
@@ -179,15 +179,13 @@ function applyKeylineDefaults(type, resetRsc = false, preserveDimensions = false
 
   const def = KEYLINES[type];
   if (!def) return;
-  if (!preserveDimensions) {
-    ["L", "W", "H"].forEach((field) => {
-      const ref = def.params && def.params["ref" + field];
-      const value = typeof ref === "number" ? ref : Number(ref);
-      if (!Number.isFinite(value)) return;
-      const converted = def.units === "any" || unit === "mm" ? value : value / 25.4;
-      $(field).value = +converted.toFixed(precision);
-    });
-  }
+  ["L", "W", "H"].forEach((field) => {
+    const ref = def.params && def.params["ref" + field];
+    const value = typeof ref === "number" ? ref : Number(ref);
+    if (!Number.isFinite(value)) return;
+    const converted = def.units === "any" || unit === "mm" ? value : value / 25.4;
+    $(field).value = +converted.toFixed(precision);
+  });
   if (Array.isArray(def.inputs)) {
     kvals[def.id] = {};
     def.inputs.forEach((inp) => { kvals[def.id][inp.id] = keylineInputDefault(inp, unit); });
@@ -245,7 +243,6 @@ const FREE_KEYLINE_CATEGORIES = new Set(["RSC", "Pizza", "Chicken Box"]);
 const LOCKED_KEYLINES = {};
 const keylineThumbnailCache = new Map();
 let activeKeylineCategory = "RSC";
-let preserveCurrentDimensionsOnNextKeylineChange = false;
 
 function createPremiumBadge() {
   const badge = document.createElement("span");
@@ -308,7 +305,7 @@ function keylineGroups() {
   return { groups, order };
 }
 
-function selectKeyline(id, preserveDimensions = false) {
+function selectKeyline(id) {
   if (LOCKED_KEYLINES[id]) {
     window.parent.postMessage(
       { type: "cartonlab:upgrade" },
@@ -318,7 +315,6 @@ function selectKeyline(id, preserveDimensions = false) {
   }
   activeKeylineCategory = keylineCategoryFor(id);
   if ($("boxType").value !== id) {
-    preserveCurrentDimensionsOnNextKeylineChange = preserveDimensions;
     $("boxType").value = id;
     $("boxType").dispatchEvent(new Event("change", { bubbles: true }));
   } else {
@@ -514,7 +510,7 @@ function renderKeylinePicker() {
     label.appendChild(name);
     if (locked) label.appendChild(createPremiumBadge());
     button.appendChild(label);
-    button.addEventListener("click", () => selectKeyline(id, true));
+    button.addEventListener("click", () => selectKeyline(id));
     choices.appendChild(button);
   });
 }
@@ -1906,8 +1902,6 @@ $("prec").addEventListener("change", () => render());
 $("color").addEventListener("change", () => render());
 // choosing another keyline rebuilds its inputs and plays the draw-on animation
 $("boxType").addEventListener("change", () => {
-  const preserveDimensions = preserveCurrentDimensionsOnNextKeylineChange;
-  preserveCurrentDimensionsOnNextKeylineChange = false;
   artworkImages = [];
   artworkTexts = [];
   selectedArtworkImageId = null;
@@ -1916,7 +1910,7 @@ $("boxType").addEventListener("change", () => {
   activeKeylineCategory = keylineCategoryFor($("boxType").value);
   renderKeylinePicker();
   view.auto = true;
-  applyKeylineDefaults($("boxType").value, true, preserveDimensions);
+  applyKeylineDefaults($("boxType").value, true);
   buildKeylineInputs();
   render(true);
 });
