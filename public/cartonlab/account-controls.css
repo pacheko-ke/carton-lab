@@ -197,6 +197,71 @@ body .keyline-choices-flower {
 
 body .keyline-choice {
   border-radius: 0.6rem;
+  align-items: stretch;
+  flex-direction: column;
+  gap: 0.4rem;
+  justify-content: space-between;
+  min-height: 8rem;
+  padding: 0.45rem;
+}
+
+body .keyline-choice-preview {
+  display: grid;
+  width: 100%;
+  height: 5rem;
+  overflow: hidden;
+  place-items: center;
+  border-radius: 0.35rem;
+  background: #091626;
+}
+
+body .keyline-choice-thumbnail {
+  display: block;
+  width: 100%;
+  height: 5rem;
+  border-radius: 0.35rem;
+  background: #f8fbff;
+  object-fit: contain;
+}
+
+body .keyline-choice-preview-locked {
+  grid-template-rows: 1fr auto;
+  color: #66d3e8;
+}
+
+body .keyline-choice-preview-locked svg {
+  width: 5rem;
+  height: 3rem;
+}
+
+body .keyline-choice-preview-label,
+body .keyline-choice-preview-unavailable {
+  color: #9aacc0;
+  font-size: 0.62rem;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+body .keyline-choice-preview-unavailable {
+  display: grid;
+  height: 5rem;
+  place-items: center;
+}
+
+body .keyline-choice-label {
+  display: flex;
+  width: 100%;
+  min-height: 1.6rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  font-size: 0.74rem;
+  line-height: 1.2;
+}
+
+body .keyline-choice-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 body [data-tour="canvas-tools"],

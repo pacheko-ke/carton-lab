@@ -28,7 +28,7 @@ const DESIGNER_TOUR_STEPS = [
   {
     targets: ['[data-tour="box-type"]'],
     title: "Choose a box",
-    description: "Pick a category, then choose the box style you want to start from.",
+    description: "Pick a category to preview its box styles, then select a thumbnail to open it on the artboard.",
   },
   {
     targets: ['[data-tour="box-size"]'],
@@ -164,11 +164,11 @@ function keylineInputDefault(inp, unit) {
   return String(+(inp.default * (unit === "in" ? 1 / 25.4 : 1)).toFixed(unit === "in" ? 3 : 1));
 }
 
-function applyKeylineDefaults(type, resetRsc = false) {
+function applyKeylineDefaults(type, resetRsc = false, preserveDimensions = false) {
   const unit = $("unit").value;
   const precision = unit === "in" ? 3 : 1;
   if (type === "rsc") {
-    if (resetRsc) {
+    if (resetRsc && !preserveDimensions) {
       Object.entries(RSC_DEFAULTS_MM).forEach(([field, value]) => {
         const converted = unit === "mm" ? value : value / 25.4;
         $(field).value = +converted.toFixed(precision);
@@ -179,13 +179,15 @@ function applyKeylineDefaults(type, resetRsc = false) {
 
   const def = KEYLINES[type];
   if (!def) return;
-  ["L", "W", "H"].forEach((field) => {
-    const ref = def.params && def.params["ref" + field];
-    const value = typeof ref === "number" ? ref : Number(ref);
-    if (!Number.isFinite(value)) return;
-    const converted = def.units === "any" || unit === "mm" ? value : value / 25.4;
-    $(field).value = +converted.toFixed(precision);
-  });
+  if (!preserveDimensions) {
+    ["L", "W", "H"].forEach((field) => {
+      const ref = def.params && def.params["ref" + field];
+      const value = typeof ref === "number" ? ref : Number(ref);
+      if (!Number.isFinite(value)) return;
+      const converted = def.units === "any" || unit === "mm" ? value : value / 25.4;
+      $(field).value = +converted.toFixed(precision);
+    });
+  }
   if (Array.isArray(def.inputs)) {
     kvals[def.id] = {};
     def.inputs.forEach((inp) => { kvals[def.id][inp.id] = keylineInputDefault(inp, unit); });
@@ -241,7 +243,9 @@ function applyTypeVisibility(type) {
 const KEYLINE_CATEGORY_ORDER = ["RSC", "Pizza", "Chicken Box", "Slotted Boxes", "Telescopic Boxes", "Flower", "Tray", "Apparel", "Other"];
 const FREE_KEYLINE_CATEGORIES = new Set(["RSC", "Pizza", "Chicken Box"]);
 const LOCKED_KEYLINES = {};
+const keylineThumbnailCache = new Map();
 let activeKeylineCategory = "RSC";
+let preserveCurrentDimensionsOnNextKeylineChange = false;
 
 function createPremiumBadge() {
   const badge = document.createElement("span");
@@ -304,7 +308,7 @@ function keylineGroups() {
   return { groups, order };
 }
 
-function selectKeyline(id) {
+function selectKeyline(id, preserveDimensions = false) {
   if (LOCKED_KEYLINES[id]) {
     window.parent.postMessage(
       { type: "cartonlab:upgrade" },
@@ -314,6 +318,7 @@ function selectKeyline(id) {
   }
   activeKeylineCategory = keylineCategoryFor(id);
   if ($("boxType").value !== id) {
+    preserveCurrentDimensionsOnNextKeylineChange = preserveDimensions;
     $("boxType").value = id;
     $("boxType").dispatchEvent(new Event("change", { bubbles: true }));
   } else {
@@ -324,6 +329,106 @@ function selectKeyline(id) {
 function keylineChoiceLabel(def, id) {
   const name = typeof def.name === "string" ? def.name : id;
   return name.match(/^(FEFCO\s+\d{4}(?:-\d+)?)/i)?.[1] || name;
+}
+
+function keylineThumbnailSvg(id, def) {
+  if (keylineThumbnailCache.has(id)) return keylineThumbnailCache.get(id);
+
+  const refValue = (field, fallback) => {
+    const value = Number(def?.params?.[`ref${field}`]);
+    return Number.isFinite(value) && value > 0 ? value : fallback;
+  };
+  const params = {
+    L: id === "rsc" ? RSC_DEFAULTS_MM.L : refValue("L", 300),
+    W: id === "rsc" ? RSC_DEFAULTS_MM.W : refValue("W", 200),
+    H: id === "rsc" ? RSC_DEFAULTS_MM.H : refValue("H", 150),
+    unit: "mm",
+    ply: 3,
+    crease: 2,
+    bwadd: 4,
+    glue: 40,
+    slot: 10,
+    date: "",
+    job: "",
+    dims: false,
+    prec: 1,
+    color: "brown",
+    type: id,
+    inputs: {},
+  };
+
+  let model;
+  const options = { dims: false, prec: 1, color: "brown", profile: null };
+  if (id === "rsc") {
+    const geometry = compute(params);
+    if (geometry.error) throw new Error(geometry.error);
+    model = buildModel(geometry, options);
+  } else {
+    model = buildKeylineModel(def, params, options);
+  }
+
+  const drawingItems = model.items.filter((item) =>
+    ["FILL", "CUT", "CREASE"].includes(item.layer),
+  );
+  const thumbnailModel = finalizeModel(
+    drawingItems,
+    model.unit,
+    model.size,
+    model.th,
+    model.artH,
+  );
+  thumbnailModel.size *= 6;
+  const svg = toSVG(thumbnailModel, "preview");
+  keylineThumbnailCache.set(id, svg);
+  return svg;
+}
+
+function createLockedKeylinePreview() {
+  const preview = document.createElement("span");
+  preview.className = "keyline-choice-preview keyline-choice-preview-locked";
+  preview.setAttribute("aria-hidden", "true");
+
+  const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  icon.setAttribute("viewBox", "0 0 120 72");
+  icon.setAttribute("focusable", "false");
+  const shape = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  shape.setAttribute("d", "M34 19 60 8l26 11v35L60 65 34 54V19Zm0 0 26 12 26-12M60 31v34");
+  shape.setAttribute("fill", "none");
+  shape.setAttribute("stroke", "currentColor");
+  shape.setAttribute("stroke-width", "2");
+  icon.appendChild(shape);
+  preview.append(icon);
+
+  const label = document.createElement("span");
+  label.className = "keyline-choice-preview-label";
+  label.textContent = "Premium preview";
+  preview.appendChild(label);
+  return preview;
+}
+
+function createKeylinePreview(id, def, locked) {
+  if (locked) return createLockedKeylinePreview();
+
+  const preview = document.createElement("span");
+  preview.className = "keyline-choice-preview";
+  preview.setAttribute("aria-hidden", "true");
+  const image = document.createElement("img");
+  image.className = "keyline-choice-thumbnail";
+  image.alt = "";
+  image.width = 160;
+  image.height = 96;
+  image.loading = "lazy";
+
+  try {
+    const svg = keylineThumbnailSvg(id, def);
+    image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+    preview.appendChild(image);
+  } catch (error) {
+    console.error(`Could not render a preview for keyline "${id}":`, error);
+    preview.classList.add("keyline-choice-preview-unavailable");
+    preview.textContent = "Preview unavailable";
+  }
+  return preview;
 }
 
 function renderKeylinePicker() {
@@ -358,15 +463,6 @@ function renderKeylinePicker() {
       button.append(label, createPremiumBadge());
     }
     button.addEventListener("click", () => {
-      const ids = groups.get(category) || [];
-      if (
-        category === "RSC" ||
-        (ids.length === 1 && !LOCKED_KEYLINES[ids[0]])
-      ) {
-        selectKeyline(ids[0] || "rsc");
-        $("keyline-tab-" + order.indexOf(category))?.focus();
-        return;
-      }
       activeKeylineCategory = category;
       renderKeylinePicker();
       $("keyline-tab-" + order.indexOf(category))?.focus();
@@ -389,29 +485,36 @@ function renderKeylinePicker() {
   choices.replaceChildren();
   choices.setAttribute("aria-labelledby", `keyline-tab-${order.indexOf(activeKeylineCategory)}`);
   const ids = groups.get(activeKeylineCategory) || [];
-  if (activeKeylineCategory === "RSC") return;
 
   const heading = document.createElement("p");
   heading.className = "keyline-choice-heading";
   heading.textContent = `${activeKeylineCategory} keylines`;
   choices.appendChild(heading);
   ids.forEach((id) => {
-    const def = KEYLINES[id] || LOCKED_KEYLINES[id];
+    const def = id === "rsc"
+      ? { id, name: "RSC" }
+      : KEYLINES[id] || LOCKED_KEYLINES[id];
     if (!def) return;
+    const locked = Boolean(LOCKED_KEYLINES[id]);
     const button = document.createElement("button");
     button.type = "button";
     button.className = "keyline-choice";
     button.setAttribute("aria-pressed", String(id === selectedType));
-    if (LOCKED_KEYLINES[id]) {
+    if (locked) {
       button.classList.add("keyline-choice-locked");
       button.setAttribute("aria-label", `${def.name || id}, Premium keyline`);
-      const label = document.createElement("span");
-      label.textContent = keylineChoiceLabel(def, id);
-      button.append(label, createPremiumBadge());
-    } else {
-      button.textContent = keylineChoiceLabel(def, id);
     }
-    button.addEventListener("click", () => selectKeyline(id));
+
+    button.appendChild(createKeylinePreview(id, def, locked));
+    const label = document.createElement("span");
+    label.className = "keyline-choice-label";
+    const name = document.createElement("span");
+    name.className = "keyline-choice-name";
+    name.textContent = keylineChoiceLabel(def, id);
+    label.appendChild(name);
+    if (locked) label.appendChild(createPremiumBadge());
+    button.appendChild(label);
+    button.addEventListener("click", () => selectKeyline(id, true));
     choices.appendChild(button);
   });
 }
@@ -1803,6 +1906,8 @@ $("prec").addEventListener("change", () => render());
 $("color").addEventListener("change", () => render());
 // choosing another keyline rebuilds its inputs and plays the draw-on animation
 $("boxType").addEventListener("change", () => {
+  const preserveDimensions = preserveCurrentDimensionsOnNextKeylineChange;
+  preserveCurrentDimensionsOnNextKeylineChange = false;
   artworkImages = [];
   artworkTexts = [];
   selectedArtworkImageId = null;
@@ -1811,7 +1916,7 @@ $("boxType").addEventListener("change", () => {
   activeKeylineCategory = keylineCategoryFor($("boxType").value);
   renderKeylinePicker();
   view.auto = true;
-  applyKeylineDefaults($("boxType").value, true);
+  applyKeylineDefaults($("boxType").value, true, preserveDimensions);
   buildKeylineInputs();
   render(true);
 });
