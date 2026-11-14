@@ -38,7 +38,7 @@ const DESIGNER_TOUR_STEPS = [
   {
     targets: ['[data-tour="board-settings"]', '[data-tour="keyline-settings"]'],
     title: "Adjust the build",
-    description: "Set board ply and date, then review keyline options. Dimension marks and carton colour are Premium features.",
+    description: "Set board ply and date, then review keyline options. Choose to show dimension marks and carton color.",
   },
   {
     targets: ['[data-tour="preview"]'],
