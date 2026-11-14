@@ -2066,6 +2066,7 @@ async function init() {
     LOCKED_KEYLINES[definition.id] = definition;
   });
   const plan = window.CARTONLAB_PLAN;
+  const trialActive = window.CARTONLAB_TRIAL_ACTIVE === true;
   premiumFeaturesEnabled = plan === "premium";
   if (typeof window.CARTONLAB_TRIAL_ENDS_AT === "string") {
     const expiresIn = Date.parse(window.CARTONLAB_TRIAL_ENDS_AT) - Date.now();
@@ -2076,10 +2077,18 @@ async function init() {
   if (plan === "free" || plan === "premium") {
     accountControls.hidden = false;
     $("appAccountPlanLabel").textContent =
-      plan === "premium" ? "Premium account" : "Go Premium";
+      trialActive
+        ? "Free trial"
+        : plan === "premium"
+          ? "Premium account"
+          : "Go Premium";
     $("appAccountPlan").setAttribute(
       "aria-label",
-      plan === "premium" ? "View Premium account" : "Go Premium",
+      trialActive
+        ? "View free trial details"
+        : plan === "premium"
+          ? "View Premium account"
+          : "Go Premium",
     );
     $("appLogOut").addEventListener("click", () => {
       window.parent.postMessage(

@@ -811,6 +811,7 @@ async function loadKeylines(base) {
       !Array.isArray(catalog.definitions) ||
       !Array.isArray(catalog.locked) ||
       (catalog.plan !== "free" && catalog.plan !== "premium") ||
+      typeof catalog.trialActive !== "boolean" ||
       (catalog.trialEndsAt !== null &&
         (typeof catalog.trialEndsAt !== "string" ||
           !Number.isFinite(Date.parse(catalog.trialEndsAt))))
@@ -819,6 +820,7 @@ async function loadKeylines(base) {
     }
 
     window.CARTONLAB_PLAN = catalog.plan;
+    window.CARTONLAB_TRIAL_ACTIVE = catalog.trialActive;
     window.CARTONLAB_TRIAL_ENDS_AT = catalog.trialEndsAt;
     window.CARTONLAB_LOCKED_KEYLINES = catalog.locked;
     for (const definition of catalog.definitions) {
