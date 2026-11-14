@@ -190,6 +190,15 @@ body .accent-brand {
   accent-color: #66d3e8;
 }
 
+body .keyline-choices,
+body .keyline-choices-flower {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+body .keyline-choice {
+  border-radius: 0.6rem;
+}
+
 body [data-tour="canvas-tools"],
 body [data-tour="zoom-tools"] {
   border-color: rgba(165, 190, 214, 0.2);
