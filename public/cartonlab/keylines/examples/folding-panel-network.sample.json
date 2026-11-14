@@ -1,0 +1,85 @@
+{
+  "folding": {
+    "type": "panel-network",
+    "basePanel": "base",
+    "panels": [
+      {
+        "id": "base",
+        "kind": "wall",
+        "points": [["0", "0"], ["L", "0"], ["L", "W"], ["0", "W"]]
+      },
+      {
+        "id": "front-wall",
+        "kind": "wall",
+        "points": [["0", "0"], ["L", "0"], ["L", "-H"], ["0", "-H"]],
+        "parent": "base",
+        "hinge": [["0", "0"], ["L", "0"]],
+        "angle": "pi / 2",
+        "order": 1
+      },
+      {
+        "id": "back-wall",
+        "kind": "wall",
+        "points": [["L", "W"], ["0", "W"], ["0", "W + H"], ["L", "W + H"]],
+        "parent": "base",
+        "hinge": [["L", "W"], ["0", "W"]],
+        "angle": "pi / 2",
+        "order": 1
+      },
+      {
+        "id": "right-wall",
+        "kind": "wall",
+        "points": [["L", "0"], ["L + H", "0"], ["L + H", "W"], ["L", "W"]],
+        "parent": "base",
+        "hinge": [["L", "0"], ["L", "W"]],
+        "angle": "pi / 2",
+        "order": 2
+      },
+      {
+        "id": "left-wall",
+        "kind": "wall",
+        "points": [["0", "W"], ["-H", "W"], ["-H", "0"], ["0", "0"]],
+        "parent": "base",
+        "hinge": [["0", "W"], ["0", "0"]],
+        "angle": "pi / 2",
+        "order": 2
+      },
+      {
+        "id": "front-flap",
+        "kind": "top-flap",
+        "points": [["0", "-H"], ["L", "-H"], ["L", "-H - W / 2"], ["0", "-H - W / 2"]],
+        "parent": "front-wall",
+        "hinge": [["0", "-H"], ["L", "-H"]],
+        "angle": "pi / 2",
+        "foldDepth": "W / 2"
+      },
+      {
+        "id": "back-flap",
+        "kind": "top-flap",
+        "points": [["L", "W + H"], ["0", "W + H"], ["0", "W + H + W / 2"], ["L", "W + H + W / 2"]],
+        "parent": "back-wall",
+        "hinge": [["L", "W + H"], ["0", "W + H"]],
+        "angle": "pi / 2",
+        "foldDepth": "W / 2"
+      },
+      {
+        "id": "right-flap",
+        "kind": "top-flap",
+        "points": [["L + H", "0"], ["L + H + L / 2", "0"], ["L + H + L / 2", "W"], ["L + H", "W"]],
+        "parent": "right-wall",
+        "hinge": [["L + H", "0"], ["L + H", "W"]],
+        "angle": "pi / 2",
+        "foldDepth": "L / 2"
+      },
+      {
+        "id": "left-flap",
+        "kind": "top-flap",
+        "points": [["-H", "W"], ["-H - L / 2", "W"], ["-H - L / 2", "0"], ["-H", "0"]],
+        "parent": "left-wall",
+        "hinge": [["-H", "W"], ["-H", "0"]],
+        "angle": "pi / 2",
+        "foldDepth": "L / 2"
+      }
+    ]
+  }
+}

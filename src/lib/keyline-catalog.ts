@@ -95,6 +95,7 @@ type FoldingDefinition = {
     hinge?: [[FoldValue, FoldValue], [FoldValue, FoldValue]];
     angle?: FoldValue;
     order?: FoldValue;
+    foldDepth?: FoldValue;
   }>;
 };
 

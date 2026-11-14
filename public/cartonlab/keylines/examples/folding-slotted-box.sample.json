@@ -1,0 +1,11 @@
+{
+  "folding": {
+    "type": "slotted-box",
+    "wallWidths": ["L", "W", "L", "W"],
+    "wallHeight": "H",
+    "topFlapDepths": ["W / 2", "L / 2", "W / 2", "L / 2"],
+    "bottomFlapDepths": ["W / 2", "L / 2", "W / 2", "L / 2"],
+    "glueFlapWidth": "35",
+    "slotGap": "1.5"
+  }
+}

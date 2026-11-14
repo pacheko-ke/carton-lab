@@ -543,6 +543,12 @@ function foldingEnvironment(params, definition, unitFactor) {
   });
   return env;
 }
+function hasCartonFoldRule(type) {
+  if (type === "rsc") return true;
+  const definition = KEYLINES[type];
+  return !!definition && !!definition.folding &&
+    ["slotted-box", "panel-network"].includes(definition.folding.type);
+}
 function cartonPanelNetworkPanels(folding, env, unitFactor) {
   const definitions = folding.panels;
   if (!Array.isArray(definitions) || definitions.length < 2) {
@@ -608,8 +614,19 @@ function cartonPanelNetworkPanels(folding, env, unitFactor) {
     const angle = isBase
       ? 0
       : foldValue(definition.angle, env, 1, `panel "${definition.id}" fold angle`);
+    const foldDepth = !isBase && ["top-flap", "bottom-flap"].includes(definition.kind)
+      ? definition.foldDepth === undefined
+        ? Math.max(...points.map((point) => Math.abs(
+          (hinge[1][2] - hinge[0][2]) * (point[0] - hinge[0][0]) -
+          (hinge[1][0] - hinge[0][0]) * (point[2] - hinge[0][2]),
+        ))) / Math.hypot(hinge[1][0] - hinge[0][0], hinge[1][2] - hinge[0][2])
+        : foldValue(definition.foldDepth, env, unitFactor, `panel "${definition.id}" fold depth`)
+      : 0;
     if (!Number.isFinite(order) || order < 0 || (!isBase && (!Number.isFinite(angle) || angle === 0))) {
       throw new Error(`Fold panel "${definition.id}" needs a non-negative order and non-zero angle.`);
+    }
+    if (!Number.isFinite(foldDepth) || foldDepth < 0) {
+      throw new Error(`Fold panel "${definition.id}" has an invalid fold depth.`);
     }
     return {
       id: definition.id,
@@ -620,6 +637,7 @@ function cartonPanelNetworkPanels(folding, env, unitFactor) {
       hinge,
       angle,
       order,
+      foldDepth,
       start: 0,
       end: 1,
     };
@@ -635,9 +653,6 @@ function cartonPanelNetworkPanels(folding, env, unitFactor) {
     visiting.add(panel.id);
     if (panel.parentId !== null) {
       const parent = panelById.get(panel.parentId);
-      if (parent.order > panel.order) {
-        throw new Error(`Fold panel "${panel.id}" is ordered before its parent.`);
-      }
       visit(parent);
     }
     visiting.delete(panel.id);
@@ -650,15 +665,40 @@ function cartonPanelNetworkPanels(folding, env, unitFactor) {
     delete panel.parentId;
   });
 
-  const orders = [...new Set(panels.filter((panel) => panel.hinge).map((panel) => panel.order))]
-    .sort((a, b) => a - b);
-  if (orders.length === 0) throw new Error("Panel-network fold metadata has no fold hinges.");
-  const step = 0.95 / orders.length;
-  panels.forEach((panel) => {
-    if (!panel.hinge) return;
-    const orderIndex = orders.indexOf(panel.order);
-    panel.start = 0.04 + step * orderIndex;
-    panel.end = panel.start + step;
+  const foldable = panels.filter((panel) => panel.hinge);
+  if (foldable.length === 0) throw new Error("Panel-network fold metadata has no fold hinges.");
+  const flapKind = (panel) => ["top-flap", "bottom-flap"].includes(panel.kind);
+  foldable.sort((a, b) =>
+    Number(flapKind(a)) - Number(flapKind(b)) ||
+    (flapKind(a) ? a.foldDepth - b.foldDepth : a.order - b.order) ||
+    a.order - b.order ||
+    a.index - b.index);
+  const stageGroups = [];
+  foldable.forEach((panel) => {
+    const previous = stageGroups[stageGroups.length - 1];
+    const sameStage = previous &&
+      flapKind(previous[0]) === flapKind(panel) &&
+      (flapKind(panel)
+        ? Math.abs(previous[0].foldDepth - panel.foldDepth) < 1e-8
+        : previous[0].order === panel.order);
+    if (sameStage) previous.push(panel);
+    else stageGroups.push([panel]);
+  });
+  const stageForPanel = new Map();
+  stageGroups.forEach((group, stageIndex) => {
+    group.forEach((panel) => stageForPanel.set(panel.id, stageIndex));
+  });
+  foldable.forEach((panel) => {
+    if (panel.parent && panel.parent.hinge && stageForPanel.get(panel.parent.id) >= stageForPanel.get(panel.id)) {
+      throw new Error(`Fold panel "${panel.id}" must fold after its parent.`);
+    }
+  });
+  const step = 0.95 / stageGroups.length;
+  stageGroups.forEach((group, stageIndex) => {
+    group.forEach((panel) => {
+      panel.start = 0.04 + step * stageIndex;
+      panel.end = panel.start + step;
+    });
   });
   return panels;
 }
@@ -678,6 +718,7 @@ function cartonFoldConfig(params) {
   }
 
   const definition = KEYLINES[params.type];
+  if (!definition) return null;
   const folding = definition && definition.folding;
   if (!folding) return null;
 
@@ -831,7 +872,10 @@ function cartonFoldPanels(params) {
     a.creasePosition - b.creasePosition;
   const wallFolds = walls.filter((wall) => wall.hinge);
   if (glueFlap) wallFolds.push(glueFlap);
-  wallFolds.sort(creaseOrder);
+  wallFolds.sort((a, b) =>
+    Number(a.kind === "glue-flap") - Number(b.kind === "glue-flap") ||
+    a.index - b.index ||
+    creaseOrder(a, b));
   assignFoldWindows(wallFolds, 0.04, 0.35);
 
   flapPanels.sort((a, b) =>
@@ -894,7 +938,6 @@ function renderCarton3D() {
     return;
   }
 
-  $("carton3dDimensions").textContent = `${fmt(p.L, p.unit)} × ${fmt(p.W, p.unit)} × ${fmt(p.H, p.unit)} ${p.unit}`;
   let scene;
   try {
     scene = cartonFoldPanels(p);
@@ -905,9 +948,11 @@ function renderCarton3D() {
   }
   if (!scene) {
     $("carton3dScene").setAttribute("aria-label", `Fold animation is not configured for ${p.type}.`);
-    renderCarton3DMessage("Fold animation not configured for this keyline", false);
+    $("carton3dDimensions").textContent = "Exact folding rules unavailable";
+    renderCarton3DMessage("Exact folding rules are not configured for this keyline", false);
     return;
   }
+  $("carton3dDimensions").textContent = `${fmt(p.L, p.unit)} × ${fmt(p.W, p.unit)} × ${fmt(p.H, p.unit)} ${p.unit}`;
   renderCarton3DMessage("", true);
 
   const cosYaw = Math.cos(carton3DView.yaw), sinYaw = Math.sin(carton3DView.yaw);
@@ -1593,7 +1638,11 @@ function render(animate) {
     return showError(e.message);
   }
   $("error").hidden = true;
-  $("carton3dOpen").disabled = false;
+  const hasFoldRule = hasCartonFoldRule(p.type);
+  $("carton3dOpen").disabled = !hasFoldRule;
+  $("carton3dOpen").title = hasFoldRule
+    ? "Open the 3D fold view"
+    : "3D fold view is disabled until this keyline has exact folding rules";
   selectedItem = null;
   current = { model };
   setPreview(animate === true ? toAnimatedSVG(model) : toSVG(model, "preview"));

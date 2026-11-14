@@ -86,15 +86,17 @@ turn the conversion off and use numbers exactly as typed.
 
 ## 3D folding
 
-The designer animates the built-in RSC and keylines with explicit `folding` metadata. Crease
-lines are not enough to determine a 3D assembly: each keyline must identify its panels, hinges,
-fold directions and fold order. Unsupported keylines remain available in 2D and show that no
-fold animation is configured. The engine is data-driven, so future keylines can use either rule
-format below without adding rendering code.
+The designer enables 3D folding for the built-in RSC and keylines with explicit `folding`
+metadata. Other keylines remain available in 2D and their 3D button stays disabled until an exact
+folding rule is added. Crease lines alone do not identify panels, hinges, fold directions or
+fold order. The engine is data-driven, so future keylines can use either rule format below
+without adding rendering code.
 
 For regular four-wall cartons, use the `slotted-box` rule. Describe four wall panels in net order,
 their heights, and the top/bottom flap depths. Values may use the keyline's `L`, `W`, `H` and
-calculated `params`.
+calculated `params`. The copy-ready standard-carton rule is in
+[`examples/folding-slotted-box.sample.json`](./examples/folding-slotted-box.sample.json); copy its
+`folding` object into a keyline definition and adjust the dimensions to match that dieline.
 
     "folding": {
       "type": "slotted-box",
@@ -107,18 +109,27 @@ calculated `params`.
     }
 
 The definition must include four positive wall widths and four positive depths for each flap row.
-Glue flap width and slot gap are optional. The animation folds inward wall creases outward, then
-folds flap depths from shortest to longest. Flaps of equal depth fold from the crease nearest the
-center of the net outward. In the zero-thickness viewer, longer flaps receive a small outward
-offset so they render as the outer layer.
+Glue flap width and slot gap are optional. The animation folds wall creases in net order, starting
+from the inner crease and proceeding outward. It then folds flap depths from shortest to longest;
+equal-depth flaps fold together. In the zero-thickness viewer, longer flaps receive a small
+outward offset so they render as the outer layer. A standard-box example is available at
+[`examples/folding-slotted-box.sample.json`](./examples/folding-slotted-box.sample.json).
 
 For irregular keylines, use the generic `panel-network` rule. Coordinates are `[x, y]` points in
 the flat net, in millimetres (or the definition's `"units": "any"` coordinates). Each non-base
 panel is a polygon attached to a parent by a hinge line in the same net coordinates. `angle` is
 the signed fold angle in radians (`"pi / 2"` is a quarter turn); positive and negative values
-fold in opposite directions. `order` controls animation stages: panels with the same order fold
-together, and a child must not be ordered before its parent. Panel points and hinge coordinates
-may use the keyline's `L`, `W`, `H` and calculated params.
+fold in opposite directions. Wall and glue panels fold before flaps; their `order` values run
+from the inner crease outward. Flaps fold from shortest to longest, with equal-depth flaps folding
+together. The engine measures flap depth from the polygon and hinge; set `foldDepth` to override
+that measurement when the panel shape needs it. A child panel must fold after its parent. Panel
+points, hinge coordinates and `foldDepth` may use the keyline's `L`, `W`, `H` and calculated
+params.
+
+A complete cross-shaped tray example is available at
+[`examples/folding-panel-network.sample.json`](./examples/folding-panel-network.sample.json).
+Copy its `folding` object and adjust the panels, hinge positions, angles and flap depths to match
+the exact cut and crease geometry of your design.
 
     "folding": {
       "type": "panel-network",
