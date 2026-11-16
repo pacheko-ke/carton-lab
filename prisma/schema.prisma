@@ -24,6 +24,21 @@ model User {
   subscriptions        Subscription[]
   billingCheckouts     BillingCheckout[]
   billingPayments      BillingPayment[]
+  keylineBookmarks     KeylineBookmark[]
+}
+
+model KeylineBookmark {
+  id        String   @id @default(cuid())
+  userId    String
+  keylineId String
+  name      String
+  settings  Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }
 
 model Subscription {

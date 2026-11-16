@@ -20,6 +20,7 @@ document.addEventListener("keydown", (event) => {
   if (devToolsShortcut) event.preventDefault();
 }, true);
 const FIELDS = ["boxType", "L", "W", "H", "unit", "ply", "crease", "bwadd", "glue", "slot", "dims", "prec", "color"];
+const BOOKMARK_FIELD_IDS = new Set([...FIELDS, "date", "job"]);
 const NUMERIC = ["L", "W", "H", "crease", "bwadd", "glue", "slot"];
 const STORE_KEY = "rscKeyline.v4"; // bumped so new defaults (e.g. brown carton colour) replace old saved values
 const RSC_DEFAULTS_MM = { L: 300, W: 200, H: 150 };
@@ -101,6 +102,7 @@ window.addEventListener("message", (event) => {
 // Values of the keyline-specific inputs (such as "Notch size"), as typed, in the unit in use:
 // { keylineId: { inputId: "text" } }
 let kvals = {};
+let savedBookmarks = [];
 
 function todayISO() {
   const d = new Date();
@@ -199,6 +201,114 @@ function keylineInputValues(type) {
   const out = {};
   def.inputs.forEach((inp) => { out[inp.id] = saved[inp.id] === undefined ? undefined : parseFloat(saved[inp.id]); });
   return out;
+}
+
+function bookmarkSettings() {
+  const fields = {};
+  [...FIELDS, "date", "job"].forEach((id) => {
+    fields[id] = id === "dims" ? $(id).checked : $(id).value;
+  });
+  return { fields, kin: JSON.parse(JSON.stringify(kvals)) };
+}
+
+function applyBookmark(bookmark) {
+  if (!KEYLINES[bookmark.keylineId] && bookmark.keylineId !== "rsc") {
+    $("bookmarkStatus").textContent = "This bookmarked keyline is no longer available.";
+    return;
+  }
+
+  $("boxType").value = bookmark.keylineId;
+  $("boxType").dispatchEvent(new Event("change", { bubbles: true }));
+  Object.entries(bookmark.settings.fields).forEach(([id, value]) => {
+    if (!BOOKMARK_FIELD_IDS.has(id)) return;
+    if (id === "dims") $(id).checked = value === true;
+    else $(id).value = value;
+  });
+  kvals = bookmark.settings.kin;
+  applyPremiumFeatureAccess();
+  buildKeylineInputs();
+  render(true);
+  $("bookmarkStatus").textContent = `Opened "${bookmark.name}".`;
+}
+
+function renderBookmarks(bookmarks) {
+  savedBookmarks = bookmarks;
+  const list = $("bookmarkList");
+  list.replaceChildren();
+  if (!bookmarks.length) {
+    const empty = document.createElement("p");
+    empty.className = "text-xs text-slate-500 dark:text-slate-400";
+    empty.textContent = "Your saved keylines will appear here.";
+    list.appendChild(empty);
+    return;
+  }
+
+  bookmarks.forEach((bookmark) => {
+    const row = document.createElement("div");
+    row.className = "flex items-center gap-2";
+    const open = document.createElement("button");
+    open.type = "button";
+    open.className = "btn btn-secondary min-w-0 flex-1";
+    open.textContent = bookmark.name;
+    open.title = `Open ${bookmark.name}`;
+    open.addEventListener("click", () => applyBookmark(bookmark));
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "btn btn-secondary shrink-0";
+    remove.textContent = "Remove";
+    remove.setAttribute("aria-label", `Remove ${bookmark.name} from bookmarks`);
+    remove.addEventListener("click", () => removeBookmark(bookmark.id));
+    row.append(open, remove);
+    list.appendChild(row);
+  });
+}
+
+async function loadBookmarks() {
+  const response = await fetch("/api/keylines/bookmarks");
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error || "Could not load bookmarks.");
+  renderBookmarks(result.bookmarks);
+  $("bookmarkStatus").textContent = "";
+}
+
+async function addBookmark() {
+  const type = $("boxType").value;
+  const name = $("job").value.trim() || (type === "rsc" ? "RSC 0201" : KEYLINES[type]?.name || type);
+  $("addBookmark").disabled = true;
+  $("bookmarkStatus").textContent = "Saving bookmark…";
+  try {
+    const response = await fetch("/api/keylines/bookmarks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, keylineId: type, settings: bookmarkSettings() }),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "Could not save bookmark.");
+    savedBookmarks.unshift(result.bookmark);
+    renderBookmarks(savedBookmarks);
+    $("bookmarkStatus").textContent = `"${name}" added to bookmarks.`;
+  } catch (error) {
+    console.error("Could not save keyline bookmark:", error);
+    $("bookmarkStatus").textContent = error.message || "Could not save bookmark.";
+  } finally {
+    $("addBookmark").disabled = false;
+  }
+}
+
+async function removeBookmark(id) {
+  try {
+    const response = await fetch(`/api/keylines/bookmarks/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "Could not remove bookmark.");
+    savedBookmarks = savedBookmarks.filter((bookmark) => bookmark.id !== id);
+    renderBookmarks(savedBookmarks);
+    $("bookmarkStatus").textContent = "Bookmark removed.";
+  } catch (error) {
+    console.error("Could not remove keyline bookmark:", error);
+    $("bookmarkStatus").textContent = error.message || "Could not remove bookmark.";
+  }
 }
 
 function buildKeylineInputs() {
@@ -2056,6 +2166,7 @@ function initializeCarton3D() {
 
 async function init() {
   initializeCarton3D();
+  $("addBookmark").addEventListener("click", addBookmark);
   const accountControls = $("appAccountControls");
   // Fetch only the definitions permitted by the server-verified account plan.
   let loadErrors = [];
@@ -2124,6 +2235,12 @@ async function init() {
   applyKeylineDefaults($("boxType").value);
   buildKeylineInputs();
   render(true);
+  try {
+    await loadBookmarks();
+  } catch (error) {
+    console.error("Could not load keyline bookmarks:", error);
+    $("bookmarkStatus").textContent = error.message || "Could not load bookmarks.";
+  }
   if (loadErrors.length) console.warn("Keyline definitions not loaded:", loadErrors);
   initializeDesignerTour();
 }

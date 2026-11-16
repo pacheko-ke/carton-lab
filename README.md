@@ -4,6 +4,8 @@ Next.js and Tailwind CSS. The Next.js
 home page is a product landing page. The carton keyline application is available
 at `/app`; its original UI and browser-based features are served from
 `public/cartonlab`.
+Verified users can bookmark the current keyline and its settings in the Studio;
+bookmarks are saved to their account and can be reopened or removed later.
 
 The `/login` and `/signup` pages use Google OAuth through Auth.js. Google
 accounts are saved in PostgreSQL through Prisma. New users can sign in only when

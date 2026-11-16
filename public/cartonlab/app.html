@@ -36,6 +36,13 @@
       </section>
 
       <section class="card">
+        <h2 class="card-title">Bookmarks</h2>
+        <button id="addBookmark" type="button" class="btn btn-secondary w-full">Bookmark current keyline</button>
+        <p id="bookmarkStatus" role="status" aria-live="polite" class="mt-2 text-xs text-slate-500 dark:text-slate-400"></p>
+        <div id="bookmarkList" class="mt-2 flex flex-col gap-2"></div>
+      </section>
+
+      <section class="card">
         <h2 class="card-title">Job</h2>
         <label class="field">Job name
           <input id="job" type="text" maxlength="80" placeholder="Optional, blank uses default title" autocomplete="off" class="input" />
