@@ -123,10 +123,6 @@ scheduled cancellations retain access through the paid period end.
    building the app. Configure only live Daraja credentials in Vercel
    Production (`DARAJA_ENV=production`); keep sandbox credentials local.
 
-Never commit `.env.local` or expose the Google client secret in browser code.
-Without the auth and database values, Google sign-in stays disabled. Billing
-remains unavailable until its provider credentials are configured.
-
 ## Run locally
 
 ```bash
