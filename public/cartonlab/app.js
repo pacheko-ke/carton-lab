@@ -47,6 +47,11 @@ const DESIGNER_TOUR_STEPS = [
     description: "Click a cut or crease to reveal edit handles, then drag to adjust it. Press T for text, I for an image, or Ctrl+V to paste an image.",
   },
   {
+    targets: ['[data-tour="bookmark"]'],
+    title: "Bookmark this keyline",
+    description: "Select the bookmark icon beside 3D view to save this keyline and its settings. Reopen or remove saved keylines from Bookmarks in the sidebar.",
+  },
+  {
     targets: ['[data-tour="canvas-tools"]', '[data-tour="zoom-tools"]'],
     title: "Navigate and edit",
     description: "Undo, redo, grid, snap and spacing are at the lower left. Zoom, fit and 1:1 controls are at the lower right.",
