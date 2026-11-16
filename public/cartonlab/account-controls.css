@@ -390,6 +390,74 @@ body .carton3d-control:hover {
   color: #b7eff7;
 }
 
+body .artboard-actions {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 11;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+body .artboard-actions .carton3d-launch {
+  position: static;
+  top: auto;
+  right: auto;
+  z-index: auto;
+}
+
+body .artboard-bookmark-button {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 1px solid rgba(165, 190, 214, 0.24);
+  border-radius: 8px;
+  background: #102238;
+  color: #d3e0eb;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.16);
+  transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
+}
+
+body .artboard-bookmark-button svg {
+  width: 18px;
+  height: 18px;
+}
+
+body .artboard-bookmark-button:hover:not(:disabled) {
+  border-color: #66d3e8;
+  background: #172a3d;
+  color: #b7eff7;
+}
+
+body .artboard-bookmark-button:focus-visible {
+  outline: 2px solid #66d3e8;
+  outline-offset: 2px;
+}
+
+body .artboard-bookmark-button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+body #bookmarkList {
+  display: flex;
+  flex-flow: row wrap;
+  gap: 8px;
+}
+
+body #bookmarkList > div {
+  min-width: 0;
+  width: max-content;
+  max-width: 100%;
+}
+
+body #bookmarkList > div > button:first-child {
+  min-width: 0;
+  white-space: nowrap;
+}
+
 body .carton3d-viewer {
   border-color: rgba(165, 190, 214, 0.24);
   background: #102238;

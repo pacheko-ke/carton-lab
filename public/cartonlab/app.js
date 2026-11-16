@@ -103,6 +103,7 @@ window.addEventListener("message", (event) => {
 // { keylineId: { inputId: "text" } }
 let kvals = {};
 let savedBookmarks = [];
+let bookmarkSaving = false;
 
 function todayISO() {
   const d = new Date();
@@ -233,6 +234,7 @@ function applyBookmark(bookmark) {
 
 function renderBookmarks(bookmarks) {
   savedBookmarks = bookmarks;
+  updateBookmarkButton();
   const list = $("bookmarkList");
   list.replaceChildren();
   if (!bookmarks.length) {
@@ -255,12 +257,37 @@ function renderBookmarks(bookmarks) {
     const remove = document.createElement("button");
     remove.type = "button";
     remove.className = "btn btn-secondary shrink-0";
-    remove.textContent = "Remove";
     remove.setAttribute("aria-label", `Remove ${bookmark.name} from bookmarks`);
+    remove.title = "Remove bookmark";
+    const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    icon.setAttribute("viewBox", "0 0 24 24");
+    icon.setAttribute("width", "16");
+    icon.setAttribute("height", "16");
+    icon.setAttribute("fill", "none");
+    icon.setAttribute("stroke", "currentColor");
+    icon.setAttribute("stroke-width", "2");
+    icon.setAttribute("stroke-linecap", "round");
+    icon.setAttribute("stroke-linejoin", "round");
+    icon.setAttribute("aria-hidden", "true");
+    const shape = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    shape.setAttribute("d", "M3 6h18M8 6V4h8v2m3 0-1 14H6L5 6m5 5v6m4-6v6");
+    icon.appendChild(shape);
+    remove.appendChild(icon);
     remove.addEventListener("click", () => removeBookmark(bookmark.id));
     row.append(open, remove);
     list.appendChild(row);
   });
+}
+
+function updateBookmarkButton() {
+  const keylineId = $("boxType").value;
+  const alreadyBookmarked = savedBookmarks.some((bookmark) => bookmark.keylineId === keylineId);
+  $("addBookmark").disabled = bookmarkSaving || alreadyBookmarked;
+  $("addBookmark").title = alreadyBookmarked ? "Keyline already bookmarked" : "Bookmark current keyline";
+  $("addBookmark").setAttribute(
+    "aria-label",
+    alreadyBookmarked ? "Keyline already bookmarked" : "Bookmark current keyline",
+  );
 }
 
 async function loadBookmarks() {
@@ -273,8 +300,10 @@ async function loadBookmarks() {
 
 async function addBookmark() {
   const type = $("boxType").value;
+  if (savedBookmarks.some((bookmark) => bookmark.keylineId === type)) return;
   const name = $("job").value.trim() || (type === "rsc" ? "RSC 0201" : KEYLINES[type]?.name || type);
-  $("addBookmark").disabled = true;
+  bookmarkSaving = true;
+  updateBookmarkButton();
   $("bookmarkStatus").textContent = "Saving bookmark…";
   try {
     const response = await fetch("/api/keylines/bookmarks", {
@@ -283,6 +312,10 @@ async function addBookmark() {
       body: JSON.stringify({ name, keylineId: type, settings: bookmarkSettings() }),
     });
     const result = await response.json();
+    if (response.status === 409) {
+      await loadBookmarks();
+      throw new Error("This keyline is already bookmarked.");
+    }
     if (!response.ok) throw new Error(result.error || "Could not save bookmark.");
     savedBookmarks.unshift(result.bookmark);
     renderBookmarks(savedBookmarks);
@@ -291,7 +324,8 @@ async function addBookmark() {
     console.error("Could not save keyline bookmark:", error);
     $("bookmarkStatus").textContent = error.message || "Could not save bookmark.";
   } finally {
-    $("addBookmark").disabled = false;
+    bookmarkSaving = false;
+    updateBookmarkButton();
   }
 }
 
@@ -2027,6 +2061,7 @@ $("boxType").addEventListener("change", () => {
   applyKeylineDefaults($("boxType").value, true);
   buildKeylineInputs();
   render(true);
+  updateBookmarkButton();
 });
 
 let designerTourStep = 0;

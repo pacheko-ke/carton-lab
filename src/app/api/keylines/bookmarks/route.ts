@@ -129,21 +129,45 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "This keyline is not available" }, { status: 403 });
   }
 
-  const bookmark = await prisma.keylineBookmark.create({
-    data: {
-      userId: user.id,
-      keylineId: body.keylineId,
-      name: body.name.trim(),
-      settings: body.settings as Prisma.InputJsonValue,
-    },
-    select: {
-      id: true,
-      name: true,
-      keylineId: true,
-      settings: true,
-      createdAt: true,
-    },
+  const existing = await prisma.keylineBookmark.findFirst({
+    where: { userId: user.id, keylineId: body.keylineId },
+    select: { id: true },
   });
+  if (existing) {
+    return NextResponse.json(
+      { error: "This keyline is already bookmarked" },
+      { status: 409 },
+    );
+  }
 
-  return NextResponse.json({ bookmark }, { status: 201 });
+  try {
+    const bookmark = await prisma.keylineBookmark.create({
+      data: {
+        userId: user.id,
+        keylineId: body.keylineId,
+        name: body.name.trim(),
+        settings: body.settings as Prisma.InputJsonValue,
+      },
+      select: {
+        id: true,
+        name: true,
+        keylineId: true,
+        settings: true,
+        createdAt: true,
+      },
+    });
+
+    return NextResponse.json({ bookmark }, { status: 201 });
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      return NextResponse.json(
+        { error: "This keyline is already bookmarked" },
+        { status: 409 },
+      );
+    }
+    throw error;
+  }
 }

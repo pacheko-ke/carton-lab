@@ -37,7 +37,6 @@
 
       <section class="card">
         <h2 class="card-title">Bookmarks</h2>
-        <button id="addBookmark" type="button" class="btn btn-secondary w-full">Bookmark current keyline</button>
         <p id="bookmarkStatus" role="status" aria-live="polite" class="mt-2 text-xs text-slate-500 dark:text-slate-400"></p>
         <div id="bookmarkList" class="mt-2 flex flex-col gap-2"></div>
       </section>
@@ -167,10 +166,15 @@
           </button>
           <button id="zoomActual" type="button" class="tool !w-auto px-1.5 text-xs font-semibold" title="Actual size, 1:1 (1)" aria-label="Actual size">1:1</button>
         </div>
-        <button id="carton3dOpen" type="button" class="carton3d-launch" aria-controls="carton3dViewer" aria-expanded="false" disabled>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z"/><path d="m4.3 7.7 7.7 4.4 7.7-4.4M12 12v9"/></svg>
-          3D view
-        </button>
+        <div class="artboard-actions">
+          <button id="addBookmark" type="button" class="artboard-bookmark-button" title="Bookmark current keyline" aria-label="Bookmark current keyline">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4.5a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v16l-6-3.5-6 3.5v-16Z"/></svg>
+          </button>
+          <button id="carton3dOpen" type="button" class="carton3d-launch" aria-controls="carton3dViewer" aria-expanded="false" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z"/><path d="m4.3 7.7 7.7 4.4 7.7-4.4M12 12v9"/></svg>
+            3D view
+          </button>
+        </div>
         <aside id="carton3dViewer" class="carton3d-viewer" role="region" aria-label="Interactive 3D carton view" hidden>
           <header class="carton3d-header">
             <h2>3D carton view</h2>

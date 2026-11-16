@@ -39,6 +39,7 @@ model KeylineBookmark {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
+  @@unique([userId, keylineId])
 }
 
 model Subscription {
