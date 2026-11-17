@@ -235,7 +235,7 @@ async function AdminDashboard({ searchParams }: AdminPageProps) {
       <section className="admin-content">
         <div className="account-intro">
           <span className="eyebrow"><span /> SYSTEM OVERVIEW</span>
-          <h1>Metrics dashboard</h1>
+          <h1>Dashboard</h1>
           <p>
             Accounts, premium access, billing activity, and recent payment
             events. Revenue and payment counts cover the last 30 days.
