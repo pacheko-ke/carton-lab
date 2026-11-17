@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { unsubscribeFromMarketingEmails } from "@/app/email-actions";
 import { verifyEmailPreferenceToken } from "@/lib/email-preferences";
@@ -11,7 +12,21 @@ type EmailPreferencesPageProps = {
   }>;
 };
 
-export default async function EmailPreferencesPage({
+export default function EmailPreferencesPage(props: EmailPreferencesPageProps) {
+  return (
+    <Suspense
+      fallback={
+        <main className="grid min-h-dvh place-items-center bg-slate-950 text-slate-100">
+          Loading email preferences…
+        </main>
+      }
+    >
+      <EmailPreferencesContent searchParams={props.searchParams} />
+    </Suspense>
+  );
+}
+
+async function EmailPreferencesContent({
   searchParams,
 }: EmailPreferencesPageProps) {
   const params = await searchParams;
