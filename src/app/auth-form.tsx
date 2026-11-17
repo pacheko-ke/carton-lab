@@ -1,9 +1,16 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
+import type { Session } from "next-auth";
 import { auth } from "@/auth";
-import { isGoogleAuthConfigured } from "@/auth-config";
+import {
+  isAuthConfigured,
+  isEmailOtpConfigured,
+  isGoogleAuthConfigured,
+} from "@/auth-config";
 import BrandIcon from "./brand-icon";
 import { signInWithGoogle, signOutOfCartonLab } from "./auth-actions";
+import EmailOtpForm from "./email-otp-form";
 
 type AuthFormProps = {
   mode: "login" | "signup";
@@ -21,7 +28,7 @@ export function AuthLoading() {
             </div>
             <div className="eyebrow"><span /> YOUR PACKAGING WORKSPACE</div>
             <h1>Loading sign-in…</h1>
-            <p>Preparing your secure Google sign-in.</p>
+            <p>Preparing your secure sign-in.</p>
           </div>
         </div>
       </section>
@@ -62,8 +69,14 @@ function GoogleMark() {
 
 export default async function AuthForm({ mode, error }: AuthFormProps) {
   const isSignup = mode === "signup";
-  const configured = isGoogleAuthConfigured();
-  const session = configured ? await auth() : null;
+  const googleConfigured = isGoogleAuthConfigured();
+  const emailOtpConfigured = isEmailOtpConfigured();
+  const configured = isAuthConfigured();
+  let session: Session | null = null;
+  if (configured) {
+    await connection();
+    session = await auth();
+  }
   const isUnverifiedEmailError =
     error === "UnverifiedEmail" ||
     (Array.isArray(error) && error.includes("UnverifiedEmail"));
@@ -97,8 +110,8 @@ export default async function AuthForm({ mode, error }: AuthFormProps) {
             <h1>{isSignup ? "Start making." : "Welcome back."}</h1>
             <p>
               {isSignup
-                ? "Create your CartonLab account with Google."
-                : "Sign in securely with your Google account."}
+                ? "Create your account with Google or verify your email with a code."
+                : "Sign in with Google or get a one-time email code."}
             </p>
           </div>
           {isUnverifiedEmailError && (
@@ -133,18 +146,13 @@ export default async function AuthForm({ mode, error }: AuthFormProps) {
                 <button
                   type="submit"
                   className="google-button"
-                  disabled={!configured}
+                  disabled={!googleConfigured}
                 >
                   <GoogleMark />
                   {isSignup ? "Sign up with Google" : "Continue with Google"}
                 </button>
               </form>
-              {!configured && (
-                <p className="auth-config-notice" role="status">
-                  Google sign-in is not ready yet. Configure AUTH_SECRET,
-                  AUTH_GOOGLE_ID, AUTH_GOOGLE_SECRET, and POSTGRES_PRISMA_URL.
-                </p>
-              )}
+              <EmailOtpForm configured={emailOtpConfigured} />
             </>
           )}
           <div className="auth-switch">
@@ -154,7 +162,7 @@ export default async function AuthForm({ mode, error }: AuthFormProps) {
             </Link>
           </div>
           <div className="auth-privacy">
-            <span>◇</span> Google-only sign-in. Your password is never shared with CartonLab.
+            <span>◇</span> Sign in with Google or a one-time email code. No password is needed.
           </div>
         </div>
         <p className="auth-footnote">

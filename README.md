@@ -7,11 +7,14 @@ at `/app`; its original UI and browser-based features are served from
 Verified users can bookmark the current keyline and its settings in the Studio;
 bookmarks are saved to their account and can be reopened or removed later.
 
-The `/login` and `/signup` pages use Google OAuth through Auth.js. Google
-accounts are saved in PostgreSQL through Prisma. New users can sign in only when
-Google returns a verified email; access to `/app` and its assets is checked
-against the verified user record. New accounts receive a colorful welcome email
-through Resend. Verified admin addresses in `ADMIN_EMAILS` receive alerts for
+The `/login` and `/signup` pages support Google OAuth and passwordless email
+sign-in with a one-time verification code. Codes are sent through Resend, expire
+after 10 minutes, and are limited to five verification attempts and three
+requests per email per 15 minutes, with a 10-request per network limit over the
+same period. Accounts are saved in PostgreSQL through Prisma, and access to
+`/app` and its assets is checked against the verified user record. New accounts
+receive a colorful welcome email through Resend. Verified admin
+addresses in `ADMIN_EMAILS` receive alerts for
 new accounts, successful or failed payments, and subscription starts, renewals,
 payment issues, and cancellations. Payment and subscription alerts go to the
 affected user and admins. Set `RESEND_API_KEY` and `RESEND_FROM_EMAIL` locally
@@ -115,19 +118,18 @@ activated only after Paystack confirms the active subscription and plan.
 Renewal, failed payment, and cancellation events update the local subscription;
 scheduled cancellations retain access through the paid period end.
 
-## Configure Google sign-in
+## Configure sign-in
 
 1. Provision a PostgreSQL database and set `POSTGRES_PRISMA_URL` to its pooled
    connection string and `POSTGRES_URL_NON_POOLING` to its direct connection
    string. The Vercel project can use the Prisma Postgres Marketplace
    integration; its terms must first be accepted by a project owner in Vercel.
-2. Create a Google OAuth client ID for a Web application in Google Cloud
-   Console.
-3. Add these authorized redirect URIs to the OAuth client:
+2. To enable Google sign-in, create a Google OAuth client ID for a Web
+   application in Google Cloud Console and add these authorized redirect URIs:
    - Local: `http://localhost:3000/api/auth/callback/google`
    - Production: `https://cartonlab-web.vercel.app/api/auth/callback/google`
-4. Copy `.env.example` to `.env.local`, generate an `AUTH_SECRET` with
-   `npx auth secret`, and set the Google client ID and secret:
+3. Copy `.env.example` to `.env.local`, generate an `AUTH_SECRET` with
+   `npx auth secret`, and set the credentials for the sign-in methods you want:
 
    ```text
    AUTH_SECRET=<generated secret>
@@ -151,15 +153,16 @@ scheduled cancellations retain access through the paid period end.
    DARAJA_CALLBACK_URL=<public HTTPS URL ending in /api/daraja/callback>
    ```
 
-5. Apply the schema locally with `npx prisma migrate deploy`. Prisma uses
+4. Apply the schema locally with `npx prisma migrate deploy`. Prisma uses
    `POSTGRES_URL_NON_POOLING` for migrations to avoid advisory-lock timeouts on
    pooled connections. Vercel production builds automatically run this command
    before building the app. Configure only live Daraja credentials in Vercel
    Production (`DARAJA_ENV=production`); keep sandbox credentials local.
 
-Never commit `.env.local` or expose the Google client secret in browser code.
-Without the auth and database values, Google sign-in stays disabled. Billing
-remains unavailable until its provider credentials are configured.
+Email-code sign-in requires `RESEND_API_KEY` and `RESEND_FROM_EMAIL`; Google
+sign-in requires the Google OAuth credentials above. Never commit `.env.local`
+or expose provider secrets in browser code. Billing remains unavailable until
+its provider credentials are configured.
 
 ## Run locally
 

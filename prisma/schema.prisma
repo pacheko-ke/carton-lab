@@ -169,3 +169,24 @@ model VerificationToken {
 
   @@unique([identifier, token])
 }
+
+model EmailOtpChallenge {
+  email                  String    @id
+  codeHash               String
+  expiresAt              DateTime
+  sentAt                 DateTime
+  attempts               Int       @default(0)
+  requestWindowStartedAt DateTime
+  requestsInWindow       Int       @default(1)
+  consumedAt             DateTime?
+
+  @@index([expiresAt])
+}
+
+model EmailOtpRateLimit {
+  key             String   @id
+  windowStartedAt DateTime
+  requests        Int      @default(1)
+
+  @@index([windowStartedAt])
+}

@@ -1,14 +1,53 @@
 import NextAuth from "next-auth";
 import { PrismaAdapter } from "@auth/prisma-adapter";
+import Credentials from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
 import { PREMIUM_TRIAL_DAYS } from "@/lib/billing";
-import { getAdminEmailRecipients, sendEmailAlert } from "@/lib/resend-email";
-import { sendWelcomeEmail } from "@/lib/welcome-email";
 import { getTrialEmailJobs } from "@/lib/email-jobs";
+import {
+  consumeEmailOtpCode,
+  getOrCreateVerifiedEmailUser,
+  isValidEmail,
+  normalizeEmail,
+} from "@/lib/email-otp";
+import { notifyNewAccount } from "@/lib/new-account-notifications";
 import authConfig from "@/auth.config";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
+  providers: [
+    ...authConfig.providers,
+    Credentials({
+      id: "email-otp",
+      name: "Email code",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        code: { label: "Verification code", type: "text" },
+      },
+      async authorize(credentials) {
+        if (
+          typeof credentials.email !== "string" ||
+          typeof credentials.code !== "string"
+        ) {
+          return null;
+        }
+
+        const email = normalizeEmail(credentials.email);
+        const code = credentials.code.trim();
+        if (!isValidEmail(email) || !/^\d{6}$/.test(code)) return null;
+        if (!(await consumeEmailOtpCode(email, code))) return null;
+
+        const user = await getOrCreateVerifiedEmailUser(email);
+        return {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          image: user.image,
+          emailVerified: user.emailVerified,
+        };
+      },
+    }),
+  ],
   adapter: PrismaAdapter(prisma),
   session: { strategy: "jwt" },
   events: {
@@ -33,26 +72,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           skipDuplicates: true,
         });
       });
-      await sendEmailAlert({
-        recipients: getAdminEmailRecipients(),
-        subject: "New CartonLab account",
-        heading: "A new account is ready",
-        message: "A new CartonLab account has been created and its 7-day Premium trial has started.",
-        details: [
-          { label: "Name", value: user.name ?? "Not provided" },
-          { label: "Email", value: user.email ?? "Not provided" },
-          { label: "Trial ends", value: trialEndsAt.toLocaleDateString("en-KE") },
-        ],
+      await notifyNewAccount({
+        email: user.email ?? null,
+        name: user.name ?? null,
+        trialEndsAt,
       });
-      if (!user.email) {
-        console.error("Could not send welcome email: new user has no email address.");
-        return;
-      }
-      try {
-        await sendWelcomeEmail({ email: user.email, name: user.name ?? null });
-      } catch (error) {
-        console.error("Could not send welcome email:", error);
-      }
     },
     async signIn({ user, account, profile }) {
       if (
