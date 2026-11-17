@@ -9,6 +9,8 @@ function isEditableTarget(target: EventTarget | null) {
 }
 
 function blockInspectionShortcuts(event: KeyboardEvent) {
+  if (typeof event.key !== "string") return;
+
   const key = event.key.toLowerCase();
   const modifier = event.ctrlKey || event.metaKey;
   const devToolsShortcut =
