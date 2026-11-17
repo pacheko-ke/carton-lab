@@ -5,6 +5,10 @@ import {
   queryStkPush,
 } from "@/lib/daraja";
 import { prisma } from "@/lib/prisma";
+import {
+  getEmailAlertRecipients,
+  sendEmailAlert,
+} from "@/lib/resend-email";
 
 type StkCallback = {
   MerchantRequestID?: string;
@@ -163,6 +167,20 @@ export async function POST(request: Request) {
         paidAt: null,
       },
     });
+    await sendEmailAlert({
+      recipients: getEmailAlertRecipients(checkout.user.email),
+      subject: "Premium payment failed",
+      heading: "Payment needs attention",
+      message: "The M-Pesa payment could not be completed. You can try the checkout again from your CartonLab account.",
+      details: [
+        {
+          label: "Amount",
+          value: `${checkout.amount.toLocaleString()} ${checkout.currency}`,
+        },
+        { label: "Provider", value: "M-Pesa" },
+        { label: "Status", value: "Failed" },
+      ],
+    });
     await prisma.billingCheckout.deleteMany({
       where: { txRef: checkout.txRef },
     });
@@ -250,6 +268,7 @@ export async function POST(request: Request) {
     currentAccess?.currentPeriodEnd && currentAccess.currentPeriodEnd > paidAt
       ? currentAccess.currentPeriodEnd
       : paidAt;
+  const currentPeriodEnd = nextMonthlyDate(periodStart);
 
   await prisma.subscription.upsert({
     where: { providerSubscriptionId: providerTransactionId },
@@ -258,18 +277,47 @@ export async function POST(request: Request) {
       providerSubscriptionId: providerTransactionId,
       providerPlanId: MPESA_PROVIDER_PLAN_ID,
       status: "active",
-      currentPeriodEnd: nextMonthlyDate(periodStart),
+      currentPeriodEnd,
       providerEventCreatedAt: paidAt,
     },
     update: {
       providerPlanId: MPESA_PROVIDER_PLAN_ID,
       status: "active",
-      currentPeriodEnd: nextMonthlyDate(periodStart),
+      currentPeriodEnd,
       cancelAtPeriodEnd: false,
       providerEventCreatedAt: paidAt,
     },
   });
   await prisma.billingCheckout.deleteMany({ where: { txRef: checkout.txRef } });
+  await Promise.all([
+    sendEmailAlert({
+      recipients: getEmailAlertRecipients(checkout.user.email),
+      subject: "Premium payment successful",
+      heading: "Payment successful",
+      message: "Your M-Pesa payment was successfully processed.",
+      details: [
+        {
+          label: "Amount",
+          value: `${checkout.amount.toLocaleString()} ${checkout.currency}`,
+        },
+        { label: "Provider", value: "M-Pesa" },
+        { label: "Receipt", value: receiptNumber },
+        { label: "Status", value: "Successful" },
+      ],
+    }),
+    sendEmailAlert({
+      recipients: getEmailAlertRecipients(checkout.user.email),
+      subject: "Premium subscription started",
+      heading: "Your Premium access is active",
+      message: "Your M-Pesa payment started a one-month Premium period.",
+      details: [
+        {
+          label: "Access through",
+          value: currentPeriodEnd.toLocaleDateString("en-KE"),
+        },
+      ],
+    }),
+  ]);
 
   return NextResponse.json({ received: true, successful: true });
 }

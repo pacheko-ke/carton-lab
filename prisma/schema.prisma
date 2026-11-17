@@ -8,23 +8,57 @@ datasource db {
 }
 
 model User {
-  id                   String            @id @default(cuid())
-  name                 String?
-  companyName          String?
-  role                 String?
-  contact              String?
-  address              String?
-  email                String?           @unique
-  emailVerified        DateTime?
-  image                String?
-  premiumAccessGranted Boolean           @default(false)
-  trialEndsAt          DateTime?
-  accounts             Account[]
-  sessions             Session[]
-  subscriptions        Subscription[]
-  billingCheckouts     BillingCheckout[]
-  billingPayments      BillingPayment[]
-  keylineBookmarks     KeylineBookmark[]
+  id                       String            @id @default(cuid())
+  name                     String?
+  companyName              String?
+  role                     String?
+  contact                  String?
+  address                  String?
+  email                    String?           @unique
+  emailVerified            DateTime?
+  image                    String?
+  premiumAccessGranted     Boolean           @default(false)
+  trialEndsAt              DateTime?
+  marketingEmailsEnabled   Boolean           @default(true)
+  marketingEmailsUpdatedAt DateTime?
+  accounts                 Account[]
+  sessions                 Session[]
+  subscriptions            Subscription[]
+  billingCheckouts         BillingCheckout[]
+  billingPayments          BillingPayment[]
+  keylineBookmarks         KeylineBookmark[]
+  emailJobs                EmailJob[]
+}
+
+model EmailCampaign {
+  id              String     @id @default(cuid())
+  audience        String
+  subject         String
+  heading         String
+  message         String
+  createdByUserId String
+  createdAt       DateTime   @default(now())
+  emailJobs       EmailJob[]
+}
+
+model EmailJob {
+  id          String         @id @default(cuid())
+  userId      String
+  campaignId  String?
+  kind        String
+  dedupeKey   String
+  scheduledAt DateTime
+  status      String         @default("pending")
+  attempts    Int            @default(0)
+  claimedAt   DateTime?
+  sentAt      DateTime?
+  createdAt   DateTime       @default(now())
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaign    EmailCampaign? @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, dedupeKey])
+  @@index([status, scheduledAt])
+  @@index([campaignId])
 }
 
 model KeylineBookmark {
@@ -38,8 +72,8 @@ model KeylineBookmark {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId, createdAt])
   @@unique([userId, keylineId])
+  @@index([userId, createdAt])
 }
 
 model Subscription {

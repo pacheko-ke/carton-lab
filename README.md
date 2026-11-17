@@ -10,7 +10,35 @@ bookmarks are saved to their account and can be reopened or removed later.
 The `/login` and `/signup` pages use Google OAuth through Auth.js. Google
 accounts are saved in PostgreSQL through Prisma. New users can sign in only when
 Google returns a verified email; access to `/app` and its assets is checked
-against the verified user record.
+against the verified user record. New accounts receive a colorful welcome email
+through Resend. Verified admin addresses in `ADMIN_EMAILS` receive alerts for
+new accounts, successful or failed payments, and subscription starts, renewals,
+payment issues, and cancellations. Payment and subscription alerts go to the
+affected user and admins. Set `RESEND_API_KEY` and `RESEND_FROM_EMAIL` locally
+and in Vercel; the sender address must use a domain verified with Resend.
+`APP_URL` sets the destination of the welcome email's Studio link. Resend
+delivery failures are logged without preventing account creation or payment
+processing.
+
+Premium feature announcements and product updates are enabled by default for
+new accounts. Existing accounts without a saved email preference are enabled
+when the marketing email migration is applied; saved opt-outs are preserved.
+Users can turn these messages off from `/account`. Promotional emails are sent
+only to verified users who have not opted out. Premium announcements target
+Premium members, while Free promotions exclude active trials. Every
+promotional email includes an unsubscribe link, and users can also unsubscribe
+from their account preferences. Welcome and trial-ending emails are account
+lifecycle messages. Trial reminders are queued three days before the trial
+end date; the end-date Premium offer is sent only when marketing emails remain
+enabled.
+
+The daily Vercel Cron job at `/api/cron/email-jobs` sends queued messages and
+backfills trial reminders. It runs at 7 a.m. UTC (10 a.m. in Nairobi). Set a
+strong `CRON_SECRET` in Vercel and locally when testing the endpoint; Vercel
+sends it as a bearer token. The worker sends between 9 a.m. and 6 p.m.
+`Africa/Nairobi` time. Trial job dates also use `Africa/Nairobi`. Campaigns
+created from `/admin` are queued for eligible Premium or Free audiences and
+processed by this worker.
 
 ## System metrics
 
@@ -106,6 +134,9 @@ scheduled cancellations retain access through the paid period end.
    AUTH_GOOGLE_SECRET=<Google OAuth client secret>
    POSTGRES_PRISMA_URL=<PostgreSQL connection string>
    ADMIN_EMAILS=<verified admin email addresses, comma-separated>
+   RESEND_API_KEY=<Resend API key>
+   RESEND_FROM_EMAIL=<sender on a Resend-verified domain>
+   CRON_SECRET=<long random secret>
    PAYSTACK_SECRET_KEY=<Paystack server-side secret key>
    PAYSTACK_PLAN_CODE=<Paystack plan code for $5 USD per month>
    PAYSTACK_WEBHOOK_SECRET=<Paystack webhook signing secret>

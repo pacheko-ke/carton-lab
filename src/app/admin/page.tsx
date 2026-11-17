@@ -2,7 +2,9 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { requireAdminUser } from "@/lib/admin";
 import { MPESA_PROVIDER_PLAN_ID } from "@/lib/billing";
+import { getEmailCampaignAudienceCounts } from "@/lib/email-campaigns";
 import { prisma } from "@/lib/prisma";
+import EmailCampaignComposer from "./email-campaign-composer";
 import BrandIcon from "../brand-icon";
 
 const dateFormatter = new Intl.DateTimeFormat("en-KE", {
@@ -10,6 +12,13 @@ const dateFormatter = new Intl.DateTimeFormat("en-KE", {
   timeStyle: "short",
   timeZone: "Africa/Nairobi",
 });
+
+type AdminPageProps = {
+  searchParams: Promise<{
+    campaign?: string | string[];
+    recipients?: string | string[];
+  }>;
+};
 
 function formatDate(value: Date | null) {
   return value ? dateFormatter.format(value) : "—";
@@ -47,7 +56,7 @@ function Metric({
   );
 }
 
-export default function AdminPage() {
+export default function AdminPage(props: AdminPageProps) {
   return (
     <Suspense
       fallback={
@@ -56,13 +65,19 @@ export default function AdminPage() {
         </main>
       }
     >
-      <AdminDashboard />
+      <AdminDashboard searchParams={props.searchParams} />
     </Suspense>
   );
 }
 
-async function AdminDashboard() {
+async function AdminDashboard({ searchParams }: AdminPageProps) {
   await requireAdminUser();
+  const params = await searchParams;
+  const recipientCount =
+    typeof params.recipients === "string" &&
+    /^\d+$/.test(params.recipients)
+      ? Number(params.recipients)
+      : null;
   const now = new Date();
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
   const activePeriod = { gt: now };
@@ -89,6 +104,7 @@ async function AdminDashboard() {
     recentPayments,
     recentSubscriptions,
     recentCheckouts,
+    emailAudienceCounts,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { emailVerified: { not: null } } }),
@@ -188,6 +204,7 @@ async function AdminDashboard() {
         user: { select: { name: true, email: true } },
       },
     }),
+    getEmailCampaignAudienceCounts(),
   ]);
   const paymentRevenue = paymentTotals
     .map(
@@ -256,6 +273,31 @@ async function AdminDashboard() {
             }
           />
           <Metric label="Failed payments (30d)" value={failedPayments} />
+        </section>
+
+        <section className="admin-panel" aria-labelledby="email-campaign-heading">
+          <div className="admin-panel-heading">
+            <div>
+              <span className="account-plan-kicker">EMAILS</span>
+              <h2 id="email-campaign-heading">Product email campaign</h2>
+            </div>
+            <span>Only verified, subscribed recipients</span>
+          </div>
+          {(!process.env.RESEND_API_KEY ||
+            !process.env.RESEND_FROM_EMAIL ||
+            !process.env.CRON_SECRET) && (
+            <p className="account-billing-unavailable" role="status">
+              Email delivery requires RESEND_API_KEY, a verified
+              RESEND_FROM_EMAIL, and CRON_SECRET.
+            </p>
+          )}
+          {params.campaign === "queued" && recipientCount !== null && (
+            <p className="account-notice" role="status">
+              Campaign queued for {recipientCount} eligible recipient
+              {recipientCount === 1 ? "" : "s"}.
+            </p>
+          )}
+          <EmailCampaignComposer audienceCounts={emailAudienceCounts} />
         </section>
 
         <section className="admin-panel" aria-labelledby="payments-heading">

@@ -21,6 +21,7 @@ export async function requireVerifiedUser() {
       emailVerified: true,
       premiumAccessGranted: true,
       trialEndsAt: true,
+      marketingEmailsEnabled: true,
       subscriptions: true,
     },
   });

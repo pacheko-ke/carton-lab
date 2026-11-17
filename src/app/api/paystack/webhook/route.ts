@@ -1,5 +1,9 @@
 import { isValidPaystackWebhookSignature, paystackRequest } from "@/lib/billing";
 import { prisma } from "@/lib/prisma";
+import {
+  getEmailAlertRecipients,
+  sendEmailAlert,
+} from "@/lib/resend-email";
 import { NextResponse } from "next/server";
 
 type PaystackSubscription = {
@@ -164,6 +168,21 @@ async function createLocalSubscription(
       where: { txRef: checkout.txRef },
     });
   }
+  if (!existing) {
+    await sendEmailAlert({
+      recipients: getEmailAlertRecipients(user.email),
+      subject: "Premium subscription started",
+      heading: "Your Premium subscription is active",
+      message: "A Premium subscription is now active for this CartonLab account.",
+      details: [
+        { label: "Plan", value: "$5 USD / month" },
+        {
+          label: "Next payment",
+          value: currentPeriodEnd.toLocaleDateString("en-KE"),
+        },
+      ],
+    });
+  }
 }
 
 async function updateLocalSubscription(
@@ -215,6 +234,19 @@ async function updateLocalSubscription(
         providerEventCreatedAt: updatedAt,
       },
     });
+    await sendEmailAlert({
+      recipients: getEmailAlertRecipients(existing.user.email),
+      subject: "Premium subscription renewed",
+      heading: "Your Premium subscription renewed",
+      message: "The latest payment extended this CartonLab Premium subscription.",
+      details: [
+        { label: "Plan", value: "$5 USD / month" },
+        {
+          label: "Next payment",
+          value: currentPeriodEnd.toLocaleDateString("en-KE"),
+        },
+      ],
+    });
     return;
   }
 
@@ -225,6 +257,13 @@ async function updateLocalSubscription(
         status: "attention",
         providerEventCreatedAt: updatedAt,
       },
+    });
+    await sendEmailAlert({
+      recipients: getEmailAlertRecipients(existing.user.email),
+      subject: "Premium subscription payment needs attention",
+      heading: "There is a payment issue",
+      message: "Paystack could not complete a payment for this Premium subscription. Please check your payment method.",
+      details: [{ label: "Plan", value: "$5 USD / month" }],
     });
     return;
   }
@@ -239,6 +278,18 @@ async function updateLocalSubscription(
         providerEventCreatedAt: updatedAt,
       },
     });
+    await sendEmailAlert({
+      recipients: getEmailAlertRecipients(existing.user.email),
+      subject: "Premium subscription ending",
+      heading: "Your subscription is set to end",
+      message: "This Premium subscription will not renew. Access remains available until the current period ends.",
+      details: [
+        {
+          label: "Access through",
+          value: currentPeriodEnd.toLocaleDateString("en-KE"),
+        },
+      ],
+    });
     return;
   }
 
@@ -251,6 +302,18 @@ async function updateLocalSubscription(
         cancelAtPeriodEnd: true,
         providerEventCreatedAt: updatedAt,
       },
+    });
+    await sendEmailAlert({
+      recipients: getEmailAlertRecipients(existing.user.email),
+      subject: "Premium subscription cancelled",
+      heading: "Your Premium subscription has ended",
+      message: "The Premium subscription is no longer active.",
+      details: [
+        {
+          label: "Period ended",
+          value: currentPeriodEnd.toLocaleDateString("en-KE"),
+        },
+      ],
     });
   }
 }
@@ -345,6 +408,7 @@ async function recordPaystackPayment(
     where: { providerTransactionId },
   });
   if (existingPayment && existingPayment.userId !== user.id) return;
+  if (existingPayment?.status === expectedStatus) return;
 
   const paidAt = transaction.paid_at ? new Date(transaction.paid_at) : null;
   const validPaidAt =
@@ -368,6 +432,25 @@ async function recordPaystackPayment(
       currency: transaction.currency,
       paidAt: expectedStatus === "success" ? validPaidAt ?? eventDate(data) : null,
     },
+  });
+  const amount =
+    transaction.currency === "USD"
+      ? `$${(transaction.amount / 100).toFixed(2)} USD`
+      : `${transaction.amount.toLocaleString()} ${transaction.currency}`;
+  const successful = expectedStatus === "success";
+  await sendEmailAlert({
+    recipients: getEmailAlertRecipients(user.email),
+    subject: `Premium payment ${expectedStatus}`,
+    heading: successful ? "Payment successful" : "Payment needs attention",
+    message: successful
+      ? "A Premium payment was successfully processed."
+      : "A Premium payment could not be completed. Please check your payment method.",
+    details: [
+      { label: "Amount", value: amount },
+      { label: "Provider", value: "Paystack" },
+      { label: "Reference", value: reference },
+      { label: "Status", value: expectedStatus },
+    ],
   });
 }
 

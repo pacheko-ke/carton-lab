@@ -12,10 +12,12 @@ import {
 } from "@/lib/billing";
 import BrandIcon from "../brand-icon";
 import { isAdminEmail } from "@/lib/admin";
+import { updateEmailPreferences } from "../email-actions";
 
 type AccountPageProps = {
   searchParams: Promise<{
     billing?: string | string[];
+    marketing?: string | string[];
   }>;
 };
 
@@ -29,6 +31,8 @@ const billingMessages: Record<string, string> = {
   "already-premium": "Your Premium subscription is already active.",
   "plan-mismatch":
     "Paystack's selected plan must match $5 USD per month. Check that PAYSTACK_PLAN_CODE points to a USD 5 monthly plan in the same Live Paystack account as your API key.",
+  "marketing-enabled": "You are subscribed to CartonLab product emails.",
+  "marketing-disabled": "You are unsubscribed from CartonLab product emails.",
 };
 
 export default function AccountPage(props: AccountPageProps) {
@@ -81,9 +85,13 @@ async function AccountContent({ searchParams }: AccountPageProps) {
       user.trialEndsAt &&
       user.trialEndsAt > now,
   );
-  const message = Array.isArray(params.billing)
-    ? undefined
-    : billingMessages[params.billing ?? ""];
+  const message =
+    (Array.isArray(params.billing)
+      ? undefined
+      : billingMessages[params.billing ?? ""]) ??
+    (Array.isArray(params.marketing)
+      ? undefined
+      : billingMessages[`marketing-${params.marketing ?? ""}`]);
   return (
     <main className="account-page">
       <header className="account-header">
@@ -246,6 +254,34 @@ async function AccountContent({ searchParams }: AccountPageProps) {
               </p>
             )
           )}
+        </section>
+
+        <section
+          className="account-profile-card email-preference-card"
+          aria-labelledby="email-preferences-heading"
+        >
+          <div>
+            <span className="account-plan-kicker">EMAIL PREFERENCES</span>
+            <h2 id="email-preferences-heading">Product emails</h2>
+            <p>
+              Premium feature announcements and product updates are on by
+              default. You can turn them off anytime; account and billing
+              emails are not affected.
+            </p>
+          </div>
+          <form action={updateEmailPreferences}>
+            <label className="email-preference-toggle">
+              <input
+                type="checkbox"
+                name="marketingEmailsEnabled"
+                defaultChecked={user.marketingEmailsEnabled}
+              />
+              <span>Send me product announcements and Premium offers.</span>
+            </label>
+            <button className="button button-large" type="submit">
+              Save email preferences
+            </button>
+          </form>
         </section>
       </section>
     </main>
