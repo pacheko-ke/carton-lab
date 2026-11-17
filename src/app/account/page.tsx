@@ -189,14 +189,6 @@ async function AccountContent({ searchParams }: AccountPageProps) {
                   otherwise, your account returns to Free after the trial.
                 </p>
               )}
-              {trialActive && isPaystackBillingConfigured() && (
-                <form action={startPremiumCheckout}>
-                  <input type="hidden" name="paymentMethod" value="card" />
-                  <button className="button button-large" type="submit">
-                    Subscribe now for $5/month <span>→</span>
-                  </button>
-                </form>
-              )}
               {complimentaryPremium && (
                 <p className="account-subscription-note">
                   Premium access is granted to this account; no paid
@@ -238,20 +230,21 @@ async function AccountContent({ searchParams }: AccountPageProps) {
                 Your current plan is Free. Upgrade to unlock the complete
                 Premium library.
               </p>
-              {isPaystackBillingConfigured() && (
-                <form action={startPremiumCheckout}>
-                  <input type="hidden" name="paymentMethod" value="card" />
-                  <button className="button button-large" type="submit">
-                    Get everything with Premium <span>→</span>
-                  </button>
-                </form>
-              )}
-              {!isPaystackBillingConfigured() && (
-                <p className="account-billing-unavailable" role="status">
-                  Premium checkout is not available yet.
-                </p>
-              )}
             </>
+          )}
+          {!activeSubscription && !complimentaryPremium && (
+            isPaystackBillingConfigured() ? (
+              <form action={startPremiumCheckout}>
+                <input type="hidden" name="paymentMethod" value="card" />
+                <button className="button button-large" type="submit">
+                  Subscribe to Premium — $5/month <span>→</span>
+                </button>
+              </form>
+            ) : (
+              <p className="account-billing-unavailable" role="status">
+                Premium checkout is not available yet.
+              </p>
+            )
           )}
         </section>
       </section>
