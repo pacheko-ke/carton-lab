@@ -54,7 +54,7 @@ const DESIGNER_TOUR_STEPS = [
   {
     targets: ['[data-tour="canvas-tools"]', '[data-tour="zoom-tools"]'],
     title: "Navigate and edit",
-    description: "Undo, redo, grid, snap and spacing are at the lower left. Zoom, fit and 1:1 controls are at the lower right.",
+    description: "Grid, snap and spacing are at the lower left. Zoom, fit and 1:1 controls are at the lower right.",
   },
   {
     targets: ['[data-tour="exports"]'],
@@ -684,8 +684,6 @@ function showError(msg) {
   }
   current = null;
   selectedItem = null;
-  undoStack = []; redoStack = [];
-  updateHistoryButtons();
 }
 
 // Size fields (L, W, H, glue flap, slot width, keyline inputs such as the notch) redraw the preview
@@ -702,8 +700,6 @@ const MAX_ZOOM_OVER_FIT = 120;
 const carton3DView = { yaw: -0.7, pitch: 0.55, zoom: 1, progress: 1, drag: null, animationFrame: null, keylineType: null };
 let selectedItem = null;
 let editPoints = [];
-let undoStack = [];
-let redoStack = [];
 let artworkImages = [];
 let artworkTexts = [];
 let selectedArtworkImageId = null;
@@ -1348,28 +1344,6 @@ function pointAt(e) {
   p.x = e.clientX; p.y = e.clientY;
   return p.matrixTransform(svg.getScreenCTM().inverse());
 }
-function geometrySnapshot() { return JSON.parse(JSON.stringify(current.model.items)); }
-function updateHistoryButtons() {
-  $("undoEdit").disabled = undoStack.length === 0;
-  $("redoEdit").disabled = redoStack.length === 0;
-}
-function restoreGeometry(items) {
-  const m = current.model;
-  current.model = finalizeModel(items, m.unit, m.size, m.th, m.artH);
-  view.auto = false;
-  setPreview(toSVG(current.model, "preview"));
-  updateHistoryButtons();
-}
-function undoGeometry() {
-  if (!current || !undoStack.length) return;
-  redoStack.push(geometrySnapshot());
-  restoreGeometry(undoStack.pop());
-}
-function redoGeometry() {
-  if (!current || !redoStack.length) return;
-  undoStack.push(geometrySnapshot());
-  restoreGeometry(redoStack.pop());
-}
 function editDescriptors(item) {
   const points = [];
   const add = (get, set) => points.push({ get, set });
@@ -1675,7 +1649,7 @@ pv.addEventListener("pointerdown", (e) => {
   if (handle && selectedItem !== null) {
     e.preventDefault();
     try { pv.setPointerCapture(e.pointerId); } catch (_) { /* synthetic pointer */ }
-    pointDrag = { point: editPoints[Number(handle.getAttribute("data-edit-point"))], before: geometrySnapshot() };
+    pointDrag = { point: editPoints[Number(handle.getAttribute("data-edit-point"))] };
     pv.focus({ preventScroll: true });
     return;
   }
@@ -1691,7 +1665,7 @@ pv.addEventListener("pointerdown", (e) => {
       const group = item.dimGroup;
       const grouped = group === undefined ? [item] : current.model.items.filter((candidate) => candidate.dimGroup === group);
       const p = pointAt(e);
-      pointDrag = { type: "move", before: geometrySnapshot(), start: p,
+      pointDrag = { type: "move", start: p,
         items: grouped.map((candidate) => ({ index: current.model.items.indexOf(candidate), source: JSON.parse(JSON.stringify(candidate)) })) };
       try { pv.setPointerCapture(e.pointerId); } catch (_) { /* synthetic pointer */ }
       pv.focus({ preventScroll: true });
@@ -1786,14 +1760,8 @@ pv.addEventListener("pointermove", (e) => {
 });
 const endPointer = (e) => {
   pointers.delete(e.pointerId); pinch = null;
-  if (pointDrag && JSON.stringify(pointDrag.before) !== JSON.stringify(geometrySnapshot())) {
-    undoStack.push(pointDrag.before);
-    if (undoStack.length > 100) undoStack.shift();
-    redoStack = [];
-  }
   artworkDrag = null;
   pointDrag = null;
-  updateHistoryButtons();
 };
 pv.addEventListener("pointerup", endPointer);
 pv.addEventListener("pointercancel", endPointer);
@@ -1808,8 +1776,6 @@ pv.addEventListener("keydown", (e) => {
   if ((e.key === "Delete" || e.key === "Backspace") && (selectedArtworkImageId || selectedArtworkTextId)) {
     e.preventDefault(); removeSelectedArtworkItem(); return;
   }
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") { e.preventDefault(); e.shiftKey ? redoGeometry() : undoGeometry(); return; }
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "y") { e.preventDefault(); redoGeometry(); return; }
   const step = 60;
   const keys = {
     "+": () => zoomAt(1.25), "=": () => zoomAt(1.25), "-": () => zoomAt(0.8), "_": () => zoomAt(0.8),
@@ -1844,8 +1810,6 @@ document.addEventListener("paste", (e) => {
   e.preventDefault();
   insertArtworkFile(file);
 });
-$("undoEdit").addEventListener("click", undoGeometry);
-$("redoEdit").addEventListener("click", redoGeometry);
 $("showGrid").addEventListener("change", () => applyView());
 $("gridSpacing").addEventListener("input", () => applyView());
 new ResizeObserver(() => applyView()).observe(pv);
@@ -1861,8 +1825,6 @@ function redrawSoon() {
 function render(animate) {
   clearTimeout(redrawTimer);
   saveInputs();
-  undoStack = []; redoStack = [];
-  updateHistoryButtons();
   const p = readParams();
   applyTypeVisibility(p.type);
   let model;

@@ -249,8 +249,7 @@ separately so you can attach it in the app you choose.
 The preview grid and grid snapping are on by default, with a 10 mm step (0.394 in). Change the grid step beside
 the preview, or switch Grid and Snap off independently. Click a cut outline or crease to show its editable nodes,
 then drag a node to reshape the geometry. Drag a dimension line or label to reposition that whole marking.
-Undo and Redo buttons, Ctrl+Z and Ctrl+Y (or Ctrl+Shift+Z) track completed drags. SVG, PDF and DXF exports
-include the edited geometry and moved dimension marks.
+SVG, PDF and DXF exports include the edited geometry and moved dimension marks.
 
 ## If something is wrong
 

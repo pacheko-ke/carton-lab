@@ -193,13 +193,10 @@
             </div>
           </footer>
         </aside>
-        <div data-tour="canvas-tools" class="absolute bottom-11 left-3 z-10 flex items-center gap-2 rounded-lg border border-slate-200 bg-white/95 px-2 py-1 text-xs text-slate-700 shadow-sm">
-          <button id="undoEdit" type="button" class="tool !w-auto px-1.5 text-xs" title="Undo geometry edit (Ctrl+Z)" aria-label="Undo geometry edit" disabled>Undo</button>
-          <button id="redoEdit" type="button" class="tool !w-auto px-1.5 text-xs" title="Redo geometry edit (Ctrl+Y)" aria-label="Redo geometry edit" disabled>Redo</button>
-          <span class="mx-1 h-4 w-px bg-slate-200"></span>
-          <label class="inline-flex items-center gap-1" title="Show or hide the drawing grid"><input id="showGrid" type="checkbox" class="accent-brand" checked> Grid</label>
-          <label class="inline-flex items-center gap-1" title="Snap dragged nodes and dimension marks to the grid"><input id="snapGrid" type="checkbox" class="accent-brand" checked> Snap</label>
-          <label class="inline-flex items-center gap-1" title="Grid spacing in the selected unit">Step <input id="gridSpacing" type="number" min="0.01" step="any" value="1" style="width:4.25rem" class="input !px-1.5 !py-1 text-xs"></label>
+        <div data-tour="canvas-tools" class="canvas-controls absolute top-3 left-3 z-10 flex items-center">
+          <label title="Show or hide the drawing grid"><input id="showGrid" type="checkbox" checked> Grid</label>
+          <label title="Snap dragged nodes and dimension marks to the grid"><input id="snapGrid" type="checkbox" checked> Snap</label>
+          <label title="Grid spacing in the selected unit">Step <input id="gridSpacing" type="number" min="0.01" step="any" value="1"></label>
         </div>
         <p class="pointer-events-none absolute bottom-3 left-3 z-10 text-[11px] text-slate-400">T text &middot; I image &middot; Ctrl+V paste image &middot; select overlay and press Delete to remove</p>
         <div id="preview" data-tour="preview" tabindex="0" aria-label="Keyline preview" class="relative h-[calc(100vh-7rem)] min-h-[420px] cursor-grab touch-none select-none overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-brand/40 active:cursor-grabbing dark:border-slate-700 [&_svg]:block [&_svg]:h-full [&_svg]:w-full"></div>
