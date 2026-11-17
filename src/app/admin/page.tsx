@@ -2,21 +2,23 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { requireAdminUser } from "@/lib/admin";
 import { MPESA_PROVIDER_PLAN_ID } from "@/lib/billing";
+import { getEmailCampaignAudienceCounts } from "@/lib/email-campaigns";
 import { prisma } from "@/lib/prisma";
-import { sendResendTestEmail } from "./actions";
+import EmailCampaignComposer from "./email-campaign-composer";
 import BrandIcon from "../brand-icon";
-
-type AdminPageProps = {
-  searchParams: Promise<{
-    emailTest?: string | string[];
-  }>;
-};
 
 const dateFormatter = new Intl.DateTimeFormat("en-KE", {
   dateStyle: "medium",
   timeStyle: "short",
   timeZone: "Africa/Nairobi",
 });
+
+type AdminPageProps = {
+  searchParams: Promise<{
+    campaign?: string | string[];
+    recipients?: string | string[];
+  }>;
+};
 
 function formatDate(value: Date | null) {
   return value ? dateFormatter.format(value) : "—";
@@ -69,23 +71,13 @@ export default function AdminPage(props: AdminPageProps) {
 }
 
 async function AdminDashboard({ searchParams }: AdminPageProps) {
-  const [, params] = await Promise.all([
-    requireAdminUser(),
-    searchParams,
-  ]);
-  const emailTest = Array.isArray(params.emailTest)
-    ? undefined
-    : params.emailTest;
-  const emailTestMessage =
-    emailTest === "sent"
-      ? "Resend accepted the test email for the registered admin inbox."
-      : emailTest === "failed"
-        ? "Resend rejected the test email. Check the API key and Resend delivery logs."
-        : emailTest === "missing-api-key"
-          ? "RESEND_API_KEY is missing from the server environment."
-          : emailTest === "missing-address"
-            ? "Your admin account needs an email address to receive the test."
-          : undefined;
+  await requireAdminUser();
+  const params = await searchParams;
+  const recipientCount =
+    typeof params.recipients === "string" &&
+    /^\d+$/.test(params.recipients)
+      ? Number(params.recipients)
+      : null;
   const now = new Date();
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
   const activePeriod = { gt: now };
@@ -112,6 +104,7 @@ async function AdminDashboard({ searchParams }: AdminPageProps) {
     recentPayments,
     recentSubscriptions,
     recentCheckouts,
+    emailAudienceCounts,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { emailVerified: { not: null } } }),
@@ -211,6 +204,7 @@ async function AdminDashboard({ searchParams }: AdminPageProps) {
         user: { select: { name: true, email: true } },
       },
     }),
+    getEmailCampaignAudienceCounts(),
   ]);
   const paymentRevenue = paymentTotals
     .map(
@@ -248,31 +242,6 @@ async function AdminDashboard({ searchParams }: AdminPageProps) {
           </p>
         </div>
 
-        {emailTestMessage && (
-          <p className="account-notice" role="status">
-            {emailTestMessage}
-          </p>
-        )}
-
-        <section className="admin-panel" aria-labelledby="email-alerts-heading">
-          <div className="admin-panel-heading">
-            <div>
-              <span className="account-plan-kicker">RESEND</span>
-              <h2 id="email-alerts-heading">Email alerts</h2>
-            </div>
-            <form action={sendResendTestEmail}>
-              <button className="button button-large" type="submit">
-                Send test email
-              </button>
-            </form>
-          </div>
-          <p className="admin-panel-note">
-            Sends with Resend&apos;s test sender to the signed-in admin email.
-            Real signup, payment, and subscription alerts require
-            RESEND_FROM_EMAIL to use a verified sender domain.
-          </p>
-        </section>
-
         <section className="admin-metrics" aria-label="Account metrics">
           <Metric label="Accounts" value={totalAccounts} />
           <Metric label="Verified accounts" value={verifiedAccounts} />
@@ -304,6 +273,31 @@ async function AdminDashboard({ searchParams }: AdminPageProps) {
             }
           />
           <Metric label="Failed payments (30d)" value={failedPayments} />
+        </section>
+
+        <section className="admin-panel" aria-labelledby="email-campaign-heading">
+          <div className="admin-panel-heading">
+            <div>
+              <span className="account-plan-kicker">EMAILS</span>
+              <h2 id="email-campaign-heading">Product email campaign</h2>
+            </div>
+            <span>Only verified, opted-in recipients</span>
+          </div>
+          {(!process.env.RESEND_API_KEY ||
+            !process.env.RESEND_FROM_EMAIL ||
+            !process.env.CRON_SECRET) && (
+            <p className="account-billing-unavailable" role="status">
+              Email delivery requires RESEND_API_KEY, a verified
+              RESEND_FROM_EMAIL, and CRON_SECRET.
+            </p>
+          )}
+          {params.campaign === "queued" && recipientCount !== null && (
+            <p className="account-notice" role="status">
+              Campaign queued for {recipientCount} opted-in recipient
+              {recipientCount === 1 ? "" : "s"}.
+            </p>
+          )}
+          <EmailCampaignComposer audienceCounts={emailAudienceCounts} />
         </section>
 
         <section className="admin-panel" aria-labelledby="payments-heading">

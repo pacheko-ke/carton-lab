@@ -1,35 +1,57 @@
 "use server";
 
 import { requireAdminUser } from "@/lib/admin";
-import { sendResendEmail } from "@/lib/resend-email";
+import { queueEmailCampaign } from "@/lib/email-campaigns";
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-export async function sendResendTestEmail() {
+const MAX_CAMPAIGN_SUBJECT_LENGTH = 150;
+const MAX_CAMPAIGN_HEADING_LENGTH = 120;
+const MAX_CAMPAIGN_MESSAGE_LENGTH = 4000;
+
+function readCampaignField(
+  formData: FormData,
+  name: string,
+  maxLength: number,
+) {
+  const value = formData.get(name);
+  if (typeof value !== "string") {
+    throw new Error(`Missing ${name} value.`);
+  }
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > maxLength) {
+    throw new Error(`${name} must be 1-${maxLength} characters.`);
+  }
+  return trimmed;
+}
+
+export async function createEmailCampaign(formData: FormData) {
   const admin = await requireAdminUser();
-  if (!admin.email) {
-    redirect("/admin?emailTest=missing-address");
-  }
-  if (!process.env.RESEND_API_KEY) {
-    redirect("/admin?emailTest=missing-api-key");
+  const audience = formData.get("audience");
+  if (audience !== "premium" && audience !== "free") {
+    throw new Error("Choose a valid email audience.");
   }
 
-  try {
-    await sendResendEmail({
-      to: admin.email,
-      subject: "CartonLab email test",
-      heading: "Resend email alerts are working",
-      message: "This colorful test email confirms that CartonLab can send email through Resend.",
-      details: [
-        { label: "Recipient", value: admin.email },
-        { label: "Purpose", value: "Email delivery test" },
-      ],
-    }, {
-      from: "CartonLab <onboarding@resend.dev>",
-    });
-  } catch (error) {
-    console.error("Could not send the CartonLab Resend test email:", error);
-    redirect("/admin?emailTest=failed");
-  }
+  const queued = await queueEmailCampaign({
+    audience,
+    subject: readCampaignField(
+      formData,
+      "subject",
+      MAX_CAMPAIGN_SUBJECT_LENGTH,
+    ),
+    heading: readCampaignField(
+      formData,
+      "heading",
+      MAX_CAMPAIGN_HEADING_LENGTH,
+    ),
+    message: readCampaignField(
+      formData,
+      "message",
+      MAX_CAMPAIGN_MESSAGE_LENGTH,
+    ),
+    createdByUserId: admin.id,
+  });
 
-  redirect("/admin?emailTest=sent");
+  revalidatePath("/admin");
+  redirect(`/admin?campaign=queued&recipients=${queued}`);
 }

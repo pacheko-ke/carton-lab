@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { PREMIUM_TRIAL_DAYS } from "@/lib/billing";
 import { getAdminEmailRecipients, sendEmailAlert } from "@/lib/resend-email";
 import { sendWelcomeEmail } from "@/lib/welcome-email";
+import { getTrialEmailJobs } from "@/lib/email-jobs";
 import authConfig from "@/auth.config";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -12,12 +13,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt" },
   events: {
     async createUser({ user }) {
+      const userId = user.id;
+      if (!userId) {
+        throw new Error("Cannot start the Premium trial without a user ID.");
+      }
       const trialEndsAt = new Date(
         Date.now() + PREMIUM_TRIAL_DAYS * 24 * 60 * 60 * 1000,
       );
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { trialEndsAt },
+      await prisma.$transaction(async (transaction) => {
+        await transaction.user.update({
+          where: { id: userId },
+          data: { trialEndsAt },
+        });
+        await transaction.emailJob.createMany({
+          data: getTrialEmailJobs(userId, trialEndsAt),
+          skipDuplicates: true,
+        });
       });
       await sendEmailAlert({
         recipients: getAdminEmailRecipients(),

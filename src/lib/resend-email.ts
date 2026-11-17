@@ -5,6 +5,7 @@ type EmailDetail = {
 
 type ResendEmailInput = {
   to: string;
+  idempotencyKey?: string;
   subject: string;
   heading: string;
   message: string;
@@ -13,6 +14,7 @@ type ResendEmailInput = {
     label: string;
     href: string;
   };
+  unsubscribeUrl?: string;
 };
 
 function escapeHtml(value: string) {
@@ -47,19 +49,22 @@ function formatEmail(input: ResendEmailInput) {
   const textAction = input.action
     ? `\n\n${input.action.label}: ${input.action.href}`
     : "";
+  const unsubscribe = input.unsubscribeUrl
+    ? `<p style="margin:22px 0 0;color:#829188;font-size:12px">You received this product update because you opted in. <a href="${escapeHtml(input.unsubscribeUrl)}" style="color:#416f5a">Unsubscribe</a></p>`
+    : "";
+  const textUnsubscribe = input.unsubscribeUrl
+    ? `\n\nUnsubscribe: ${input.unsubscribeUrl}`
+    : "";
 
   return {
-    html: `<!doctype html><html><body style="margin:0;background:#eef5f1;font-family:Arial,sans-serif;color:#203b32"><div style="display:none;max-height:0;overflow:hidden">CartonLab email notification</div><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#eef5f1;padding:32px 12px"><tr><td align="center"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;background:#fff;border:1px solid #dce9e1;border-radius:14px;overflow:hidden"><tr><td style="padding:24px 30px;background:#17483d"><div style="color:#a7e6c1;font-size:12px;font-weight:700;letter-spacing:2px">CARTONLAB</div><h1 style="margin:14px 0 0;color:#fff;font-size:25px;line-height:1.3">${escapeHtml(input.heading)}</h1></td></tr><tr><td style="padding:28px 30px"><p style="margin:0;color:#40574d;font-size:15px;line-height:1.7">${message}</p>${details}${action}<p style="margin:30px 0 0;color:#829188;font-size:12px">CartonLab · Packaging design, made simple</p></td></tr><tr><td style="height:5px;background:#d66b3d"></td></tr></table></td></tr></table></body></html>`,
-    text: `${input.heading}\n\n${input.message}${textDetails}${textAction}\n\nCartonLab`,
+    html: `<!doctype html><html><body style="margin:0;background:#eef5f1;font-family:Arial,sans-serif;color:#203b32"><div style="display:none;max-height:0;overflow:hidden">CartonLab email notification</div><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#eef5f1;padding:32px 12px"><tr><td align="center"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;background:#fff;border:1px solid #dce9e1;border-radius:14px;overflow:hidden"><tr><td style="padding:24px 30px;background:#17483d"><div style="color:#a7e6c1;font-size:12px;font-weight:700;letter-spacing:2px">CARTONLAB</div><h1 style="margin:14px 0 0;color:#fff;font-size:25px;line-height:1.3">${escapeHtml(input.heading)}</h1></td></tr><tr><td style="padding:28px 30px"><p style="margin:0;color:#40574d;font-size:15px;line-height:1.7">${message}</p>${details}${action}${unsubscribe}<p style="margin:30px 0 0;color:#829188;font-size:12px">CartonLab · Packaging design, made simple</p></td></tr><tr><td style="height:5px;background:#d66b3d"></td></tr></table></td></tr></table></body></html>`,
+    text: `${input.heading}\n\n${input.message}${textDetails}${textAction}${textUnsubscribe}\n\nCartonLab`,
   };
 }
 
-export async function sendResendEmail(
-  input: ResendEmailInput,
-  options: { from?: string } = {},
-) {
+export async function sendResendEmail(input: ResendEmailInput) {
   const apiKey = process.env.RESEND_API_KEY;
-  const from = options.from ?? process.env.RESEND_FROM_EMAIL;
+  const from = process.env.RESEND_FROM_EMAIL;
   if (!apiKey) throw new Error("RESEND_API_KEY must be configured.");
   if (!from) throw new Error("RESEND_FROM_EMAIL must be configured.");
 
@@ -69,6 +74,9 @@ export async function sendResendEmail(
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
+      ...(input.idempotencyKey
+        ? { "Idempotency-Key": input.idempotencyKey }
+        : {}),
     },
     body: JSON.stringify({
       from,
