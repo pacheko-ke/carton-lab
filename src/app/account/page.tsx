@@ -104,7 +104,7 @@ async function AccountContent({ searchParams }: AccountPageProps) {
         <nav className="account-header-links" aria-label="Account navigation">
           {isAdminEmail(user.email) && (
             <Link href="/admin" className="account-back-link">
-              Metrics
+              Dashboard
             </Link>
           )}
           <Link href="/app" className="account-back-link">
