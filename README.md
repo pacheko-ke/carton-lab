@@ -117,9 +117,10 @@ scheduled cancellations retain access through the paid period end.
 
 ## Configure Google sign-in
 
-1. Provision a PostgreSQL database and set its `POSTGRES_PRISMA_URL`. The Vercel
-   project can use the Prisma Postgres Marketplace integration; its terms must
-   first be accepted by a project owner in Vercel.
+1. Provision a PostgreSQL database and set `POSTGRES_PRISMA_URL` to its pooled
+   connection string and `POSTGRES_URL_NON_POOLING` to its direct connection
+   string. The Vercel project can use the Prisma Postgres Marketplace
+   integration; its terms must first be accepted by a project owner in Vercel.
 2. Create a Google OAuth client ID for a Web application in Google Cloud
    Console.
 3. Add these authorized redirect URIs to the OAuth client:
@@ -132,7 +133,8 @@ scheduled cancellations retain access through the paid period end.
    AUTH_SECRET=<generated secret>
    AUTH_GOOGLE_ID=<Google OAuth client ID>
    AUTH_GOOGLE_SECRET=<Google OAuth client secret>
-   POSTGRES_PRISMA_URL=<PostgreSQL connection string>
+   POSTGRES_PRISMA_URL=<Pooled PostgreSQL connection string for the app>
+   POSTGRES_URL_NON_POOLING=<Direct PostgreSQL connection string for migrations>
    ADMIN_EMAILS=<verified admin email addresses, comma-separated>
    RESEND_API_KEY=<Resend API key>
    RESEND_FROM_EMAIL=<sender on a Resend-verified domain>
@@ -149,9 +151,10 @@ scheduled cancellations retain access through the paid period end.
    DARAJA_CALLBACK_URL=<public HTTPS URL ending in /api/daraja/callback>
    ```
 
-5. Apply the schema locally with `npx prisma migrate deploy`. Vercel production
-   builds automatically run this command using `POSTGRES_PRISMA_URL` before
-   building the app. Configure only live Daraja credentials in Vercel
+5. Apply the schema locally with `npx prisma migrate deploy`. Prisma uses
+   `POSTGRES_URL_NON_POOLING` for migrations to avoid advisory-lock timeouts on
+   pooled connections. Vercel production builds automatically run this command
+   before building the app. Configure only live Daraja credentials in Vercel
    Production (`DARAJA_ENV=production`); keep sandbox credentials local.
 
 Never commit `.env.local` or expose the Google client secret in browser code.

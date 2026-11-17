@@ -4,6 +4,11 @@ if (process.env.VERCEL_ENV === "production") {
   if (!process.env.POSTGRES_PRISMA_URL) {
     throw new Error("POSTGRES_PRISMA_URL is required for production migrations.");
   }
+  if (!process.env.POSTGRES_URL_NON_POOLING) {
+    throw new Error(
+      "POSTGRES_URL_NON_POOLING is required for production migrations.",
+    );
+  }
 
   const command = process.platform === "win32" ? "npx.cmd" : "npx";
   const result = spawnSync(command, ["prisma", "migrate", "deploy"], {
