@@ -23,7 +23,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       await prisma.$transaction(async (transaction) => {
         await transaction.user.update({
           where: { id: userId },
-          data: { trialEndsAt },
+          data: {
+            trialEndsAt,
+            marketingEmailsEnabled: true,
+          },
         });
         await transaction.emailJob.createMany({
           data: getTrialEmailJobs(userId, trialEndsAt),

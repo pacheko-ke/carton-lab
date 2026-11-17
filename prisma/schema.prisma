@@ -19,7 +19,7 @@ model User {
   image                    String?
   premiumAccessGranted     Boolean           @default(false)
   trialEndsAt              DateTime?
-  marketingEmailsEnabled   Boolean           @default(false)
+  marketingEmailsEnabled   Boolean           @default(true)
   marketingEmailsUpdatedAt DateTime?
   accounts                 Account[]
   sessions                 Session[]

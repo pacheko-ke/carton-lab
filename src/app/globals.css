@@ -1043,13 +1043,21 @@ input {
   line-height: 1.5;
 }
 
-.admin-audience-copy small .admin-audience-count {
+.admin-audience-copy .admin-audience-count {
   display: block;
   margin-top: 5px;
   color: #81d8bf;
   font-size: 9px;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
+}
+
+.admin-audience-count strong {
+  display: block;
+  margin-bottom: 2px;
+  color: #81d8bf;
+  font-size: 10px;
+  font-weight: 700;
 }
 
 .admin-audience-check {

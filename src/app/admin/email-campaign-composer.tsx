@@ -5,7 +5,12 @@ import { useFormStatus } from "react-dom";
 import { createEmailCampaign } from "./actions";
 
 type Audience = "premium" | "free";
-type AudienceCounts = Record<Audience, number>;
+type AudienceCounts = Record<
+  Audience,
+  {
+    eligible: number;
+  }
+>;
 
 function QueueButton() {
   const { pending } = useFormStatus();
@@ -56,10 +61,13 @@ export default function EmailCampaignComposer({
                 <strong>Premium members</strong>
                 <small>
                   Product news and feature announcements
-                  <span className="admin-audience-count">
-                    {audienceCounts.premium.toLocaleString()} eligible now
-                  </span>
                 </small>
+                <span className="admin-audience-count">
+                  <strong>
+                    {audienceCounts.premium.eligible.toLocaleString()} eligible
+                    recipients
+                  </strong>
+                </span>
               </span>
               <span className="admin-audience-check" aria-hidden="true" />
             </label>
@@ -78,18 +86,21 @@ export default function EmailCampaignComposer({
                 <strong>Free members</strong>
                 <small>
                   Premium features and upgrade offers
-                  <span className="admin-audience-count">
-                    {audienceCounts.free.toLocaleString()} eligible now
-                  </span>
                 </small>
+                <span className="admin-audience-count">
+                  <strong>
+                    {audienceCounts.free.eligible.toLocaleString()} eligible
+                    recipients
+                  </strong>
+                </span>
               </span>
               <span className="admin-audience-check" aria-hidden="true" />
             </label>
           </div>
           <p className="admin-email-field-hint">
-            Only verified users who opted in are included. Active trials are
-            excluded from Free campaigns. Counts are estimates and are checked
-            again when queued.
+            Eligible users need a verified email and must not have opted out
+            under Account &gt; Product emails. Active trials are excluded from
+            Free campaigns. Counts are estimates and rechecked when queued.
           </p>
         </fieldset>
 
@@ -168,7 +179,7 @@ export default function EmailCampaignComposer({
             <span className="admin-email-sender-mark">C</span>
             <span>
               <strong>CartonLab</strong>
-              <small>to opted-in {audience} members</small>
+              <small>to subscribed {audience} members</small>
             </span>
           </div>
         </div>
@@ -191,7 +202,8 @@ export default function EmailCampaignComposer({
         </div>
         <p className="admin-email-preview-note">
           This preview updates as you write. Each email includes an
-          unsubscribe link and is sent only to the selected, opted-in audience.
+          unsubscribe link and is sent only to the selected, subscribed
+          audience.
         </p>
       </aside>
     </div>

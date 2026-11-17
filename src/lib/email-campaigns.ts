@@ -26,26 +26,31 @@ function activeSubscriptionWhere(now: Date): Prisma.SubscriptionWhereInput {
   };
 }
 
-function campaignRecipientWhere(
+function campaignAudienceWhere(
   audience: EmailCampaignInput["audience"],
   now: Date,
 ): Prisma.UserWhereInput {
   const activeSubscription = activeSubscriptionWhere(now);
-  const audienceFilter: Prisma.UserWhereInput =
-    audience === "premium"
-      ? {
-          OR: [
-            { premiumAccessGranted: true },
-            { subscriptions: { some: activeSubscription } },
-          ],
-        }
-      : {
-          premiumAccessGranted: false,
-          OR: [{ trialEndsAt: null }, { trialEndsAt: { lte: now } }],
-          subscriptions: { none: activeSubscription },
-        };
+  return audience === "premium"
+    ? {
+        OR: [
+          { premiumAccessGranted: true },
+          { subscriptions: { some: activeSubscription } },
+        ],
+      }
+    : {
+        premiumAccessGranted: false,
+        OR: [{ trialEndsAt: null }, { trialEndsAt: { lte: now } }],
+        subscriptions: { none: activeSubscription },
+      };
+}
+
+function campaignRecipientWhere(
+  audience: EmailCampaignInput["audience"],
+  now: Date,
+): Prisma.UserWhereInput {
   return {
-    ...audienceFilter,
+    ...campaignAudienceWhere(audience, now),
     emailVerified: { not: null },
     email: { not: null },
     marketingEmailsEnabled: true,
@@ -54,11 +59,14 @@ function campaignRecipientWhere(
 
 export async function getEmailCampaignAudienceCounts() {
   const now = new Date();
-  const [premium, free] = await Promise.all([
+  const [premiumEligible, freeEligible] = await Promise.all([
     prisma.user.count({ where: campaignRecipientWhere("premium", now) }),
     prisma.user.count({ where: campaignRecipientWhere("free", now) }),
   ]);
-  return { premium, free };
+  return {
+    premium: { eligible: premiumEligible },
+    free: { eligible: freeEligible },
+  };
 }
 
 export async function queueEmailCampaign(input: EmailCampaignInput) {

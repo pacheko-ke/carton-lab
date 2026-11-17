@@ -43,7 +43,7 @@ export default async function EmailPreferencesPage({
           <span className="eyebrow"><span /> EMAIL PREFERENCES</span>
           <h1>Manage product emails</h1>
           <p>
-            Choose whether CartonLab can email you about Premium features and
+            Manage whether CartonLab can email you about Premium features and
             product updates.
           </p>
         </div>

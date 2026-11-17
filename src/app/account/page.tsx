@@ -276,8 +276,9 @@ async function AccountContent({ searchParams }: AccountPageProps) {
             <span className="account-plan-kicker">EMAIL PREFERENCES</span>
             <h2 id="email-preferences-heading">Product emails</h2>
             <p>
-              Choose whether to receive Premium feature announcements and
-              product updates. Account and billing emails are not affected.
+              Premium feature announcements and product updates are on by
+              default. You can turn them off anytime; account and billing
+              emails are not affected.
             </p>
           </div>
           <form action={updateEmailPreferences}>

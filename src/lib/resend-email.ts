@@ -50,7 +50,7 @@ function formatEmail(input: ResendEmailInput) {
     ? `\n\n${input.action.label}: ${input.action.href}`
     : "";
   const unsubscribe = input.unsubscribeUrl
-    ? `<p style="margin:22px 0 0;color:#829188;font-size:12px">You received this product update because you opted in. <a href="${escapeHtml(input.unsubscribeUrl)}" style="color:#416f5a">Unsubscribe</a></p>`
+    ? `<p style="margin:22px 0 0;color:#829188;font-size:12px">You are receiving product updates from CartonLab. <a href="${escapeHtml(input.unsubscribeUrl)}" style="color:#416f5a">Unsubscribe</a></p>`
     : "";
   const textUnsubscribe = input.unsubscribeUrl
     ? `\n\nUnsubscribe: ${input.unsubscribeUrl}`

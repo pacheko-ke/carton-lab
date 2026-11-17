@@ -281,7 +281,7 @@ async function AdminDashboard({ searchParams }: AdminPageProps) {
               <span className="account-plan-kicker">EMAILS</span>
               <h2 id="email-campaign-heading">Product email campaign</h2>
             </div>
-            <span>Only verified, opted-in recipients</span>
+            <span>Only verified, subscribed recipients</span>
           </div>
           {(!process.env.RESEND_API_KEY ||
             !process.env.RESEND_FROM_EMAIL ||
@@ -293,7 +293,7 @@ async function AdminDashboard({ searchParams }: AdminPageProps) {
           )}
           {params.campaign === "queued" && recipientCount !== null && (
             <p className="account-notice" role="status">
-              Campaign queued for {recipientCount} opted-in recipient
+              Campaign queued for {recipientCount} eligible recipient
               {recipientCount === 1 ? "" : "s"}.
             </p>
           )}

@@ -20,21 +20,24 @@ and in Vercel; the sender address must use a domain verified with Resend.
 delivery failures are logged without preventing account creation or payment
 processing.
 
-Users can opt in to Premium feature announcements and product updates from
-`/account`; promotional emails are sent only to verified, opted-in users.
-Premium announcements target Premium members, while Free promotions exclude
-active trials. Every promotional email includes an unsubscribe link, and users
-can also unsubscribe from their account preferences. Welcome and trial-ending
-emails are account lifecycle messages. Trial reminders are queued three days
-before the trial end date; the end-date Premium offer is sent only to opted-in
-users.
+Premium feature announcements and product updates are enabled by default for
+new accounts. Existing accounts without a saved email preference are enabled
+when the marketing email migration is applied; saved opt-outs are preserved.
+Users can turn these messages off from `/account`. Promotional emails are sent
+only to verified users who have not opted out. Premium announcements target
+Premium members, while Free promotions exclude active trials. Every
+promotional email includes an unsubscribe link, and users can also unsubscribe
+from their account preferences. Welcome and trial-ending emails are account
+lifecycle messages. Trial reminders are queued three days before the trial
+end date; the end-date Premium offer is sent only when marketing emails remain
+enabled.
 
 The daily Vercel Cron job at `/api/cron/email-jobs` sends queued messages and
 backfills trial reminders. It runs at 7 a.m. UTC (10 a.m. in Nairobi). Set a
 strong `CRON_SECRET` in Vercel and locally when testing the endpoint; Vercel
 sends it as a bearer token. The worker sends between 9 a.m. and 6 p.m.
 `Africa/Nairobi` time. Trial job dates also use `Africa/Nairobi`. Campaigns
-created from `/admin` are queued for opted-in Premium or Free audiences and
+created from `/admin` are queued for eligible Premium or Free audiences and
 processed by this worker.
 
 ## System metrics
