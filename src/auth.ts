@@ -11,6 +11,7 @@ import {
   normalizeEmail,
 } from "@/lib/email-otp";
 import { notifyNewAccount } from "@/lib/new-account-notifications";
+import { isEmailOtpConfigured } from "@/auth-config";
 import authConfig from "@/auth.config";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -25,6 +26,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         code: { label: "Verification code", type: "text" },
       },
       async authorize(credentials) {
+        if (!isEmailOtpConfigured()) return null;
         if (
           typeof credentials.email !== "string" ||
           typeof credentials.code !== "string"

@@ -12,7 +12,8 @@ export function isGoogleAuthConfigured() {
 
 export function isEmailOtpConfigured() {
   return Boolean(
-    isAuthStorageConfigured() &&
+    process.env.EMAIL_OTP_ENABLED === "true" &&
+      isAuthStorageConfigured() &&
       process.env.RESEND_API_KEY &&
       process.env.RESEND_FROM_EMAIL,
   );

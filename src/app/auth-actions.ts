@@ -33,6 +33,13 @@ export async function requestEmailOtp(
   _previousState: EmailOtpActionState,
   formData: FormData,
 ): Promise<EmailOtpActionState> {
+  if (!isEmailOtpConfigured()) {
+    return {
+      status: "error",
+      message: "Email sign-in is temporarily unavailable. Please use Google sign-in.",
+    };
+  }
+
   const rawEmail = formData.get("email");
   if (typeof rawEmail !== "string") {
     return { status: "error", message: "Enter a valid email address." };
@@ -41,12 +48,6 @@ export async function requestEmailOtp(
   const email = normalizeEmail(rawEmail);
   if (!isValidEmail(email)) {
     return { status: "error", message: "Enter a valid email address." };
-  }
-  if (!isEmailOtpConfigured()) {
-    return {
-      status: "error",
-      message: "Email sign-in is not configured yet. Please try Google sign-in.",
-    };
   }
 
   const requestHeaders = await headers();
@@ -93,6 +94,13 @@ export async function verifyEmailOtp(
   _previousState: EmailOtpActionState,
   formData: FormData,
 ): Promise<EmailOtpActionState> {
+  if (!isEmailOtpConfigured()) {
+    return {
+      status: "error",
+      message: "Email sign-in is temporarily unavailable. Please use Google sign-in.",
+    };
+  }
+
   const rawEmail = formData.get("email");
   const rawCode = formData.get("code");
   if (typeof rawEmail !== "string" || typeof rawCode !== "string") {

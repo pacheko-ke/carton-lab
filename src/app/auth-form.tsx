@@ -72,6 +72,12 @@ export default async function AuthForm({ mode, error }: AuthFormProps) {
   const googleConfigured = isGoogleAuthConfigured();
   const emailOtpConfigured = isEmailOtpConfigured();
   const configured = isAuthConfigured();
+  const authMethodSummary = [
+    googleConfigured ? "Google" : null,
+    emailOtpConfigured ? "a one-time email code" : null,
+  ]
+    .filter((method): method is string => method !== null)
+    .join(" or ");
   let session: Session | null = null;
   if (configured) {
     await connection();
@@ -109,9 +115,9 @@ export default async function AuthForm({ mode, error }: AuthFormProps) {
             <div className="eyebrow"><span /> YOUR PACKAGING WORKSPACE</div>
             <h1>{isSignup ? "Start making." : "Welcome back."}</h1>
             <p>
-              {isSignup
-                ? "Create your account with Google or verify your email with a code."
-                : "Sign in with Google or get a one-time email code."}
+              {authMethodSummary
+                ? `${isSignup ? "Create your account" : "Sign in"} with ${authMethodSummary}.`
+                : "Sign-in is temporarily unavailable. Please try again later."}
             </p>
           </div>
           {isUnverifiedEmailError && (
@@ -152,7 +158,14 @@ export default async function AuthForm({ mode, error }: AuthFormProps) {
                   {isSignup ? "Sign up with Google" : "Continue with Google"}
                 </button>
               </form>
-              <EmailOtpForm configured={emailOtpConfigured} />
+              {emailOtpConfigured && (
+                <EmailOtpForm configured={emailOtpConfigured} />
+              )}
+              {!configured && (
+                <p className="auth-config-notice" role="status">
+                  Sign-in is temporarily unavailable. Please try again later.
+                </p>
+              )}
             </>
           )}
           <div className="auth-switch">
@@ -162,7 +175,10 @@ export default async function AuthForm({ mode, error }: AuthFormProps) {
             </Link>
           </div>
           <div className="auth-privacy">
-            <span>◇</span> Sign in with Google or a one-time email code. No password is needed.
+            <span>◇</span>{" "}
+            {authMethodSummary
+              ? `Continue with ${authMethodSummary}. No password is needed.`
+              : "Sign-in is temporarily unavailable."}
           </div>
         </div>
         <p className="auth-footnote">

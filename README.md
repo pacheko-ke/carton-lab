@@ -7,14 +7,15 @@ at `/app`; its original UI and browser-based features are served from
 Verified users can bookmark the current keyline and its settings in the Studio;
 bookmarks are saved to their account and can be reopened or removed later.
 
-The `/login` and `/signup` pages support Google OAuth and passwordless email
-sign-in with a one-time verification code. Codes are sent through Resend, expire
-after 10 minutes, and are limited to five verification attempts and three
-requests per email per 15 minutes, with a 10-request per network limit over the
-same period. Accounts are saved in PostgreSQL through Prisma, and access to
-`/app` and its assets is checked against the verified user record. New accounts
-receive a colorful welcome email through Resend. Verified admin
-addresses in `ADMIN_EMAILS` receive alerts for
+The `/login` and `/signup` pages support Google OAuth. Passwordless email
+sign-in with a one-time verification code is disabled by default; set
+`EMAIL_OTP_ENABLED=true` to enable it. When enabled, codes are sent through
+Resend, expire after 10 minutes, and are limited to five verification attempts
+and three requests per email per 15 minutes, with a 10-request per network
+limit over the same period. Accounts are saved in PostgreSQL through Prisma,
+and access to `/app` and its assets is checked against the verified user
+record. New accounts receive a colorful welcome email through Resend. Verified
+admin addresses in `ADMIN_EMAILS` receive alerts for
 new accounts, successful or failed payments, and subscription starts, renewals,
 payment issues, and cancellations. Payment and subscription alerts go to the
 affected user and admins. Set `RESEND_API_KEY` and `RESEND_FROM_EMAIL` locally
@@ -135,6 +136,7 @@ scheduled cancellations retain access through the paid period end.
    AUTH_SECRET=<generated secret>
    AUTH_GOOGLE_ID=<Google OAuth client ID>
    AUTH_GOOGLE_SECRET=<Google OAuth client secret>
+   EMAIL_OTP_ENABLED=false
    POSTGRES_PRISMA_URL=<Pooled PostgreSQL connection string for the app>
    POSTGRES_URL_NON_POOLING=<Direct PostgreSQL connection string for migrations>
    ADMIN_EMAILS=<verified admin email addresses, comma-separated>
@@ -159,10 +161,11 @@ scheduled cancellations retain access through the paid period end.
    before building the app. Configure only live Daraja credentials in Vercel
    Production (`DARAJA_ENV=production`); keep sandbox credentials local.
 
-Email-code sign-in requires `RESEND_API_KEY` and `RESEND_FROM_EMAIL`; Google
-sign-in requires the Google OAuth credentials above. Never commit `.env.local`
-or expose provider secrets in browser code. Billing remains unavailable until
-its provider credentials are configured.
+Email-code sign-in additionally requires `EMAIL_OTP_ENABLED=true`,
+`RESEND_API_KEY`, and `RESEND_FROM_EMAIL`; Google sign-in requires the Google
+OAuth credentials above. Never commit `.env.local` or expose provider secrets
+in browser code. Billing remains unavailable until its provider credentials
+are configured.
 
 ## Run locally
 
