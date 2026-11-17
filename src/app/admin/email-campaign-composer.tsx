@@ -133,6 +133,7 @@ export default function EmailCampaignComposer({
               onChange={(event) => setHeading(event.target.value)}
               required
             />
+            <small>Shown as the email&apos;s main headline.</small>
           </label>
         </div>
 
