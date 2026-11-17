@@ -10,7 +10,11 @@ bookmarks are saved to their account and can be reopened or removed later.
 The `/login` and `/signup` pages use Google OAuth through Auth.js. Google
 accounts are saved in PostgreSQL through Prisma. New users can sign in only when
 Google returns a verified email; access to `/app` and its assets is checked
-against the verified user record.
+against the verified user record. New accounts receive a welcome email through
+Resend. Set `RESEND_API_KEY` and `RESEND_FROM_EMAIL` locally and in Vercel; the
+sender address must use a domain verified with Resend. `APP_URL` sets the
+destination of the welcome email's Studio link. Email delivery failures are
+logged without preventing account creation.
 
 ## System metrics
 
