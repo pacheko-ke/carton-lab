@@ -1,26 +1,37 @@
 import type { NextAuthConfig } from "next-auth";
+import Apple from "next-auth/providers/apple";
 import Google from "next-auth/providers/google";
+import {
+  hasVerifiedProviderEmail,
+  isAppleAuthConfigured,
+  isGoogleAuthConfigured,
+} from "@/auth-config";
 
 const authConfig = {
   pages: { signIn: "/login" },
   providers: [
-    Google({
-      profile(profile) {
-        return {
-          id: profile.sub,
-          name: profile.name,
-          email: profile.email,
-          image: profile.picture,
-          emailVerified: profile.email_verified ? new Date() : null,
-        };
-      },
-    }),
+    ...(isGoogleAuthConfigured()
+      ? [
+          Google({
+            profile(profile) {
+              return {
+                id: profile.sub,
+                name: profile.name,
+                email: profile.email,
+                image: profile.picture,
+                emailVerified: profile.email_verified ? new Date() : null,
+              };
+            },
+          }),
+        ]
+      : []),
+    ...(isAppleAuthConfigured() ? [Apple({})] : []),
   ],
   callbacks: {
     signIn({ account, profile }) {
+      if (!profile) return false;
       return (
-        account?.provider === "google" &&
-        profile?.email_verified === true &&
+        hasVerifiedProviderEmail(account?.provider, profile?.email_verified) &&
         typeof profile.email === "string" &&
         profile.email.length > 0
       );
@@ -29,7 +40,7 @@ const authConfig = {
       if (user) {
         token.isEmailVerified = Boolean(user.emailVerified);
       }
-      if (account?.provider === "google" && profile?.email_verified === true) {
+      if (hasVerifiedProviderEmail(account?.provider, profile?.email_verified)) {
         token.isEmailVerified = true;
       }
       return token;

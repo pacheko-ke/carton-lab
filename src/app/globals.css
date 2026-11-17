@@ -1778,11 +1778,17 @@ input {
   margin-top: 27px;
 }
 
-.google-auth-form {
+.auth-provider-buttons {
+  display: grid;
+  gap: 12px;
   margin-top: 27px;
 }
 
-.google-button {
+.auth-provider-buttons form {
+  margin: 0;
+}
+
+.auth-provider-button {
   display: flex;
   width: 100%;
   min-height: 48px;
@@ -1798,17 +1804,31 @@ input {
   transition: background 150ms ease, transform 150ms ease;
 }
 
-.google-button:hover:not(:disabled) {
+.auth-provider-button:hover:not(:disabled) {
   transform: translateY(-1px);
+}
+
+.google-button:hover:not(:disabled) {
   background: #fff;
 }
 
-.google-button:disabled {
+.apple-button {
+  border: 1px solid #000;
+  background: #000;
+  color: #fff;
+}
+
+.apple-button:hover:not(:disabled) {
+  background: #222;
+}
+
+.auth-provider-button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
 }
 
-.google-mark {
+.google-mark,
+.apple-mark {
   width: 19px;
   height: 19px;
   flex: none;

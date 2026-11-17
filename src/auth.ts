@@ -6,6 +6,7 @@ import { getAdminEmailRecipients, sendEmailAlert } from "@/lib/resend-email";
 import { sendWelcomeEmail } from "@/lib/welcome-email";
 import { getTrialEmailJobs } from "@/lib/email-jobs";
 import authConfig from "@/auth.config";
+import { hasVerifiedProviderEmail } from "@/auth-config";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -56,8 +57,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     async signIn({ user, account, profile }) {
       if (
-        account?.provider === "google" &&
-        profile?.email_verified === true &&
+        hasVerifiedProviderEmail(account?.provider, profile?.email_verified) &&
         user.id
       ) {
         await prisma.user.update({

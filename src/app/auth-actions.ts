@@ -1,7 +1,10 @@
 "use server";
 
 import { auth, signIn, signOut } from "@/auth";
-import { isGoogleAuthConfigured } from "@/auth-config";
+import {
+  isAppleAuthConfigured,
+  isGoogleAuthConfigured,
+} from "@/auth-config";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -11,6 +14,13 @@ export async function signInWithGoogle() {
     throw new Error("Google authentication has not been configured.");
   }
   await signIn("google", { redirectTo: "/app" });
+}
+
+export async function signInWithApple() {
+  if (!isAppleAuthConfigured()) {
+    throw new Error("Apple authentication has not been configured.");
+  }
+  await signIn("apple", { redirectTo: "/app" });
 }
 
 export async function signOutOfCartonLab() {
