@@ -1,0 +1,35 @@
+{
+  "id": "envelope-s",
+  "name": "ENV-S Envelope (Straight Flap)",
+  "title": "ENV-S ENVELOPE KEYLINE",
+  "source": "Box Blanks (boxblanks.com)",
+  "category": "Envelopes",
+  "allowZeroHeight": true,
+  "params": {
+    "refL": "220",
+    "refW": "110",
+    "refH": "0"
+  },
+  "map": {
+    "x": [
+      [88.05, "0"],
+      [311.05, "L + 3"]
+    ],
+    "y": [
+      [66.5, "0"],
+      [179.5, "W + 3"]
+    ]
+  },
+  "cuts": [
+    {
+      "id": "outline",
+      "d": "M10 132.67 L88.05 179.5 L113.475 230.35 L285.625 230.35 L311.05 179.5 L389.1 132.67 L389.1 113.33 L311.05 66.5 L288.45 10 L110.65 10 L88.05 66.5 L10 113.33 Z"
+    }
+  ],
+  "creases": [
+    { "d": "M88.05 179.5 L311.05 179.5" },
+    { "d": "M311.05 179.5 L311.05 66.5" },
+    { "d": "M311.05 66.5 L88.05 66.5" },
+    { "d": "M88.05 66.5 L88.05 179.5" }
+  ]
+}

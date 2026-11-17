@@ -334,7 +334,8 @@ function cutToSegs(c, idx, env, fx, fy, holes) {
 function buildKeylineModel(def, p, opts) {
   opts = opts || {};
   const { L, W, H, unit: u } = p;
-  if (!(L > 0 && W > 0 && H > 0)) throw new Error("Enter length, width and height greater than zero.");
+  const validHeight = def && def.allowZeroHeight ? H >= 0 : H > 0;
+  if (!(L > 0 && W > 0 && validHeight)) throw new Error("Enter length, width and height greater than zero.");
   if (!def || !Array.isArray(def.cuts) || !def.cuts.length) throw new Error("Keyline has no cuts defined.");
   const dimensionGroupFor = (shape) => {
     if (shape.dimensionGroup === undefined) return null;

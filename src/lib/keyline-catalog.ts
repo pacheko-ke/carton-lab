@@ -5,6 +5,10 @@ import chickenBoxLf from "./keyline-definitions/chicken-box-lf.json";
 import chickenBoxTop from "./keyline-definitions/chicken-box-top.json";
 import f2 from "./keyline-definitions/f2.json";
 import f2Bottom from "./keyline-definitions/f2bottom.json";
+import documentWallet from "./keyline-definitions/document-wallet.json";
+import envelopeD from "./keyline-definitions/envelope-d.json";
+import envelopeG from "./keyline-definitions/envelope-g.json";
+import envelopeS from "./keyline-definitions/envelope-s.json";
 import fefco0200 from "./keyline-definitions/fefco0200.json";
 import fefco0203 from "./keyline-definitions/fefco0203.json";
 import fefco0204 from "./keyline-definitions/fefco0204.json";
@@ -64,6 +68,7 @@ import fefco0352 from "./keyline-definitions/fefco0352.json";
 import fefco0360 from "./keyline-definitions/fefco0360.json";
 import flower from "./keyline-definitions/flower.json";
 import flowerTop from "./keyline-definitions/flower-top.json";
+import folderPresentation from "./keyline-definitions/folder-presentation.json";
 import hangerBox from "./keyline-definitions/hangerbox.json";
 import herbsBox from "./keyline-definitions/herbs-box.json";
 import hangingBasin from "./keyline-definitions/hangingbasin.json";
@@ -105,6 +110,7 @@ type KeylineDefinition = {
   source?: string;
   category?: string;
   title?: string;
+  allowZeroHeight?: boolean;
   folding?: FoldingDefinition;
 };
 
@@ -170,6 +176,11 @@ const definitions: KeylineDefinition[] = [
   fefco0351,
   fefco0352,
   fefco0360,
+  envelopeD,
+  envelopeG,
+  envelopeS,
+  folderPresentation,
+  documentWallet,
   pf1,
   seaFlowTop,
   seaFlowBottom,
@@ -198,6 +209,7 @@ const categoryOrder = [
   "Tray",
   "Auto-Bottom",
   "Apparel",
+  "Envelopes",
   "Other",
 ];
 const freeCategories = new Set(["RSC", "Pizza", "Chicken Box"]);
