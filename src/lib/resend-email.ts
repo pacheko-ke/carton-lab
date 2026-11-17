@@ -33,15 +33,15 @@ function escapeHtml(value: string) {
 function formatEmail(input: ResendEmailInput) {
   const message = escapeHtml(input.message).replace(/\r?\n/g, "<br>");
   const details = input.details?.length
-    ? `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;margin:24px 0">${input.details
+    ? `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;margin:24px 0;border-top:1px solid #e0e8f0">${input.details
         .map(
           (detail) =>
-            `<tr><td style="padding:10px 12px;border-bottom:1px solid #e5eee9;color:#61716a;font-size:13px">${escapeHtml(detail.label)}</td><td style="padding:10px 12px;border-bottom:1px solid #e5eee9;color:#203b32;font-size:13px;font-weight:600;text-align:right">${escapeHtml(detail.value)}</td></tr>`,
+            `<tr><td style="padding:11px 12px;border-bottom:1px solid #e0e8f0;color:#76879a;font-size:13px">${escapeHtml(detail.label)}</td><td style="padding:11px 12px;border-bottom:1px solid #e0e8f0;color:#20364a;font-size:13px;font-weight:700;text-align:right">${escapeHtml(detail.value)}</td></tr>`,
         )
         .join("")}</table>`
     : "";
   const action = input.action
-    ? `<p style="margin:28px 0 8px"><a href="${escapeHtml(input.action.href)}" style="display:inline-block;padding:13px 20px;border-radius:8px;background:#d66b3d;color:#fff;text-decoration:none;font-weight:700">${escapeHtml(input.action.label)}</a></p>`
+    ? `<p style="margin:28px 0 8px"><a href="${escapeHtml(input.action.href)}" style="display:inline-block;padding:13px 20px;border-radius:8px;background:#39a9ed;color:#091626;text-decoration:none;font-weight:700">${escapeHtml(input.action.label)}</a></p>`
     : "";
   const textDetails = input.details?.length
     ? `\n\n${input.details.map((detail) => `${detail.label}: ${detail.value}`).join("\n")}`
@@ -50,15 +50,49 @@ function formatEmail(input: ResendEmailInput) {
     ? `\n\n${input.action.label}: ${input.action.href}`
     : "";
   const unsubscribe = input.unsubscribeUrl
-    ? `<p style="margin:22px 0 0;color:#829188;font-size:12px">You are receiving product updates from CartonLab. <a href="${escapeHtml(input.unsubscribeUrl)}" style="color:#416f5a">Unsubscribe</a></p>`
+    ? `<p style="margin:22px 0 0;color:#76879a;font-size:12px">You are receiving product updates from Carton Lab. <a href="${escapeHtml(input.unsubscribeUrl)}" style="color:#147cac">Unsubscribe</a></p>`
     : "";
   const textUnsubscribe = input.unsubscribeUrl
     ? `\n\nUnsubscribe: ${input.unsubscribeUrl}`
     : "";
 
   return {
-    html: `<!doctype html><html><body style="margin:0;background:#eef5f1;font-family:Arial,sans-serif;color:#203b32"><div style="display:none;max-height:0;overflow:hidden">CartonLab email notification</div><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#eef5f1;padding:32px 12px"><tr><td align="center"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;background:#fff;border:1px solid #dce9e1;border-radius:14px;overflow:hidden"><tr><td style="padding:24px 30px;background:#17483d"><div style="color:#a7e6c1;font-size:12px;font-weight:700;letter-spacing:2px">CARTONLAB</div><h1 style="margin:14px 0 0;color:#fff;font-size:25px;line-height:1.3">${escapeHtml(input.heading)}</h1></td></tr><tr><td style="padding:28px 30px"><p style="margin:0;color:#40574d;font-size:15px;line-height:1.7">${message}</p>${details}${action}${unsubscribe}<p style="margin:30px 0 0;color:#829188;font-size:12px">CartonLab · Packaging design, made simple</p></td></tr><tr><td style="height:5px;background:#d66b3d"></td></tr></table></td></tr></table></body></html>`,
-    text: `${input.heading}\n\n${input.message}${textDetails}${textAction}${textUnsubscribe}\n\nCartonLab`,
+    html: `<!doctype html>
+<html>
+  <body style="margin:0;background:#edf3f9;font-family:Arial,Helvetica,sans-serif;color:#20364a">
+    <div style="display:none;max-height:0;overflow:hidden">Carton Lab email notification</div>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#edf3f9;padding:36px 12px">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;background:#fff;border:1px solid #d5e0ec;border-radius:16px;overflow:hidden">
+            <tr>
+              <td style="padding:26px 30px 28px;background:#091626;border-bottom:4px solid #39a9ed">
+                <table role="presentation" cellspacing="0" cellpadding="0">
+                  <tr>
+                    <td style="width:42px;height:42px;border-radius:11px;background:#102238;color:#66d3e8;text-align:center;vertical-align:middle;font-size:22px;font-weight:700">C</td>
+                    <td style="padding-left:13px;vertical-align:middle">
+                      <div style="color:#f0f7ff;font-size:15px;font-weight:700;letter-spacing:.02em">Carton Lab</div>
+                      <div style="margin-top:4px;color:#9aacc0;font-size:10px;font-weight:700;letter-spacing:.14em">PACKAGING DESIGN STUDIO</div>
+                    </td>
+                  </tr>
+                </table>
+                <h1 style="margin:25px 0 0;color:#f0f7ff;font-size:25px;line-height:1.3;letter-spacing:-.02em">${escapeHtml(input.heading)}</h1>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:30px">
+                <p style="margin:0;color:#425466;font-size:15px;line-height:1.75">${message}</p>
+                ${details}${action}${unsubscribe}
+                <p style="margin:30px 0 0;padding-top:18px;border-top:1px solid #e0e8f0;color:#76879a;font-size:12px;line-height:1.6">Carton Lab · Packaging design, made simple</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`,
+    text: `${input.heading}\n\n${input.message}${textDetails}${textAction}${textUnsubscribe}\n\nCarton Lab`,
   };
 }
 
@@ -68,6 +102,7 @@ export async function sendResendEmail(input: ResendEmailInput) {
   if (!apiKey) throw new Error("RESEND_API_KEY must be configured.");
   if (!from) throw new Error("RESEND_FROM_EMAIL must be configured.");
 
+  const senderAddress = from.match(/<([^<>]+)>/)?.[1]?.trim() ?? from.trim();
   const email = formatEmail(input);
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -79,7 +114,7 @@ export async function sendResendEmail(input: ResendEmailInput) {
         : {}),
     },
     body: JSON.stringify({
-      from,
+      from: `Carton Lab <${senderAddress}>`,
       to: [input.to],
       subject: input.subject,
       html: email.html,
