@@ -1778,59 +1778,61 @@ input {
   margin-top: 27px;
 }
 
-.auth-provider-buttons {
-  display: grid;
-  gap: 12px;
+.google-auth-form {
   margin-top: 27px;
 }
 
-.auth-provider-buttons form {
-  margin: 0;
-}
-
-.auth-provider-button {
+.google-button {
   display: flex;
   width: 100%;
-  min-height: 48px;
+  min-height: 52px;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  border: 1px solid rgba(173, 194, 214, 0.26);
-  border-radius: 8px;
-  background: #f7f9fb;
-  color: #182637;
+  gap: 11px;
+  border: 1px solid rgba(190, 211, 228, 0.78);
+  border-radius: 10px;
+  background: linear-gradient(135deg, #fff 0%, #f2f8fc 100%);
+  box-shadow:
+    0 8px 22px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  color: #1b2c3c;
   font-size: 13px;
   font-weight: 700;
-  transition: background 150ms ease, transform 150ms ease;
-}
-
-.auth-provider-button:hover:not(:disabled) {
-  transform: translateY(-1px);
+  letter-spacing: 0.01em;
+  transition:
+    background 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    transform 150ms ease;
 }
 
 .google-button:hover:not(:disabled) {
-  background: #fff;
+  transform: translateY(-2px);
+  border-color: rgba(99, 202, 226, 0.75);
+  background: linear-gradient(135deg, #fff 0%, #eaf8fc 100%);
+  box-shadow:
+    0 12px 26px rgba(0, 0, 0, 0.24),
+    0 0 0 3px rgba(99, 202, 226, 0.1);
 }
 
-.apple-button {
-  border: 1px solid #000;
-  background: #000;
-  color: #fff;
+.google-button:focus-visible {
+  outline: 3px solid #69cfe7;
+  outline-offset: 3px;
 }
 
-.apple-button:hover:not(:disabled) {
-  background: #222;
+.google-button:active:not(:disabled) {
+  transform: translateY(0);
 }
 
-.auth-provider-button:disabled {
+.google-button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
+  box-shadow: none;
 }
 
-.google-mark,
-.apple-mark {
-  width: 19px;
-  height: 19px;
+.google-mark {
+  width: 20px;
+  height: 20px;
   flex: none;
 }
 

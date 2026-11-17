@@ -7,12 +7,11 @@ at `/app`; its original UI and browser-based features are served from
 Verified users can bookmark the current keyline and its settings in the Studio;
 bookmarks are saved to their account and can be reopened or removed later.
 
-The `/login` and `/signup` pages use Google and Apple sign-in through Auth.js.
-Provider accounts are saved in PostgreSQL through Prisma. New users can sign in
-only when their provider returns a verified email; access to `/app` and its
-assets is checked against the verified user record. New accounts receive a
-colorful welcome email through Resend. Verified admin addresses in
-`ADMIN_EMAILS` receive alerts for
+The `/login` and `/signup` pages use Google OAuth through Auth.js. Google
+accounts are saved in PostgreSQL through Prisma. New users can sign in only when
+Google returns a verified email; access to `/app` and its assets is checked
+against the verified user record. New accounts receive a colorful welcome email
+through Resend. Verified admin addresses in `ADMIN_EMAILS` receive alerts for
 new accounts, successful or failed payments, and subscription starts, renewals,
 payment issues, and cancellations. Payment and subscription alerts go to the
 affected user and admins. Set `RESEND_API_KEY` and `RESEND_FROM_EMAIL` locally
@@ -116,34 +115,26 @@ activated only after Paystack confirms the active subscription and plan.
 Renewal, failed payment, and cancellation events update the local subscription;
 scheduled cancellations retain access through the paid period end.
 
-## Configure social sign-in
+## Configure Google sign-in
 
 1. Provision a PostgreSQL database and set `POSTGRES_PRISMA_URL` to its pooled
    connection string and `POSTGRES_URL_NON_POOLING` to its direct connection
    string. The Vercel project can use the Prisma Postgres Marketplace
    integration; its terms must first be accepted by a project owner in Vercel.
 2. Create a Google OAuth client ID for a Web application in Google Cloud
-   Console. Add these authorized redirect URIs:
+   Console.
+3. Add these authorized redirect URIs to the OAuth client:
    - Local: `http://localhost:3000/api/auth/callback/google`
    - Production: `https://cartonlab-web.vercel.app/api/auth/callback/google`
-3. In the Apple Developer portal, enable Sign in with Apple for an App ID and
-   create a Services ID. Configure the Services ID's return URLs:
-   - Production: `https://cartonlab-web.vercel.app/api/auth/callback/apple`
-
-   Apple requires HTTPS and does not support localhost or HTTP callback URLs.
-   Generate an Apple client secret JWT for the Services ID using the Apple
-   team ID, key ID, and Sign in with Apple private key.
 4. Copy `.env.example` to `.env.local`, generate an `AUTH_SECRET` with
-   `npx auth secret`, and set the provider credentials you want to enable:
+   `npx auth secret`, and set the Google client ID and secret:
 
    ```text
    AUTH_SECRET=<generated secret>
-   POSTGRES_PRISMA_URL=<Pooled PostgreSQL connection string for the app>
-   POSTGRES_URL_NON_POOLING=<Direct PostgreSQL connection string for migrations>
    AUTH_GOOGLE_ID=<Google OAuth client ID>
    AUTH_GOOGLE_SECRET=<Google OAuth client secret>
-   AUTH_APPLE_ID=<Apple Services ID>
-   AUTH_APPLE_SECRET=<Apple client secret JWT>
+   POSTGRES_PRISMA_URL=<Pooled PostgreSQL connection string for the app>
+   POSTGRES_URL_NON_POOLING=<Direct PostgreSQL connection string for migrations>
    ADMIN_EMAILS=<verified admin email addresses, comma-separated>
    RESEND_API_KEY=<Resend API key>
    RESEND_FROM_EMAIL=<sender on a Resend-verified domain>
@@ -166,10 +157,9 @@ scheduled cancellations retain access through the paid period end.
    before building the app. Configure only live Daraja credentials in Vercel
    Production (`DARAJA_ENV=production`); keep sandbox credentials local.
 
-Never commit `.env.local` or expose provider secrets in browser code. Google
-and Apple can be enabled independently; sign-in stays disabled until the shared
-auth/database settings and at least one provider's credentials are configured.
-Billing remains unavailable until its provider credentials are configured.
+Never commit `.env.local` or expose the Google client secret in browser code.
+Without the auth and database values, Google sign-in stays disabled. Billing
+remains unavailable until its provider credentials are configured.
 
 ## Run locally
 

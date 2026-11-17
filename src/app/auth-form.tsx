@@ -1,17 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
-import {
-  isAppleAuthConfigured,
-  isAuthConfigured,
-  isGoogleAuthConfigured,
-} from "@/auth-config";
+import { isGoogleAuthConfigured } from "@/auth-config";
 import BrandIcon from "./brand-icon";
-import {
-  signInWithApple,
-  signInWithGoogle,
-  signOutOfCartonLab,
-} from "./auth-actions";
+import { signInWithGoogle, signOutOfCartonLab } from "./auth-actions";
 
 type AuthFormProps = {
   mode: "login" | "signup";
@@ -29,7 +21,7 @@ export function AuthLoading() {
             </div>
             <div className="eyebrow"><span /> YOUR PACKAGING WORKSPACE</div>
             <h1>Loading sign-in…</h1>
-            <p>Preparing your secure sign-in.</p>
+            <p>Preparing your secure Google sign-in.</p>
           </div>
         </div>
       </section>
@@ -68,22 +60,9 @@ function GoogleMark() {
   );
 }
 
-function AppleMark() {
-  return (
-    <svg aria-hidden="true" className="apple-mark" viewBox="0 0 24 24">
-      <path
-        fill="currentColor"
-        d="M16.37 12.21c.02 2.09 1.83 2.79 1.85 2.8-.02.05-.29 1-.95 1.98-.57.84-1.17 1.68-2.1 1.7-.92.02-1.22-.55-2.28-.55-1.07 0-1.4.53-2.27.57-.91.03-1.6-.91-2.18-1.74-1.19-1.72-2.1-4.86-.88-6.99.6-1.06 1.67-1.74 2.83-1.75.88-.02 1.71.6 2.25.6.54 0 1.55-.74 2.62-.63.45.02 1.72.18 2.53 1.36-.07.05-1.51.88-1.42 2.65ZM14.65 7.3c.48-.58.8-1.39.71-2.2-.69.03-1.53.46-2.03 1.03-.45.51-.84 1.33-.73 2.12.77.06 1.56-.39 2.05-.95Z"
-      />
-    </svg>
-  );
-}
-
 export default async function AuthForm({ mode, error }: AuthFormProps) {
   const isSignup = mode === "signup";
-  const googleConfigured = isGoogleAuthConfigured();
-  const appleConfigured = isAppleAuthConfigured();
-  const configured = isAuthConfigured();
+  const configured = isGoogleAuthConfigured();
   const session = configured ? await auth() : null;
   const isUnverifiedEmailError =
     error === "UnverifiedEmail" ||
@@ -118,13 +97,13 @@ export default async function AuthForm({ mode, error }: AuthFormProps) {
             <h1>{isSignup ? "Start making." : "Welcome back."}</h1>
             <p>
               {isSignup
-                ? "Create your CartonLab account with Google or Apple."
-                : "Sign in securely with Google or Apple."}
+                ? "Create your CartonLab account with Google."
+                : "Sign in securely with your Google account."}
             </p>
           </div>
           {isUnverifiedEmailError && (
             <p className="auth-config-notice" role="alert">
-              Your sign-in succeeded, but your account&apos;s verification
+              Your Google sign-in succeeded, but your account&apos;s verification
               status was out of date. Sign out and sign back in to refresh it.
             </p>
           )}
@@ -145,37 +124,25 @@ export default async function AuthForm({ mode, error }: AuthFormProps) {
               {(error === "AccessDenied" ||
                 (Array.isArray(error) && error.includes("AccessDenied"))) && (
                 <p className="auth-config-notice" role="alert">
-                  Your provider did not confirm a verified email address, so
-                  access was denied. Sign in with an account that has a
-                  verified email.
+                  Google did not confirm a verified email address, so access
+                  was denied. Sign in with a Google account that has a verified
+                  email.
                 </p>
               )}
-              <div className="auth-provider-buttons">
-                <form action={signInWithGoogle}>
-                  <button
-                    type="submit"
-                    className="auth-provider-button google-button"
-                    disabled={!googleConfigured}
-                  >
-                    <GoogleMark />
-                    {isSignup ? "Sign up with Google" : "Continue with Google"}
-                  </button>
-                </form>
-                <form action={signInWithApple}>
-                  <button
-                    type="submit"
-                    className="auth-provider-button apple-button"
-                    disabled={!appleConfigured}
-                  >
-                    <AppleMark />
-                    {isSignup ? "Sign up with Apple" : "Continue with Apple"}
-                  </button>
-                </form>
-              </div>
+              <form action={signInWithGoogle} className="google-auth-form">
+                <button
+                  type="submit"
+                  className="google-button"
+                  disabled={!configured}
+                >
+                  <GoogleMark />
+                  {isSignup ? "Sign up with Google" : "Continue with Google"}
+                </button>
+              </form>
               {!configured && (
                 <p className="auth-config-notice" role="status">
-                  Sign-in is not ready yet. Configure AUTH_SECRET,
-                  POSTGRES_PRISMA_URL, and credentials for Google or Apple.
+                  Google sign-in is not ready yet. Configure AUTH_SECRET,
+                  AUTH_GOOGLE_ID, AUTH_GOOGLE_SECRET, and POSTGRES_PRISMA_URL.
                 </p>
               )}
             </>
@@ -187,7 +154,7 @@ export default async function AuthForm({ mode, error }: AuthFormProps) {
             </Link>
           </div>
           <div className="auth-privacy">
-            <span>◇</span> Sign in with Google or Apple. Your password is never shared with CartonLab.
+            <span>◇</span> Google-only sign-in. Your password is never shared with CartonLab.
           </div>
         </div>
         <p className="auth-footnote">
