@@ -10,11 +10,18 @@ bookmarks are saved to their account and can be reopened or removed later.
 The `/login` and `/signup` pages use Google OAuth through Auth.js. Google
 accounts are saved in PostgreSQL through Prisma. New users can sign in only when
 Google returns a verified email; access to `/app` and its assets is checked
-against the verified user record. New accounts receive a welcome email through
-Resend. Set `RESEND_API_KEY` and `RESEND_FROM_EMAIL` locally and in Vercel; the
-sender address must use a domain verified with Resend. `APP_URL` sets the
-destination of the welcome email's Studio link. Email delivery failures are
-logged without preventing account creation.
+against the verified user record. New accounts receive a colorful welcome email
+through Resend. Verified admin addresses in `ADMIN_EMAILS` receive alerts for
+new accounts, successful or failed payments, and subscription starts, renewals,
+payment issues, and cancellations. Payment and subscription alerts go to the
+affected user and admins. Set `RESEND_API_KEY` and `RESEND_FROM_EMAIL` locally
+and in Vercel; the sender address must use a domain verified with Resend.
+`APP_URL` sets the destination of the welcome email's Studio link. Resend
+delivery failures are logged without preventing account creation or payment
+processing. The `/admin` dashboard has a **Send test email** button that uses
+Resend's `onboarding@resend.dev` test sender and sends to the signed-in admin
+email. Production alerts still require `RESEND_FROM_EMAIL` to use a verified
+sender domain.
 
 ## System metrics
 

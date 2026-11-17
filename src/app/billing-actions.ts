@@ -12,6 +12,10 @@ import {
   PREMIUM_PRICE,
 } from "@/lib/billing";
 import { prisma } from "@/lib/prisma";
+import {
+  getEmailAlertRecipients,
+  sendEmailAlert,
+} from "@/lib/resend-email";
 import { redirect } from "next/navigation";
 
 type PaystackPlan = {
@@ -112,7 +116,7 @@ export async function cancelPremiumSubscription() {
       item.currentPeriodEnd !== null &&
       item.currentPeriodEnd > new Date(),
   );
-  if (!subscription) {
+  if (!subscription || !subscription.currentPeriodEnd) {
     redirect("/account?billing=not-active");
   }
   if (!subscription.providerSubscriptionToken) {
@@ -141,6 +145,18 @@ export async function cancelPremiumSubscription() {
       cancelAtPeriodEnd: true,
       providerEventCreatedAt: new Date(),
     },
+  });
+  await sendEmailAlert({
+    recipients: getEmailAlertRecipients(user.email),
+    subject: "Premium subscription ending",
+    heading: "Your subscription is set to end",
+    message: "Your Premium subscription will not renew. Access remains available until the current period ends.",
+    details: [
+      {
+        label: "Access through",
+        value: subscription.currentPeriodEnd.toLocaleDateString("en-KE"),
+      },
+    ],
   });
   redirect("/account?billing=cancelled");
 }
