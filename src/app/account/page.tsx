@@ -185,7 +185,7 @@ async function AccountContent({ searchParams }: AccountPageProps) {
                 <p className="account-subscription-note">
                   Your 7-day Premium trial ends on{" "}
                   {user.trialEndsAt.toLocaleDateString()}. If you subscribe
-                  now, Paystack starts charging $5/month immediately;
+                  now, we will start charging $5/month immediately;
                   otherwise, your account returns to Free after the trial.
                 </p>
               )}
