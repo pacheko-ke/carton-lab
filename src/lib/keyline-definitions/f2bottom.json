@@ -20,6 +20,12 @@
       "label": "Slot length",
       "default": 100.6,
       "min": 0
+    },
+    {
+      "id": "strapDiameter",
+      "label": "Strap hole diameter",
+      "default": 50,
+      "min": 0
     }
   ],
   "params": {
@@ -49,7 +55,7 @@
     "holeRx": "12.5*kH",
     "holeRy": "20*kW",
     "holeRX": "bl - holeX - holeW",
-    "strapR": "25*kH"
+    "strapR": "strapDiameter / 2"
   },
   "require": [
     {
@@ -67,6 +73,10 @@
     {
       "expr": "300*kL + strapR < L / 2",
       "message": "The strap holes do not fit this length."
+    },
+    {
+      "expr": "strapR < H / 2",
+      "message": "The strap holes do not fit the box height."
     }
   ],
   "cuts": [

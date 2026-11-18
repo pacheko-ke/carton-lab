@@ -8,6 +8,12 @@
       "label": "Notch size",
       "default": 10,
       "min": 0
+    },
+    {
+      "id": "strapDiameter",
+      "label": "Strap hole diameter",
+      "default": 50,
+      "min": 0
     }
   ],
   "params": {
@@ -29,12 +35,16 @@
     "holeR": "20*min(kH, kW)",
     "hole1Y": "H + 50*kW",
     "hole2Y": "H + 200*kW",
-    "strapR": "25*kH"
+    "strapR": "strapDiameter / 2"
   },
   "require": [
     {
       "expr": "notch / 2 + strapR < 225*kL",
-      "message": "The notch is too wide for this length."
+      "message": "The notch or strap holes do not fit this length."
+    },
+    {
+      "expr": "strapR < H / 2",
+      "message": "The strap holes do not fit the box height."
     }
   ],
   "cuts": [

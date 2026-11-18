@@ -14,6 +14,12 @@
       "label": "Flap clearance",
       "default": 5,
       "min": 0
+    },
+    {
+      "id": "strapDiameter",
+      "label": "Strap hole diameter",
+      "default": 30,
+      "min": 0
     }
   ],
   "params": {
@@ -61,7 +67,7 @@
     "nD": "25",
     "nRx": "12.2",
     "nRy": "13",
-    "strapR": "15*kH",
+    "strapR": "strapDiameter / 2",
     "strapY": "165*kH",
     "tongueH": "105*kH",
     "step": "250*kL",
@@ -107,6 +113,10 @@
     {
       "expr": "tW / 2 > step + strapR",
       "message": "The strap tongue is too short for the strap holes."
+    },
+    {
+      "expr": "strapR < H - strapY",
+      "message": "The strap holes do not fit the box height."
     },
     {
       "expr": "2*tongueH < H",

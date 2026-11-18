@@ -8,6 +8,12 @@
       "label": "Flap clearance",
       "default": 9,
       "min": 0
+    },
+    {
+      "id": "strapDiameter",
+      "label": "Strap hole diameter",
+      "default": 63,
+      "min": 0
     }
   ],
   "params": {
@@ -25,6 +31,7 @@
     "bw": "W + 2*H",
     "yf": "H + W",
     "holeR": "31.5*pr",
+    "strapR": "strapDiameter / 2",
     "strapStep": "367*kL",
     "strapY": "H - 135*kH",
     "earY": "H - 145*kH",
@@ -54,8 +61,12 @@
       "message": "The ear holes do not fit this height."
     },
     {
-      "expr": "strapStep + holeR < L / 2",
+      "expr": "strapStep + strapR < L / 2",
       "message": "The strap holes do not fit this length."
+    },
+    {
+      "expr": "strapR < strapY",
+      "message": "The strap holes do not fit the box height."
     }
   ],
   "cuts": [
@@ -68,42 +79,42 @@
       "type": "circle",
       "cx": "xl + L / 2 - strapStep",
       "cy": "strapY",
-      "r": "holeR"
+      "r": "strapR"
     },
     {
       "id": "strap-bottom-1",
       "type": "circle",
       "cx": "xl + L / 2 - strapStep",
       "cy": "bw - strapY",
-      "r": "holeR"
+      "r": "strapR"
     },
     {
       "id": "strap-top-2",
       "type": "circle",
       "cx": "xl + L / 2",
       "cy": "strapY",
-      "r": "holeR"
+      "r": "strapR"
     },
     {
       "id": "strap-bottom-2",
       "type": "circle",
       "cx": "xl + L / 2",
       "cy": "bw - strapY",
-      "r": "holeR"
+      "r": "strapR"
     },
     {
       "id": "strap-top-3",
       "type": "circle",
       "cx": "xl + L / 2 + strapStep",
       "cy": "strapY",
-      "r": "holeR"
+      "r": "strapR"
     },
     {
       "id": "strap-bottom-3",
       "type": "circle",
       "cx": "xl + L / 2 + strapStep",
       "cy": "bw - strapY",
-      "r": "holeR"
+      "r": "strapR"
     },
     {
       "id": "wing-hole-left-1",
