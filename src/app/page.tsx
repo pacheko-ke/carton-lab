@@ -199,11 +199,9 @@ export default function Home() {
           <span className="brand-mark"><BrandIcon className="brand-mark-image" /></span>
           <span>CartonLab Lightweight 2.0</span>
         </Link>
-        <span>Thoughtful keylines. Better packaging.</span>
         <nav className="site-footer-meta" aria-label="Footer">
           <Link href="/terms">Terms of Use</Link>
           <span>© 2026 CartonLab</span>
-          <Link href="/login">Already have an account? <b>Log in</b></Link>
         </nav>
       </footer>
     </main>
