@@ -1,25 +1,66 @@
 import Image from "next/image";
 import Link from "next/link";
+import type { Metadata } from "next";
 import BrandIcon from "./brand-icon";
+
+export const metadata: Metadata = {
+  title: "CartonLab | Carton Keyline & Box Dieline Generator",
+  description:
+    "Create carton keylines and box dielines online. Customize dimensions, explore FEFCO-style packaging, and export production-ready PDF, SVG, or DXF with CartonLab.",
+  keywords: [
+    "carton keyline generator",
+    "box dieline generator",
+    "carton dieline software",
+    "packaging design software",
+    "FEFCO 0201 keyline",
+    "FEFCO 0203 glue flap",
+    "bulk carton keyline generator",
+    "packaging dieline export",
+  ],
+  openGraph: {
+    title: "CartonLab | Carton Keyline & Box Dieline Generator",
+    description:
+      "Turn box dimensions into production-ready carton keylines. Design, customize, and export with CartonLab.",
+    type: "website",
+  },
+};
 
 const features = [
   {
     number: "01",
-    title: "Pick a keyline",
+    title: "Start from a proven dieline",
     description:
-      "Start with packaging styles for everyday cartons, trays, pizza boxes, and more.",
+      "Browse carton, tray, pizza-box, and flower-box keylines. Start with RSC 0201 and its 0203-style glue flap; Premium unlocks the complete keyline library.",
   },
   {
     number: "02",
-    title: "Make it yours",
+    title: "Get the dimensions right",
     description:
-      "Fine-tune dimensions, board allowances, artwork, and layout in one workspace.",
+      "Set length, width, height, units, and board settings. Adjust flower-box strap holes from a practical 20 mm default.",
   },
   {
     number: "03",
-    title: "Ready for the floor",
+    title: "Put your brand in the drawing",
     description:
-      "Preview your dieline, then export a clean file or print a production-ready sheet.",
+      "Encode creator, company, role, contact, and address details in a QR beside the technical table. Premium lets you hide both together in exports.",
+  },
+  {
+    number: "04",
+    title: "Generate a batch with Premium",
+    description:
+      "Turn up to 500 Excel, CSV, or TXT rows into one combined PDF or a ZIP of individual PDFs. A sample Excel workbook makes setup easy.",
+  },
+  {
+    number: "05",
+    title: "Send production-ready files",
+    description:
+      "Export PDF, SVG, or DXF, print a keyline, or share it with your team. Add image and text artwork, then bookmark designs you use again.",
+  },
+  {
+    number: "06",
+    title: "Stay focused in the workspace",
+    description:
+      "Thumbnail and bulk selectors stay in sync, and each selection updates the artboard. Use grid and zoom controls, collapse long sidebar sections, and explore supported cartons in 3D.",
   },
 ];
 
@@ -100,39 +141,40 @@ export default function Home() {
 
       <section className="hero-section">
         <div className="hero-copy">
-          <div className="eyebrow"><span /> PACKAGING DESIGN, WITHOUT THE FRICTION</div>
-          <h1>Good ideas.<br />Well <span>boxed.</span></h1>
+          <div className="eyebrow"><span /> ONLINE CARTON KEYLINE &amp; BOX DIELINE GENERATOR</div>
+          <h1>Turn dimensions into<br /><span>production-ready keylines.</span></h1>
           <p className="hero-description">
-            Go from carton dimensions to a production-ready keyline in minutes.
-            No blank page, no guesswork—just a better way to build.
+            Design carton keylines and box dielines online. Customize a proven
+            packaging structure, then export a clean PDF, SVG, or DXF—without
+            drawing every panel from scratch.
           </p>
           <div className="hero-actions">
             <Link href="/signup" className="button button-large">
-              Get started free <span>→</span>
+              Create your first keyline <span>→</span>
             </Link>
-            <Link href="/app" className="text-link">Explore the tool <span>↗</span></Link>
+            <Link href="/app" className="text-link">Explore the generator <span>↗</span></Link>
           </div>
           <div className="hero-note">
             <span className="note-icon">✳</span>
-            Built for the people who make packaging happen.
+            Made for packaging designers, converters, and box makers.
           </div>
         </div>
         <KeylineArtwork />
       </section>
 
       <section className="proof-strip" aria-label="Product highlights">
-        <div><span className="proof-icon">⌗</span><span><b>Real-world keylines</b><small>Practical box styles to start from</small></span></div>
-        <div><span className="proof-icon">⌁</span><span><b>Dimensions in control</b><small>Adjust the details as you go</small></span></div>
-        <div><span className="proof-icon">↗</span><span><b>Files that travel</b><small>Export, print, and share with ease</small></span></div>
+        <div><span className="proof-icon">⌗</span><span><b>Packaging-ready keylines</b><small>Cartons, trays, pizza &amp; flower boxes</small></span></div>
+        <div><span className="proof-icon">⌁</span><span><b>Control every dimension</b><small>Including adjustable strap-hole sizing</small></span></div>
+        <div><span className="proof-icon">↗</span><span><b>Production-friendly output</b><small>PDF, SVG, DXF and Premium batch PDFs</small></span></div>
       </section>
 
       <section className="steps-section" id="how-it-works">
         <div className="section-heading">
           <div>
-            <div className="eyebrow"><span /> YOUR NEXT BOX STARTS HERE</div>
-            <h2>From first fold to <span>final file.</span></h2>
+            <div className="eyebrow"><span /> A FASTER PACKAGING DESIGN WORKFLOW</div>
+            <h2>Everything to build a better <span>box keyline.</span></h2>
           </div>
-          <p>Less time laying out lines. More time getting the details right.</p>
+          <p>Design one carton precisely—or let Premium turn a spreadsheet into a whole batch.</p>
         </div>
         <div className="feature-grid">
           {features.map((feature) => (
@@ -142,6 +184,15 @@ export default function Home() {
               <p>{feature.description}</p>
             </article>
           ))}
+        </div>
+        <div className="feature-cta">
+          <div>
+            <h3>Make your next dieline <span>the easy part.</span></h3>
+            <p>Start designing with CartonLab and get from dimensions to a file your team can use.</p>
+          </div>
+          <Link href="/signup" className="button button-large">
+            Start designing free <span>→</span>
+          </Link>
         </div>
       </section>
 
