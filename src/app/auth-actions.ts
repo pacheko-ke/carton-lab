@@ -8,6 +8,7 @@ import {
 import { AuthError } from "next-auth";
 import { headers } from "next/headers";
 import {
+  isEmailSignInRateLimited,
   isValidEmail,
   normalizeEmail,
   sendEmailOtpCode,
@@ -56,6 +57,12 @@ export async function requestEmailOtp(
   const email = normalizeEmail(rawEmail);
   if (!isValidEmail(email)) {
     return { status: "error", message: "Enter a valid email address." };
+  }
+  if (await isEmailSignInRateLimited(email)) {
+    return {
+      status: "error",
+      message: "Too many failed sign-in attempts. Please try again after one hour.",
+    };
   }
   if (await hasActiveSession(email)) {
     return {
@@ -132,6 +139,12 @@ export async function verifyEmailOtp(
       message: "Enter the six-digit code sent to your email.",
     };
   }
+  if (await isEmailSignInRateLimited(email)) {
+    return {
+      status: "error",
+      message: "Too many failed sign-in attempts. Please try again after one hour.",
+    };
+  }
   if (await hasActiveSession(email)) {
     return {
       status: "error",
@@ -143,6 +156,12 @@ export async function verifyEmailOtp(
     await signIn("email-otp", { email, code, redirectTo: "/app" });
   } catch (error) {
     if (error instanceof AuthError && error.type === "CredentialsSignin") {
+      if (await isEmailSignInRateLimited(email)) {
+        return {
+          status: "error",
+          message: "Too many failed sign-in attempts. Please try again after one hour.",
+        };
+      }
       return {
         status: "error",
         message: "That code is invalid or expired. Request a new code and try again.",

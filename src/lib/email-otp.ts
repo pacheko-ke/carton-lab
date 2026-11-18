@@ -12,6 +12,8 @@ const RESEND_COOLDOWN_MS = 60 * 1000;
 const MAX_REQUESTS_PER_WINDOW = 3;
 const MAX_IP_REQUESTS_PER_WINDOW = 10;
 const MAX_CODE_ATTEMPTS = 5;
+const MAX_FAILED_SIGN_IN_ATTEMPTS = 5;
+const FAILED_SIGN_IN_WINDOW_MS = 60 * 60 * 1000;
 const RATE_LIMIT_RETENTION_MS = 24 * 60 * 60 * 1000;
 
 type OtpChallengeRow = {
@@ -20,6 +22,8 @@ type OtpChallengeRow = {
   expiresAt: Date;
   sentAt: Date;
   attempts: number;
+  failedSignInAttempts: number;
+  failedSignInWindowStartedAt: Date | null;
   requestWindowStartedAt: Date;
   requestsInWindow: number;
   consumedAt: Date | null;
@@ -119,6 +123,8 @@ export async function sendEmailOtpCode(email: string, ipAddress: string | null) 
         "expiresAt",
         "sentAt",
         "attempts",
+        "failedSignInAttempts",
+        "failedSignInWindowStartedAt",
         "requestWindowStartedAt",
         "requestsInWindow",
         "consumedAt"
@@ -146,6 +152,8 @@ export async function sendEmailOtpCode(email: string, ipAddress: string | null) 
         "expiresAt",
         "sentAt",
         "attempts",
+        "failedSignInAttempts",
+        "failedSignInWindowStartedAt",
         "requestWindowStartedAt",
         "requestsInWindow",
         "consumedAt"
@@ -220,6 +228,8 @@ export async function consumeEmailOtpCode(email: string, code: string) {
         "expiresAt",
         "sentAt",
         "attempts",
+        "failedSignInAttempts",
+        "failedSignInWindowStartedAt",
         "requestWindowStartedAt",
         "requestsInWindow",
         "consumedAt"
@@ -238,20 +248,56 @@ export async function consumeEmailOtpCode(email: string, code: string) {
       return false;
     }
 
+    const sameFailureWindow =
+      challenge.failedSignInWindowStartedAt !== null &&
+      now.getTime() - challenge.failedSignInWindowStartedAt.getTime() <
+        FAILED_SIGN_IN_WINDOW_MS;
+    const failedAttempts = sameFailureWindow
+      ? challenge.failedSignInAttempts
+      : 0;
+    if (failedAttempts >= MAX_FAILED_SIGN_IN_ATTEMPTS) return false;
+
     if (!isValidCodeHash(challenge.codeHash, candidateHash)) {
       await transaction.emailOtpChallenge.update({
         where: { email },
-        data: { attempts: { increment: 1 } },
+        data: {
+          attempts: { increment: 1 },
+          failedSignInAttempts: failedAttempts + 1,
+          failedSignInWindowStartedAt: sameFailureWindow
+            ? challenge.failedSignInWindowStartedAt
+            : now,
+        },
       });
       return false;
     }
 
     await transaction.emailOtpChallenge.update({
       where: { email },
-      data: { consumedAt: now },
+      data: {
+        consumedAt: now,
+        failedSignInAttempts: 0,
+        failedSignInWindowStartedAt: null,
+      },
     });
     return true;
   });
+}
+
+export async function isEmailSignInRateLimited(email: string) {
+  const challenge = await prisma.emailOtpChallenge.findUnique({
+    where: { email },
+    select: {
+      failedSignInAttempts: true,
+      failedSignInWindowStartedAt: true,
+    },
+  });
+  return Boolean(
+    challenge &&
+      challenge.failedSignInAttempts >= MAX_FAILED_SIGN_IN_ATTEMPTS &&
+      challenge.failedSignInWindowStartedAt &&
+      Date.now() - challenge.failedSignInWindowStartedAt.getTime() <
+        FAILED_SIGN_IN_WINDOW_MS,
+  );
 }
 
 async function findUserByEmail(email: string) {

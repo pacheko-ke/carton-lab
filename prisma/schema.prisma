@@ -172,14 +172,16 @@ model VerificationToken {
 }
 
 model EmailOtpChallenge {
-  email                  String    @id
-  codeHash               String
-  expiresAt              DateTime
-  sentAt                 DateTime
-  attempts               Int       @default(0)
-  requestWindowStartedAt DateTime
-  requestsInWindow       Int       @default(1)
-  consumedAt             DateTime?
+  email                       String    @id
+  codeHash                    String
+  expiresAt                   DateTime
+  sentAt                      DateTime
+  attempts                    Int       @default(0)
+  failedSignInAttempts        Int       @default(0)
+  failedSignInWindowStartedAt DateTime?
+  requestWindowStartedAt      DateTime
+  requestsInWindow            Int       @default(1)
+  consumedAt                  DateTime?
 
   @@index([expiresAt])
 }
