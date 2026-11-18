@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { signOutOfCartonLab } from "../auth-actions";
 
 type AppFrameProps = {
+  accountId: string;
   profile: {
     createdBy: string;
     companyName: string;
@@ -15,7 +16,7 @@ type AppFrameProps = {
   profileQrCode: boolean[][];
 };
 
-export default function AppFrame({ profile, profileQrCode }: AppFrameProps) {
+export default function AppFrame({ accountId, profile, profileQrCode }: AppFrameProps) {
   const router = useRouter();
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const signOutFormRef = useRef<HTMLFormElement>(null);
@@ -60,7 +61,7 @@ export default function AppFrame({ profile, profileQrCode }: AppFrameProps) {
         title="CartonLab Studio"
         onLoad={(event) =>
           event.currentTarget.contentWindow?.postMessage(
-            { type: "cartonlab:profile", profile, qrCode: profileQrCode },
+            { type: "cartonlab:profile", accountId, profile, qrCode: profileQrCode },
             window.location.origin,
           )
         }

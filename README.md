@@ -6,6 +6,12 @@ at `/app`; its original UI and browser-based features are served from
 `public/cartonlab`.
 Verified users can bookmark the current keyline and its settings in the Studio;
 bookmarks are saved to their account and can be reopened or removed later.
+After a verified user has opened the Studio online, its editor shell, permitted
+keyline catalog, and bookmarks are cached on that device. The Studio can then
+reopen at `/app` offline; offline bookmark additions and removals are queued and
+synced to that account when the Studio is online again. Bulk spreadsheet
+processing, account changes, and other server-backed actions still require a
+connection.
 
 The `/login` and `/signup` pages support Google OAuth. Passwordless email
 sign-in with a one-time verification code is disabled by default; set

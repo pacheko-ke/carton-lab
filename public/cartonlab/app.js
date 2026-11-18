@@ -25,6 +25,8 @@ const NUMERIC = ["L", "W", "H", "crease", "bwadd", "glue", "slot"];
 const STORE_KEY = "rscKeyline.v4"; // bumped so new defaults (e.g. brown carton colour) replace old saved values
 const RSC_DEFAULTS_MM = { L: 300, W: 200, H: 150 };
 const DESIGNER_TOUR_KEY = "cartonlab.designer-tour.dismissed.v1";
+const OFFLINE_STORAGE_PREFIX = "cartonlab.studio.offline.v1";
+const OFFLINE_ACCOUNT_KEY = "cartonlab.studio.last-account.v1";
 const DESIGNER_TOUR_STEPS = [
   {
     targets: ['[data-tour="box-type"]'],
@@ -75,10 +77,100 @@ let creatorProfile = {
   address: "",
   qrCode: [],
 };
+let accountId = null;
+let offlineState = { catalog: null, bookmarks: [], pending: [], profile: null };
+let syncRunning = false;
+let offlineShell = false;
+let usingOfflineCatalog = false;
 let resolveProfile;
 const profileReady = window.parent === window
   ? Promise.resolve()
   : new Promise((resolve) => { resolveProfile = resolve; });
+function offlineStorageKey(id) {
+  return `${OFFLINE_STORAGE_PREFIX}.${encodeURIComponent(id)}`;
+}
+
+function isProfile(value) {
+  return value && typeof value === "object" &&
+    typeof value.createdBy === "string" &&
+    typeof value.companyName === "string" &&
+    typeof value.role === "string" &&
+    typeof value.contact === "string" &&
+    typeof value.address === "string";
+}
+
+function setOfflineAccount(id, profile) {
+  if (typeof id !== "string" || !id) return;
+  accountId = id;
+  offlineState = { catalog: null, bookmarks: [], pending: [], profile: null };
+  try {
+    localStorage.setItem(OFFLINE_ACCOUNT_KEY, id);
+    const stored = JSON.parse(localStorage.getItem(offlineStorageKey(id)) || "null");
+    offlineState = {
+      catalog: stored?.catalog || null,
+      bookmarks: Array.isArray(stored?.bookmarks) ? stored.bookmarks : [],
+      pending: Array.isArray(stored?.pending) ? stored.pending : [],
+      profile: isProfile(profile) ? profile : isProfile(stored?.profile) ? stored.profile : null,
+    };
+    if (offlineState.profile) {
+      creatorProfile = { ...creatorProfile, ...offlineState.profile };
+      if (Array.isArray(stored?.qrCode)) creatorProfile.qrCode = stored.qrCode;
+    }
+    if (isProfile(profile)) {
+      offlineState.profile = profile;
+      offlineState.qrCode = creatorProfile.qrCode;
+      saveOfflineState();
+    }
+  } catch (error) {
+    console.error("Could not load Studio offline data:", error);
+  }
+}
+
+function saveOfflineState() {
+  if (!accountId) return false;
+  try {
+    localStorage.setItem(offlineStorageKey(accountId), JSON.stringify({
+      ...offlineState,
+      qrCode: creatorProfile.qrCode,
+    }));
+    return true;
+  } catch (error) {
+    console.error("Could not save Studio offline data:", error);
+    const status = $("offlineStatus");
+    if (status) status.textContent = "Offline save failed; browser storage is unavailable.";
+    return false;
+  }
+}
+
+function restoreOfflineAccount() {
+  try {
+    const id = localStorage.getItem(OFFLINE_ACCOUNT_KEY);
+    if (id) setOfflineAccount(id);
+  } catch (error) {
+    console.error("Could not restore Studio offline account:", error);
+  }
+}
+
+function clearOfflineAccount() {
+  if (!accountId) return;
+  try {
+    localStorage.removeItem(offlineStorageKey(accountId));
+    localStorage.removeItem(OFFLINE_ACCOUNT_KEY);
+  } catch (error) {
+    console.error("Could not clear Studio offline data:", error);
+  }
+  accountId = null;
+  offlineState = { catalog: null, bookmarks: [], pending: [], profile: null };
+}
+
+restoreOfflineAccount();
+if (window.parent !== window) {
+  offlineShell = !navigator.onLine;
+  try {
+    offlineShell = offlineShell || window.parent.location.pathname === "/offline.html";
+  } catch (_) { /* cross-origin parent */ }
+  if (offlineShell) resolveProfile();
+}
 window.addEventListener("message", (event) => {
   if (
     window.parent === window ||
@@ -86,6 +178,7 @@ window.addEventListener("message", (event) => {
     event.source !== window.parent ||
     !event.data ||
     event.data.type !== "cartonlab:profile" ||
+    typeof event.data.accountId !== "string" ||
     !event.data.profile ||
     typeof event.data.profile.createdBy !== "string" ||
     typeof event.data.profile.companyName !== "string" ||
@@ -113,6 +206,7 @@ window.addEventListener("message", (event) => {
     address: event.data.profile.address.slice(0, 120),
     qrCode: event.data.qrCode,
   };
+  setOfflineAccount(event.data.accountId, creatorProfile);
   resolveProfile();
 });
 // Values of the keyline-specific inputs (such as "Notch size"), as typed, in the unit in use:
@@ -311,26 +405,78 @@ function updateBookmarkButton() {
   );
 }
 
+function applyPendingBookmarkChanges(bookmarks) {
+  let visible = [...bookmarks];
+  offlineState.pending.forEach((change) => {
+    if (change.type === "delete") {
+      visible = visible.filter((bookmark) => bookmark.id !== change.id);
+    } else if (change.type === "add") {
+      visible = visible.filter((bookmark) => bookmark.keylineId !== change.bookmark.keylineId);
+      visible.unshift(change.bookmark);
+    }
+  });
+  return visible;
+}
+
+function updateOfflineStatus(message) {
+  const status = $("offlineStatus");
+  if (!status) return;
+  status.textContent = message;
+  status.dataset.offline = String(!navigator.onLine);
+}
+
+function queueBookmarkAdd(name, type, settings) {
+  const bookmark = {
+    id: `local-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    name,
+    keylineId: type,
+    settings,
+    createdAt: new Date().toISOString(),
+  };
+  offlineState.pending.push({ type: "add", bookmark });
+  offlineState.bookmarks = applyPendingBookmarkChanges(offlineState.bookmarks);
+  if (!saveOfflineState()) {
+    offlineState.pending.pop();
+    offlineState.bookmarks = offlineState.bookmarks.filter((item) => item.id !== bookmark.id);
+    renderBookmarks(offlineState.bookmarks);
+    $("bookmarkStatus").textContent = "Could not save this bookmark offline; browser storage is unavailable.";
+    return;
+  }
+  renderBookmarks(offlineState.bookmarks);
+  $("bookmarkStatus").textContent = `"${name}" saved on this device. It will sync when you’re online.`;
+  updateOfflineStatus("Offline changes waiting to sync.");
+}
+
 async function loadBookmarks() {
   const response = await fetch("/api/keylines/bookmarks");
   const result = await response.json();
   if (!response.ok) throw new Error(result.error || "Could not load bookmarks.");
-  renderBookmarks(result.bookmarks);
-  $("bookmarkStatus").textContent = "";
+  offlineState.bookmarks = result.bookmarks;
+  offlineState.bookmarks = applyPendingBookmarkChanges(offlineState.bookmarks);
+  saveOfflineState();
+  renderBookmarks(offlineState.bookmarks);
+  $("bookmarkStatus").textContent = offlineState.pending.length
+    ? `${offlineState.pending.length} offline change${offlineState.pending.length === 1 ? "" : "s"} waiting to sync.`
+    : "";
 }
 
 async function addBookmark() {
   const type = $("boxType").value;
   if (savedBookmarks.some((bookmark) => bookmark.keylineId === type)) return;
   const name = $("job").value.trim() || (type === "rsc" ? "RSC 0201" : KEYLINES[type]?.name || type);
+  const settings = bookmarkSettings();
   bookmarkSaving = true;
   updateBookmarkButton();
   $("bookmarkStatus").textContent = "Saving bookmark…";
   try {
+    if (!navigator.onLine) {
+      queueBookmarkAdd(name, type, settings);
+      return;
+    }
     const response = await fetch("/api/keylines/bookmarks", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, keylineId: type, settings: bookmarkSettings() }),
+      body: JSON.stringify({ name, keylineId: type, settings }),
     });
     const result = await response.json();
     if (response.status === 409) {
@@ -339,9 +485,15 @@ async function addBookmark() {
     }
     if (!response.ok) throw new Error(result.error || "Could not save bookmark.");
     savedBookmarks.unshift(result.bookmark);
+    offlineState.bookmarks = savedBookmarks;
+    saveOfflineState();
     renderBookmarks(savedBookmarks);
     $("bookmarkStatus").textContent = `"${name}" added to bookmarks.`;
   } catch (error) {
+    if (error instanceof TypeError && accountId) {
+      queueBookmarkAdd(name, type, settings);
+      return;
+    }
     console.error("Could not save keyline bookmark:", error);
     $("bookmarkStatus").textContent = error.message || "Could not save bookmark.";
   } finally {
@@ -352,17 +504,153 @@ async function addBookmark() {
 
 async function removeBookmark(id) {
   try {
+    if (!navigator.onLine) {
+      const previousBookmarks = [...offlineState.bookmarks];
+      const previousPending = [...offlineState.pending];
+      const localAdd = offlineState.pending.find(
+        (change) => change.type === "add" && change.bookmark.id === id,
+      );
+      if (localAdd) {
+        offlineState.pending = offlineState.pending.filter((change) => change !== localAdd);
+      } else if (!offlineState.pending.some((change) => change.type === "delete" && change.id === id)) {
+        offlineState.pending.push({ type: "delete", id });
+      }
+      offlineState.bookmarks = offlineState.bookmarks.filter((bookmark) => bookmark.id !== id);
+      if (!saveOfflineState()) {
+        offlineState.bookmarks = previousBookmarks;
+        offlineState.pending = previousPending;
+        renderBookmarks(offlineState.bookmarks);
+        $("bookmarkStatus").textContent = "Could not save this removal offline; browser storage is unavailable.";
+        return;
+      }
+      renderBookmarks(offlineState.bookmarks);
+      $("bookmarkStatus").textContent = "Bookmark removed on this device. The change will sync when you’re online.";
+      updateOfflineStatus("Offline changes waiting to sync.");
+      return;
+    }
     const response = await fetch(`/api/keylines/bookmarks/${encodeURIComponent(id)}`, {
       method: "DELETE",
     });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || "Could not remove bookmark.");
     savedBookmarks = savedBookmarks.filter((bookmark) => bookmark.id !== id);
+    offlineState.bookmarks = savedBookmarks;
+    saveOfflineState();
     renderBookmarks(savedBookmarks);
     $("bookmarkStatus").textContent = "Bookmark removed.";
   } catch (error) {
+    if (error instanceof TypeError && accountId) {
+      const previousBookmarks = [...offlineState.bookmarks];
+      const previousPending = [...offlineState.pending];
+      if (!offlineState.pending.some((change) => change.type === "delete" && change.id === id)) {
+        offlineState.pending.push({ type: "delete", id });
+      }
+      offlineState.bookmarks = offlineState.bookmarks.filter((bookmark) => bookmark.id !== id);
+      if (!saveOfflineState()) {
+        offlineState.bookmarks = previousBookmarks;
+        offlineState.pending = previousPending;
+        renderBookmarks(offlineState.bookmarks);
+        $("bookmarkStatus").textContent = "Could not save this removal offline; browser storage is unavailable.";
+        return;
+      }
+      renderBookmarks(offlineState.bookmarks);
+      $("bookmarkStatus").textContent = "Bookmark removed on this device. The change will sync when you’re online.";
+      updateOfflineStatus("Offline changes waiting to sync.");
+      return;
+    }
     console.error("Could not remove keyline bookmark:", error);
     $("bookmarkStatus").textContent = error.message || "Could not remove bookmark.";
+  }
+}
+
+function restoreOfflineCatalog() {
+  const catalog = offlineState.catalog;
+  if (
+    !catalog ||
+    !Array.isArray(catalog.definitions) ||
+    !Array.isArray(catalog.locked) ||
+    (catalog.plan !== "free" && catalog.plan !== "premium") ||
+    typeof catalog.trialActive !== "boolean"
+  ) {
+    return false;
+  }
+
+  const trialExpired =
+    catalog.trialActive &&
+    typeof catalog.trialEndsAt === "string" &&
+    Date.parse(catalog.trialEndsAt) <= Date.now();
+  const lockedIds = new Set(catalog.locked.map((definition) => definition.id));
+  const definitions = trialExpired
+    ? catalog.definitions.filter((definition) => !lockedIds.has(definition.id))
+    : catalog.definitions;
+
+  window.CARTONLAB_PLAN = trialExpired ? "free" : catalog.plan;
+  window.CARTONLAB_TRIAL_ACTIVE = !trialExpired && catalog.trialActive;
+  window.CARTONLAB_TRIAL_ENDS_AT = catalog.trialEndsAt;
+  window.CARTONLAB_LOCKED_KEYLINES = catalog.locked;
+  definitions.forEach((definition) => registerKeyline(definition));
+  return true;
+}
+
+function cacheOnlineCatalog() {
+  offlineState.catalog = {
+    plan: window.CARTONLAB_PLAN,
+    trialActive: window.CARTONLAB_TRIAL_ACTIVE,
+    trialEndsAt: window.CARTONLAB_TRIAL_ENDS_AT,
+    definitions: Object.values(KEYLINES),
+    locked: window.CARTONLAB_LOCKED_KEYLINES || [],
+  };
+  saveOfflineState();
+}
+
+async function syncPendingChanges() {
+  if (syncRunning || !navigator.onLine || !accountId || !offlineState.pending.length) return;
+  syncRunning = true;
+  updateOfflineStatus(`Syncing ${offlineState.pending.length} offline change${offlineState.pending.length === 1 ? "" : "s"}…`);
+  try {
+    while (offlineState.pending.length && navigator.onLine) {
+      const change = offlineState.pending[0];
+      if (change.type === "add") {
+        const response = await fetch("/api/keylines/bookmarks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: change.bookmark.name,
+            keylineId: change.bookmark.keylineId,
+            settings: change.bookmark.settings,
+          }),
+        });
+        if (response.status === 409) {
+          offlineState.pending.shift();
+        } else {
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.error || "Could not sync saved keyline.");
+          offlineState.pending.shift();
+        }
+      } else {
+        const response = await fetch(`/api/keylines/bookmarks/${encodeURIComponent(change.id)}`, {
+          method: "DELETE",
+        });
+        if (!response.ok && response.status !== 404) {
+          const result = await response.json();
+          throw new Error(result.error || "Could not sync removed keyline.");
+        }
+        offlineState.pending.shift();
+      }
+      saveOfflineState();
+    }
+    await loadBookmarks();
+    updateOfflineStatus(
+      offlineState.pending.length
+        ? `${offlineState.pending.length} offline change${offlineState.pending.length === 1 ? "" : "s"} waiting to sync.`
+        : "All changes synced.",
+    );
+  } catch (error) {
+    console.error("Could not sync Studio changes:", error);
+    $("bookmarkStatus").textContent = error.message || "Could not sync Studio changes.";
+    updateOfflineStatus("Sync paused; pending changes are saved on this device.");
+  } finally {
+    syncRunning = false;
   }
 }
 
@@ -2437,15 +2725,39 @@ function initializeCarton3D() {
 async function init() {
   initializeCarton3D();
   $("addBookmark").addEventListener("click", addBookmark);
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/service-worker.js").catch((error) => {
+      console.error("Could not enable offline Studio support:", error);
+    });
+  }
   const accountControls = $("appAccountControls");
+  window.addEventListener("offline", () => {
+    accountControls.hidden = true;
+    updateOfflineStatus("Offline · changes are saved on this device.");
+  });
+  window.addEventListener("online", () => {
+    accountControls.hidden =
+      offlineShell || usingOfflineCatalog ||
+      (window.CARTONLAB_PLAN !== "free" && window.CARTONLAB_PLAN !== "premium");
+    if (offlineState.pending.length) syncPendingChanges();
+    else updateOfflineStatus("Online.");
+  });
+  await profileReady;
+  updateOfflineStatus(navigator.onLine ? "" : "Offline · changes are saved on this device.");
   // Fetch only the definitions permitted by the server-verified account plan.
   let loadErrors = [];
   try {
     loadErrors = await loadKeylines("/api/keylines");
+    cacheOnlineCatalog();
   } catch (error) {
-    console.error("Could not verify account access to keylines:", error);
-    showError("Could not verify your account or load keylines. Please reload.");
-    return;
+    if ((!navigator.onLine || error instanceof TypeError) && restoreOfflineCatalog()) {
+      usingOfflineCatalog = true;
+      updateOfflineStatus("Offline · using your last synced Studio data.");
+    } else {
+      console.error("Could not verify account access to keylines:", error);
+      showError("Could not verify your account or load keylines. Please reload.");
+      return;
+    }
   }
   (window.CARTONLAB_LOCKED_KEYLINES || []).forEach((definition) => {
     LOCKED_KEYLINES[definition.id] = definition;
@@ -2460,7 +2772,7 @@ async function init() {
     }
   }
   if (plan === "free" || plan === "premium") {
-    accountControls.hidden = false;
+    accountControls.hidden = offlineShell || usingOfflineCatalog || !navigator.onLine;
     $("appAccountPlanLabel").textContent =
       trialActive
         ? "Free trial"
@@ -2476,14 +2788,17 @@ async function init() {
           : "Go Premium",
     );
     $("appLogOut").addEventListener("click", () => {
+      if (offlineState.pending.length) {
+        $("bookmarkStatus").textContent = "Reconnect and sync pending Studio changes before signing out.";
+        return;
+      }
+      clearOfflineAccount();
       window.parent.postMessage(
         { type: "cartonlab:sign-out" },
         window.location.origin,
       );
     });
   }
-
-  await profileReady;
 
   Object.keys(KEYLINES).forEach((id) => {
     const opt = document.createElement("option");
@@ -2513,10 +2828,20 @@ async function init() {
   try {
     await loadBookmarks();
   } catch (error) {
-    console.error("Could not load keyline bookmarks:", error);
-    $("bookmarkStatus").textContent = error.message || "Could not load bookmarks.";
+    if ((!navigator.onLine || error instanceof TypeError) && offlineState.bookmarks.length) {
+      offlineState.bookmarks = applyPendingBookmarkChanges(offlineState.bookmarks);
+      renderBookmarks(offlineState.bookmarks);
+      $("bookmarkStatus").textContent = "Showing bookmarks from this device.";
+    } else if (!navigator.onLine || error instanceof TypeError) {
+      renderBookmarks([]);
+      $("bookmarkStatus").textContent = "No offline bookmarks are saved on this device yet.";
+    } else {
+      console.error("Could not load keyline bookmarks:", error);
+      $("bookmarkStatus").textContent = error.message || "Could not load bookmarks.";
+    }
   }
   if (loadErrors.length) console.warn("Keyline definitions not loaded:", loadErrors);
   initializeDesignerTour();
+  if (navigator.onLine && offlineState.pending.length) syncPendingChanges();
 }
 init();

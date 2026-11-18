@@ -33,7 +33,7 @@ async function AuthenticatedCartonLabApp() {
 
   return (
     <main className="app-shell">
-      <AppFrame profile={profile} profileQrCode={profileQrCode} />
+      <AppFrame accountId={user.id} profile={profile} profileQrCode={profileQrCode} />
     </main>
   );
 }

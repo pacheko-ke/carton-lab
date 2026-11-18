@@ -16,6 +16,7 @@ const fieldIds = new Set([
   "bwadd",
   "glue",
   "slot",
+  "showDetails",
   "dims",
   "prec",
   "color",
@@ -102,7 +103,9 @@ export async function POST(request: Request) {
     Object.entries(fields).some(
       ([key, value]) =>
         !fieldIds.has(key) ||
-        (key === "dims" ? typeof value !== "boolean" : typeof value !== "string"),
+        (key === "dims" || key === "showDetails"
+          ? typeof value !== "boolean"
+          : typeof value !== "string"),
     ) ||
     Object.entries(kin).some(
       ([keylineId, values]) =>
