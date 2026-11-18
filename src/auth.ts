@@ -1,4 +1,5 @@
 import NextAuth from "next-auth";
+import { randomUUID } from "node:crypto";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import Credentials from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
@@ -16,6 +17,60 @@ import authConfig from "@/auth.config";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
+  callbacks: {
+    ...authConfig.callbacks,
+    async jwt({ token, user, account, profile }) {
+      if (user) {
+        token.isEmailVerified = Boolean(user.emailVerified);
+        const activeSessionId = randomUUID();
+        token.activeSessionId = activeSessionId;
+        if (user.id) {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { activeSessionId },
+          });
+        }
+      }
+
+      if (
+        account?.provider === "google" &&
+        profile?.email_verified === true
+      ) {
+        token.isEmailVerified = true;
+      }
+
+      if (!token.sub) return token;
+
+      const userRecord = await prisma.user.findUnique({
+        where: { id: token.sub },
+        select: { activeSessionId: true },
+      });
+      if (!userRecord) return null;
+
+      if (!userRecord.activeSessionId) {
+        const activeSessionId = token.activeSessionId ?? randomUUID();
+        await prisma.user.update({
+          where: { id: token.sub },
+          data: { activeSessionId },
+        });
+        token.activeSessionId = activeSessionId;
+        return token;
+      }
+
+      if (token.activeSessionId !== userRecord.activeSessionId) {
+        return null;
+      }
+
+      return token;
+    },
+    async session({ session, token }) {
+      if (session.user) {
+        session.user.id = token.sub ?? "";
+        session.user.isEmailVerified = token.isEmailVerified === true;
+      }
+      return session;
+    },
+  },
   providers: [
     ...authConfig.providers,
     Credentials({
@@ -53,6 +108,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
   session: { strategy: "jwt" },
   events: {
+    async signOut(event) {
+      if (!("token" in event) || !event.token) return;
+      const { token } = event;
+      if (!token?.sub || typeof token.activeSessionId !== "string") return;
+      await prisma.user.updateMany({
+        where: {
+          id: token.sub,
+          activeSessionId: token.activeSessionId,
+        },
+        data: { activeSessionId: null },
+      });
+    },
     async createUser({ user }) {
       const userId = user.id;
       if (!userId) {
