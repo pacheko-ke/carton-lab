@@ -73,6 +73,7 @@ let creatorProfile = {
   role: "",
   contact: "",
   address: "",
+  qrCode: [],
 };
 let resolveProfile;
 const profileReady = window.parent === window
@@ -90,7 +91,16 @@ window.addEventListener("message", (event) => {
     typeof event.data.profile.companyName !== "string" ||
     typeof event.data.profile.role !== "string" ||
     typeof event.data.profile.contact !== "string" ||
-    typeof event.data.profile.address !== "string"
+    typeof event.data.profile.address !== "string" ||
+    !Array.isArray(event.data.qrCode) ||
+    event.data.qrCode.length < 21 ||
+    event.data.qrCode.length > 177 ||
+    event.data.qrCode.length % 4 !== 1 ||
+    event.data.qrCode.some((row) =>
+      !Array.isArray(row) ||
+      row.length !== event.data.qrCode.length ||
+      row.some((cell) => typeof cell !== "boolean"),
+    )
   ) {
     return;
   }
@@ -101,6 +111,7 @@ window.addEventListener("message", (event) => {
     role: event.data.profile.role.slice(0, 100),
     contact: event.data.profile.contact.slice(0, 120),
     address: event.data.profile.address.slice(0, 120),
+    qrCode: event.data.qrCode,
   };
   resolveProfile();
 });
@@ -2321,8 +2332,19 @@ $("unit").addEventListener("change", () => {
 $("dims").addEventListener("change", () => render());
 $("prec").addEventListener("change", () => render());
 $("color").addEventListener("change", () => render());
+$("bulkKeyline").addEventListener("change", () => {
+  const type = $("bulkKeyline").value;
+  if (type && $("boxType").value !== type) {
+    $("boxType").value = type;
+    $("boxType").dispatchEvent(new Event("change", { bubbles: true }));
+  }
+});
 // choosing another keyline rebuilds its inputs and plays the draw-on animation
 $("boxType").addEventListener("change", () => {
+  const bulkKeyline = $("bulkKeyline");
+  if (Array.from(bulkKeyline.options).some((option) => option.value === $("boxType").value)) {
+    bulkKeyline.value = $("boxType").value;
+  }
   artworkImages = [];
   artworkTexts = [];
   selectedArtworkImageId = null;
@@ -2533,6 +2555,9 @@ async function init() {
   loadInputs();
   fillBulkKeylineOptions();
   $("bulkGenerate").addEventListener("click", generateBulkKeylines);
+  $("bulkSample").addEventListener("click", (event) => {
+    event.currentTarget.href = `/api/keylines/bulk-template?unit=${encodeURIComponent($("unit").value)}`;
+  });
   applyPremiumFeatureAccess();
   $("artworkTextSize").value = $("unit").value === "in" ? (24 / 25.4).toFixed(3) : "24";
   $("artworkSizeUnit").textContent = $("unit").value;

@@ -13,7 +13,7 @@
 
 const KC = typeof module !== "undefined"
   ? require("./core.js")
-  : { addDetailsFrame, finalizeModel, flattenSegs, fmt, fmtDate, profileRows, tw };
+  : { addDetailsFrame, finalizeModel, flattenSegs, fmt, fmtDate, tw };
 
 /* ---------- Expressions: numbers, + - * / % ^, ( ), names, functions ---------- */
 const EXPR_FUNCS = {
@@ -532,7 +532,6 @@ function buildKeylineModel(def, p, opts) {
       [["Size (OD):", `${f(L)} x ${f(W)} x ${f(H)} ${u}`], ["Plies:", `${p.ply} ply`]],
       [["Creasing dimension:", creasing ? `${creasing} ${u}` : "-"], ["Date:", KC.fmtDate(p.date || "")]],
       [["Board length:", `${f(boardLen)} ${u}`], ["Board width:", `${f(boardWid)} ${u}`]],
-      ...KC.profileRows(opts && opts.profile),
     ];
     const groupLabel = group
       ? String(groupDetails.title || group.id).replace(/[-_]+/g, " ").replace(/\b[a-z]/g, (letter) => letter.toUpperCase())
@@ -541,6 +540,7 @@ function buildKeylineModel(def, p, opts) {
       group,
       rows,
       title: group ? `${baseTitle} - ${groupLabel}` : baseTitle,
+      artX: groupBounds ? groupBounds.minX : 0,
       artW: groupWidth,
       frameHeight: (rows.length + 1) * th * 2.2,
     };
@@ -775,9 +775,18 @@ function buildKeylineModel(def, p, opts) {
   // Place grouped tables directly below their pieces; ungrouped layouts keep one table.
   const fy2 = opts.dims ? artH + g1 + th * 3 : artH + th * 2.5;
   let detailY = fy2;
-  detailPlans.forEach((plan) => {
+  detailPlans.forEach((plan, index) => {
     const tableY = plan.detailY === undefined ? detailY : plan.detailY;
-    KC.addDetailsFrame(items, { th, u, title: plan.title, rows: plan.rows, artW: plan.artW, fy: tableY });
+    KC.addDetailsFrame(items, {
+      th,
+      u,
+      title: plan.title,
+      rows: plan.rows,
+      artX: plan.artX,
+      artW: plan.artW,
+      fy: tableY,
+      qrCode: index === detailPlans.length - 1 && opts.profile ? opts.profile.qrCode : undefined,
+    });
     if (plan.detailY === undefined) detailY += plan.frameHeight + (plan.group ? th : 0);
   });
   return KC.finalizeModel(items, u, size, th, artH);

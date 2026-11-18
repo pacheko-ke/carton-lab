@@ -12,9 +12,10 @@ type AppFrameProps = {
     contact: string;
     address: string;
   };
+  profileQrCode: boolean[][];
 };
 
-export default function AppFrame({ profile }: AppFrameProps) {
+export default function AppFrame({ profile, profileQrCode }: AppFrameProps) {
   const router = useRouter();
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const signOutFormRef = useRef<HTMLFormElement>(null);
@@ -59,7 +60,7 @@ export default function AppFrame({ profile }: AppFrameProps) {
         title="CartonLab Studio"
         onLoad={(event) =>
           event.currentTarget.contentWindow?.postMessage(
-            { type: "cartonlab:profile", profile },
+            { type: "cartonlab:profile", profile, qrCode: profileQrCode },
             window.location.origin,
           )
         }

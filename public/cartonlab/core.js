@@ -37,16 +37,6 @@ function fmtDate(iso) {
   return m ? `${m[3]}-${MONTHS[+m[2] - 1]}-${m[1]}` : "";
 }
 
-function profileRows(profile) {
-  if (!profile) return [];
-
-  return [
-    [["Created By:", profile.createdBy || "-"], ["Address:", profile.address || "-"]],
-    [["Company:", profile.companyName || "-"], ["Role:", profile.role || "-"]],
-    [["Contact:", profile.contact || "-"], ["", ""]],
-  ];
-}
-
 const r4 = (v) => +v.toFixed(4);
 
 /* ---------- Geometry ----------
@@ -77,10 +67,10 @@ function compute(p) {
   const Ht = 2 * F + H;
   const x1 = G + L, x2 = x1 + W, x3 = x2 + L;
   const h = s / 2;
-  const d = Math.min(G * 0.4, unit === "mm" ? 8 : 0.3, H / 4);
+  const d = G > 0 ? Math.min(unit === "mm" ? 8 : 8 / 25.4, H / 4) : 0;
 
   const cut = [
-    [0, F + d], [d, F], [G, F],
+    [G, F],
     [G, 0],
     [x1 - h, 0], [x1 - h, F], [x1 + h, F], [x1 + h, 0],
     [x2 - h, 0], [x2 - h, F], [x2 + h, F], [x2 + h, 0],
@@ -91,7 +81,7 @@ function compute(p) {
     [x2 + h, Ht], [x2 + h, Ht - F], [x2 - h, Ht - F], [x2 - h, Ht],
     [x1 + h, Ht], [x1 + h, Ht - F], [x1 - h, Ht - F], [x1 - h, Ht],
     [G, Ht],
-    [G, F + H], [d, F + H], [0, F + H - d],
+    [G, F + H], [0, F + H - d], [0, F + d],
   ];
 
   const crease = [];
@@ -199,17 +189,24 @@ function buildModel(g, opts) {
     [["Size (OD):", `${f(g.L0)} x ${f(g.W0)} x ${f(g.H0)} ${u}`], ["Plies:", `${g.ply} ply`]],
     [["Creasing dimension:", `${t(g.creaseFlap)}-${t(g.H)}-${t(g.creaseFlap)} ${u}`], ["Date:", fmtDate(g.date)]],
     [["Board length:", `${f(g.boardLen)} ${u}`], ["Board width:", `${f(g.boardWid)} ${u}`]],
-    ...profileRows(opts && opts.profile),
   ];
   const fy = (opts && opts.dims) ? g.Ht + g1 + th * 3 : g.Ht + th * 2.5;
-  addDetailsFrame(items, { th, u, title: g.job || "RSC BOX KEYLINE", rows, artW: g.total, fy });
+  addDetailsFrame(items, {
+    th,
+    u,
+    title: g.job || "RSC BOX KEYLINE",
+    rows,
+    artW: g.total,
+    fy,
+    qrCode: opts && opts.profile && opts.profile.qrCode,
+  });
   return finalizeModel(items, u, size, th, g.Ht);
 }
 
 /* Details frame (title block) shared by every keyline type.
    c = { th, u, title, rows: [[[label,value],[label,value]], ...], artW, fy } */
 function addDetailsFrame(items, c) {
-  const { th, u, title, rows, artW, fy } = c;
+  const { th, u, title, rows, artW, artX = 0, fy, qrCode } = c;
   const line = (layer, x1, y1, x2, y2) => items.push({ t: "line", layer, x1, y1, x2, y2 });
   const text = (layer, x, y, s, o = {}) =>
     items.push({ t: "text", layer, x, y, s, size: o.size || th, anchor: o.anchor || "start", rot: o.rot || 0, bold: !!o.bold });
@@ -218,27 +215,44 @@ function addDetailsFrame(items, c) {
   const valW = [0, 1].map((k) => Math.max(...rows.map((row) => tw(row[k][1], th, true))));
   const need = [0, 1].map((k) => pad + labW[k] + gap + valW[k] + pad);
   const titleNeed = pad + tw(title, th * 1.15, true) + gap * 2 + tw("Units: " + u, th) + pad;
-  const colW = Math.max(artW / 2, need[0], need[1], titleNeed / 2);
-  const frameW = colW * 2;
-
   const rowCount = rows.length;
   const bottom = fy + (rowCount + 1) * rh;
-  items.push({ t: "poly", layer: "INFO", closed: true, pts: [[0, fy], [frameW, fy], [frameW, bottom], [0, bottom]] });
+  const tableHeight = bottom - fy;
+  const hasQrCode = Array.isArray(qrCode) && qrCode.length > 0;
+  const qrSize = hasQrCode ? tableHeight * (qrCode.length + 8) / qrCode.length : 0;
+  const qrGap = hasQrCode ? gap : 0;
+  const minColW = Math.max(need[0], need[1], titleNeed / 2);
+  const colW = Math.max(minColW, hasQrCode ? (artW - qrSize - qrGap) / 2 : artW / 2);
+  const frameW = colW * 2;
+  const groupW = frameW + qrGap + qrSize;
+  const frameX = hasQrCode ? artX + (artW - groupW) / 2 : 0;
+  const frameRight = frameX + frameW;
+  items.push({ t: "poly", layer: "INFO", closed: true, pts: [[frameX, fy], [frameRight, fy], [frameRight, bottom], [frameX, bottom]] });
   Array.from({ length: rowCount }, (_, i) => i + 1).forEach((i) =>
-    line("INFO", 0, fy + i * rh, frameW, fy + i * rh),
+    line("INFO", frameX, fy + i * rh, frameRight, fy + i * rh),
   );
-  line("INFO", colW, fy + rh, colW, bottom);
+  line("INFO", frameX + colW, fy + rh, frameX + colW, bottom);
 
-  text("INFO", pad, fy + rh * 0.68, title, { bold: true, size: th * 1.15 });
-  text("INFO", frameW - pad, fy + rh * 0.68, "Units: " + u, { anchor: "end" });
+  text("INFO", frameX + pad, fy + rh * 0.68, title, { bold: true, size: th * 1.15 });
+  text("INFO", frameRight - pad, fy + rh * 0.68, "Units: " + u, { anchor: "end" });
   rows.forEach((row, i) => {
     const by = fy + (i + 1) * rh + rh * 0.68;
     row.forEach((cell, k) => {
-      const x0 = k * colW + pad;
+      const x0 = frameX + k * colW + pad;
       text("INFO", x0, by, cell[0], { bold: true });
       text("INFO", x0 + labW[k] + gap, by, cell[1], { bold: true });
     });
   });
+  if (hasQrCode) {
+    items.push({
+      t: "qr",
+      layer: "INFO",
+      x: frameRight + gap,
+      y: fy - (qrSize - tableHeight) / 2,
+      size: qrSize,
+      matrix: qrCode,
+    });
+  }
 }
 
 /* Cubic Bezier flattening. Path segments: ["M",x,y] ["L",x,y] ["C",x1,y1,x2,y2,x,y] ["Z"].
@@ -272,6 +286,7 @@ function finalizeModel(items, unit, size, th, artH) {
     if (it.t === "line") { add(it.x1, it.y1); add(it.x2, it.y2); }
     else if (it.t === "poly") it.pts.forEach((p) => add(p[0], p[1]));
     else if (it.t === "path") flattenSegs(it.segs).forEach((sp) => sp.pts.forEach((p) => add(p[0], p[1])));
+    else if (it.t === "qr") { add(it.x, it.y); add(it.x + it.size, it.y + it.size); }
     else {
       const w = tw(it.s, it.size, it.bold);
       const sh = it.anchor === "middle" ? w / 2 : it.anchor === "end" ? w : 0;
@@ -294,6 +309,21 @@ function finalizeModel(items, unit, size, th, artH) {
 /* ---------- SVG ---------- */
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
+function qrPath(item) {
+  const count = item.matrix.length;
+  const moduleSize = item.size / (count + 8);
+  const d = [];
+  item.matrix.forEach((row, rowIndex) => {
+    row.forEach((dark, columnIndex) => {
+      if (!dark) return;
+      const x = item.x + (columnIndex + 4) * moduleSize;
+      const y = item.y + (rowIndex + 4) * moduleSize;
+      d.push(`M${r4(x)} ${r4(y)}h${r4(moduleSize)}v${r4(moduleSize)}h${r4(-moduleSize)}Z`);
+    });
+  });
+  return d.join("");
+}
+
 function toSVG(m, mode) {
   const exp = mode === "export";
   const u = m.unit;
@@ -314,6 +344,7 @@ function toSVG(m, mode) {
   const groups = ["FILL", "CUT", "CREASE", "DIM", "INFO"].map((layer) => {
     const body = m.items.map((i, index) => ({ i, index })).filter(({ i }) => i.layer === layer).map(({ i, index }) => {
       const edit = !exp && (i.layer === "CUT" || i.layer === "CREASE" || i.layer === "DIM") ? ` data-item-index="${index}"` : "";
+      if (i.t === "qr") return `<path${edit} d="${qrPath(i)}" fill="#000" stroke="none"/>`;
       if (i.t === "line") return `<line${edit} x1="${r4(i.x1)}" y1="${r4(i.y1)}" x2="${r4(i.x2)}" y2="${r4(i.y2)}"/>`;
       if (i.t === "path") {
         const d = i.segs.map((sg) => sg[0] + sg.slice(1).map(r4).join(" ")).join(" ");
@@ -389,6 +420,7 @@ function toAnimatedSVG(m) {
     } else if (i.layer === "INFO") {
       if (i.t === "text") frame.push(textEl(i));
       else if (i.t === "line") frame.push(`<path d="${seg2(i.x1, i.y1, i.x2, i.y2)}"/>`);
+      else if (i.t === "qr") frame.push(`<path d="${qrPath(i)}" fill="#000" stroke="none"/>`);
       else frame.push(`<path d="${dOf(i)}"/>`);
     }
   });
@@ -425,6 +457,20 @@ function toDXF(m) {
   m.items.forEach((i) => {
     if (i.layer === "FILL") return; // DXF carries cut/crease geometry, not carton fill.
     if (i.t === "line") seg(i.layer, i.x1, i.y1, i.x2, i.y2);
+    else if (i.t === "qr") {
+      const moduleSize = i.size / (i.matrix.length + 8);
+      i.matrix.forEach((row, rowIndex) => {
+        row.forEach((dark, columnIndex) => {
+          if (!dark) return;
+          const x1 = r5(i.x + (columnIndex + 4) * moduleSize);
+          const x2 = r5(x1 + moduleSize);
+          const top = i.y + (rowIndex + 4) * moduleSize;
+          const y1 = Y(top + moduleSize);
+          const y2 = Y(top);
+          add(0, "SOLID", 8, i.layer, 62, 7, 10, x1, 20, y1, 30, 0, 11, x2, 21, y1, 31, 0, 12, x1, 22, y2, 32, 0, 13, x2, 23, y2, 33, 0);
+        });
+      });
+    }
     else if (i.t === "path") {
       flattenSegs(i.segs).forEach((sp) => {
         const n = sp.pts.length;
@@ -482,6 +528,21 @@ function renderPDFPage(m) {
     ops.push(`${st.rgb} RG ${n(st.w)} w ${st.d}`);
     its.forEach((i) => {
       if (i.t === "line") ops.push(`${n(X(i.x1))} ${n(Y(i.y1))} m ${n(X(i.x2))} ${n(Y(i.y2))} l S`);
+      else if (i.t === "qr") {
+        const moduleSize = i.size / (i.matrix.length + 8);
+        const rects = [];
+        i.matrix.forEach((row, rowIndex) => {
+          row.forEach((dark, columnIndex) => {
+            if (!dark) return;
+            const x1 = X(i.x + (columnIndex + 4) * moduleSize);
+            const x2 = X(i.x + (columnIndex + 5) * moduleSize);
+            const y1 = Y(i.y + (rowIndex + 4) * moduleSize);
+            const y2 = Y(i.y + (rowIndex + 5) * moduleSize);
+            rects.push(`${n(x1)} ${n(y1)} m ${n(x2)} ${n(y1)} l ${n(x2)} ${n(y2)} l ${n(x1)} ${n(y2)} l h`);
+          });
+        });
+        ops.push(`0 0 0 rg ${rects.join(" ")} f`);
+      }
       else if (i.t === "path") {
         const P = (x, y) => `${n(X(x))} ${n(Y(y))}`;
         const body = i.segs.map((sg) => {
@@ -511,7 +572,10 @@ function renderPDFPage(m) {
   const headerWidth = tw(header, 1) * headerFontSize;
   const infoFrame = m.items.find((item) => item.layer === "INFO" && item.t === "poly" && item.closed);
   const tableRight = infoFrame ? Math.max(...infoFrame.pts.map(([x]) => x)) : b.maxX;
-  const headerRight = X(tableRight);
+  const detailsRight = m.items
+    .filter((item) => item.layer === "INFO" && item.t === "qr")
+    .reduce((right, item) => Math.max(right, item.x + item.size), tableRight);
+  const headerRight = X(detailsRight);
   ops.push(`BT 0 0 0 rg /F1 ${n(headerFontSize)} Tf 1 0 0 1 ${n(headerRight - headerWidth)} ${n(ph + headerMargin)} Tm (${pdfStr(header)}) Tj ET`);
   const content = ops.join("\n");
 
@@ -557,5 +621,5 @@ function toPDF(input) {
 }
 
 if (typeof module !== "undefined") {
-  module.exports = { compute, buildModel, addDetailsFrame, finalizeModel, flattenSegs, toSVG, toAnimatedSVG, toDXF, toPDF, fmt, fmtDate, profileRows, tw };
+  module.exports = { compute, buildModel, addDetailsFrame, finalizeModel, flattenSegs, toSVG, toAnimatedSVG, toDXF, toPDF, fmt, fmtDate, tw };
 }
