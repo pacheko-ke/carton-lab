@@ -449,8 +449,8 @@ function toDXF(m) {
   return out.join("\n");
 }
 
-/* ---------- PDF (hand-written, single page, 1:1 scale, vector) ---------- */
-function toPDF(m) {
+/* ---------- PDF (hand-written, 1:1 scale, vector) ---------- */
+function renderPDFPage(m) {
   const mm = m.unit === "mm";
   const k = mm ? 72 / 25.4 : 72;
   const b = m.box;
@@ -515,15 +515,34 @@ function toPDF(m) {
   ops.push(`BT 0 0 0 rg /F1 ${n(headerFontSize)} Tf 1 0 0 1 ${n(headerRight - headerWidth)} ${n(ph + headerMargin)} Tm (${pdfStr(header)}) Tj ET`);
   const content = ops.join("\n");
 
+  return { content, pageWidth: pw, pageHeight: ph + headerHeight };
+}
+
+function toPDF(input) {
+  const models = Array.isArray(input) ? input : [input];
+  if (!models.length || models.some((model) => !model || !model.box || !Array.isArray(model.items))) {
+    throw new Error("Cannot create a PDF without drawing models.");
+  }
+  const pdfPages = models.map(renderPDFPage);
+  const firstFontObject = 3 + pdfPages.length * 2;
+  const pageRefs = pdfPages.map((_, index) => `${3 + index * 2} 0 R`).join(" ");
   const objs = [
     null,
     "<< /Type /Catalog /Pages 2 0 R >>",
-    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-    `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${n(pw)} ${n(ph + headerHeight)}] /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> >>`,
-    `<< /Length ${content.length} >>\nstream\n${content}\nendstream`,
+    `<< /Type /Pages /Kids [${pageRefs}] /Count ${pdfPages.length} >>`,
+  ];
+  pdfPages.forEach((page, index) => {
+    const pageObject = 3 + index * 2;
+    const contentObject = pageObject + 1;
+    objs.push(
+      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${(+page.pageWidth.toFixed(3)).toString()} ${(+page.pageHeight.toFixed(3)).toString()}] /Contents ${contentObject} 0 R /Resources << /Font << /F1 ${firstFontObject} 0 R /F2 ${firstFontObject + 1} 0 R >> >> >>`,
+      `<< /Length ${page.content.length} >>\nstream\n${page.content}\nendstream`,
+    );
+  });
+  objs.push(
     "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>",
     "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>",
-  ];
+  );
   let pdf = "%PDF-1.4\n";
   const offs = [];
   for (let i = 1; i < objs.length; i++) {

@@ -57,9 +57,9 @@ const DESIGNER_TOUR_STEPS = [
     description: "Grid, snap and spacing are at the lower left. Zoom, fit and 1:1 controls are at the lower right.",
   },
   {
-    targets: ['[data-tour="exports"]'],
+    targets: ['[data-tour="exports"]', '[data-tour="bulk-generate"]'],
     title: "Export your keyline",
-    description: "Download PDF, SVG or DXF, or print and share your finished keyline here.",
+    description: "Download PDF, SVG or DXF, or bulk-generate keylines from an Excel, CSV or TXT file.",
   },
 ];
 const PLY_DEFAULTS_MM = { 3: { crease: 2, bwadd: 4 }, 5: { crease: 3, bwadd: 6 } };
@@ -1822,6 +1822,23 @@ function redrawSoon() {
 }
 
 // animate === true plays the draw-on animation. Other fields redraw instantly.
+function buildDrawingModel(p) {
+  const options = {
+    dims: p.dims,
+    prec: p.prec,
+    color: p.color,
+    profile: creatorProfile,
+  };
+  if (p.type === "rsc") {
+    const geometry = compute(p);
+    if (geometry.error) throw new Error(geometry.error);
+    return buildModel(geometry, options);
+  }
+  const definition = KEYLINES[p.type];
+  if (!definition) throw new Error("This keyline is not available.");
+  return buildKeylineModel(definition, p, options);
+}
+
 function render(animate) {
   clearTimeout(redrawTimer);
   saveInputs();
@@ -1829,27 +1846,9 @@ function render(animate) {
   applyTypeVisibility(p.type);
   let model;
   try {
-    if (p.type === "rsc") {
-      const g = compute(p);
-      if (g.error) return showError(g.error);
-      model = buildModel(g, {
-        dims: p.dims,
-        prec: p.prec,
-        color: p.color,
-        profile: creatorProfile,
-      });
-    } else {
-      const def = KEYLINES[p.type];
-      if (!def) return showError("This keyline is not available.");
-      model = buildKeylineModel(def, p, {
-        dims: p.dims,
-        prec: p.prec,
-        color: p.color,
-        profile: creatorProfile,
-      });
-    }
-  } catch (e) {
-    return showError(e.message);
+    model = buildDrawingModel(p);
+  } catch (error) {
+    return showError(error.message);
   }
   $("error").hidden = true;
   const hasFoldRule = hasCartonFoldRule(p.type);
@@ -1875,8 +1874,7 @@ function download(name, data, mime) {
 
 // File name: "<job name or box type> - <L>x<W>x<H>".
 // Inches get an " in" suffix so a file is never mistaken for mm.
-function baseName() {
-  const p = readParams();
+function baseName(p = readParams()) {
   const n = (v) => String(+Number(v).toFixed(3));
   const size = `${n(p.L)}x${n(p.W)}x${n(p.H)}${p.unit === "in" ? " in" : ""}`;
   const clean = (t) =>
@@ -1888,6 +1886,314 @@ function baseName() {
   const typeName = p.type === "rsc" ? "RSC" : (KEYLINES[p.type] && KEYLINES[p.type].name) || p.type;
   const job = clean(p.job) || clean(typeName) || "RSC";
   return `${job} - ${size}`;
+}
+
+function bulkHeaderName(value) {
+  const name = String(value || "").trim().toLowerCase().replace(/[()\s_-]+/g, "");
+  if (name === "l" || name === "length") return "l";
+  if (name === "w" || name === "width") return "w";
+  if (name === "h" || name === "height") return "h";
+  if (name === "job" || name === "jobname") return "job";
+  return name;
+}
+
+function parseDelimitedTable(text) {
+  const source = text.replace(/^\uFEFF/, "");
+  const firstLine = source.split(/\r?\n/).find((line) => line.trim()) || "";
+  let commas = 0;
+  let tabs = 0;
+  let quoted = false;
+  for (let index = 0; index < firstLine.length; index++) {
+    const character = firstLine[index];
+    if (character === '"') {
+      if (quoted && firstLine[index + 1] === '"') index++;
+      else quoted = !quoted;
+    } else if (!quoted && character === ",") commas++;
+    else if (!quoted && character === "\t") tabs++;
+  }
+  const delimiter = tabs > commas ? "\t" : ",";
+  const rows = [];
+  let row = [];
+  let cell = "";
+  quoted = false;
+  for (let index = 0; index < source.length; index++) {
+    const character = source[index];
+    if (quoted) {
+      if (character === '"' && source[index + 1] === '"') {
+        cell += '"';
+        index++;
+      } else if (character === '"') quoted = false;
+      else cell += character;
+    } else if (character === '"' && cell.length === 0) quoted = true;
+    else if (character === delimiter) {
+      row.push(cell);
+      cell = "";
+    } else if (character === "\n" || character === "\r") {
+      row.push(cell);
+      if (row.some((value) => String(value).trim())) rows.push(row);
+      row = [];
+      cell = "";
+      if (character === "\r" && source[index + 1] === "\n") index++;
+    } else cell += character;
+  }
+  if (quoted) throw new Error("The text file has an unclosed quoted field.");
+  row.push(cell);
+  if (row.some((value) => String(value).trim())) rows.push(row);
+  return rows;
+}
+
+async function readBulkTable(file) {
+  if (file.size > 5 * 1024 * 1024) throw new Error("The input file must be 5 MB or smaller.");
+  const extension = file.name.toLowerCase().split(".").pop();
+  if (extension === "xlsx") {
+    const formData = new FormData();
+    formData.append("file", file);
+    const response = await fetch("/api/keylines/bulk-parse", { method: "POST", body: formData });
+    let result;
+    try {
+      result = await response.json();
+    } catch {
+      throw new Error("Could not read the Excel parser response.");
+    }
+    if (!response.ok) throw new Error(result && result.error || "Could not read the Excel workbook.");
+    if (!Array.isArray(result.rows)) throw new Error("The Excel parser returned an invalid worksheet.");
+    return result.rows;
+  }
+  if (extension === "csv" || extension === "txt") {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const decoder = bytes[0] === 0xff && bytes[1] === 0xfe
+      ? new TextDecoder("utf-16le")
+      : bytes[0] === 0xfe && bytes[1] === 0xff
+        ? new TextDecoder("utf-16be")
+        : new TextDecoder("utf-8", { fatal: true });
+    return parseDelimitedTable(decoder.decode(bytes));
+  }
+  throw new Error("Choose an .xlsx, .csv, or .txt file.");
+}
+
+async function parseBulkRows(table, type, base) {
+  const headerRow = table.findIndex((row) => row.some((value) => String(value ?? "").trim()));
+  if (headerRow < 0) throw new Error("The input file is empty.");
+  const headers = table[headerRow].map(bulkHeaderName);
+  const definition = KEYLINES[type];
+  const inputDefs = definition ? (definition.inputs || []) : [];
+  const supported = new Set(["l", "w", "h", "job", "jobname", ...inputDefs.map((input) => bulkHeaderName(input.id))]);
+  const columns = new Map();
+  headers.forEach((header, index) => {
+    if (!header) return;
+    if (!supported.has(header)) {
+      throw new Error(`Unsupported column "${table[headerRow][index]}". Use L, W, H, Job, or a keyline input ID.`);
+    }
+    if (columns.has(header)) throw new Error(`The "${table[headerRow][index]}" column appears more than once.`);
+    columns.set(header, index);
+  });
+  ["l", "w", "h"].forEach((required) => {
+    if (!columns.has(required)) throw new Error(`The input file must include an ${required.toUpperCase()} column.`);
+  });
+  const dataRows = table.slice(headerRow + 1)
+    .map((values, index) => ({ values, rowNumber: headerRow + index + 2 }))
+    .filter(({ values }) => values.some((value) => String(value ?? "").trim()));
+  if (!dataRows.length) throw new Error("The input file has no keyline rows.");
+  if (dataRows.length > 500) throw new Error("A bulk file can contain at most 500 keyline rows.");
+
+  const parseNumber = (value, label, rowNumber) => {
+    if (value === null || value === undefined || String(value).trim() === "") {
+      throw new Error(`Row ${rowNumber}: enter a value for ${label}.`);
+    }
+    const number = typeof value === "number" ? value : Number(String(value).trim());
+    if (!Number.isFinite(number)) throw new Error(`Row ${rowNumber}: ${label} must be a number.`);
+    return number;
+  };
+  const savedInputs = kvals[type] || {};
+  const unitFactor = base.unit === "in" ? 1 / 25.4 : 1;
+  const generated = [];
+  for (let index = 0; index < dataRows.length; index++) {
+    const { values, rowNumber } = dataRows[index];
+    const valueAt = (name) => {
+      const columnIndex = columns.get(name);
+      return columnIndex === undefined ? "" : values[columnIndex];
+    };
+    const job = String(valueAt("job") ?? "").trim();
+    if (job.length > 80) throw new Error(`Row ${rowNumber}: Job must be 80 characters or fewer.`);
+    const params = {
+      ...base,
+      type,
+      L: parseNumber(valueAt("l"), "L", rowNumber),
+      W: parseNumber(valueAt("w"), "W", rowNumber),
+      H: parseNumber(valueAt("h"), "H", rowNumber),
+      job: job || base.job,
+      inputs: {},
+    };
+    inputDefs.forEach((input) => {
+      const column = columns.get(bulkHeaderName(input.id));
+      const rawValue = column === undefined ? "" : values[column];
+      const saved = savedInputs[input.id];
+      const fallback = saved === undefined
+        ? parseFloat(keylineInputDefault(input, base.unit))
+        : parseFloat(saved);
+      params.inputs[input.id] = String(rawValue ?? "").trim()
+        ? parseNumber(rawValue, input.label || input.id, rowNumber)
+        : (Number.isFinite(fallback) ? fallback : input.default * unitFactor);
+    });
+    let model;
+    try {
+      model = buildDrawingModel(params);
+    } catch (error) {
+      throw new Error(`Row ${rowNumber}: ${error.message}`);
+    }
+    generated.push({ params, model });
+    if ((index + 1) % 10 === 0 && index + 1 < dataRows.length) {
+      setBulkStatus(`Building keylines (${index + 1} of ${dataRows.length})...`);
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    }
+  }
+  return generated;
+}
+
+const zipCrcTable = (() => {
+  const table = new Uint32Array(256);
+  for (let index = 0; index < 256; index++) {
+    let value = index;
+    for (let bit = 0; bit < 8; bit++) value = value & 1 ? 0xedb88320 ^ (value >>> 1) : value >>> 1;
+    table[index] = value >>> 0;
+  }
+  return table;
+})();
+
+function zipCrc32(bytes) {
+  let crc = 0xffffffff;
+  bytes.forEach((value) => { crc = zipCrcTable[(crc ^ value) & 0xff] ^ (crc >>> 8); });
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function createPdfZip(files) {
+  const encoder = new TextEncoder();
+  const localParts = [];
+  const centralParts = [];
+  let localOffset = 0;
+  let centralSize = 0;
+  files.forEach(({ name, content }) => {
+    const filename = encoder.encode(name);
+    const data = encoder.encode(content);
+    const crc = zipCrc32(data);
+    const local = new Uint8Array(30 + filename.length);
+    const localView = new DataView(local.buffer);
+    localView.setUint32(0, 0x04034b50, true);
+    localView.setUint16(4, 20, true);
+    localView.setUint16(6, 0x0800, true);
+    localView.setUint16(8, 0, true);
+    localView.setUint16(10, 0, true);
+    localView.setUint16(12, 0x21, true);
+    localView.setUint32(14, crc, true);
+    localView.setUint32(18, data.length, true);
+    localView.setUint32(22, data.length, true);
+    localView.setUint16(26, filename.length, true);
+    local.set(filename, 30);
+    localParts.push(local, data);
+
+    const central = new Uint8Array(46 + filename.length);
+    const centralView = new DataView(central.buffer);
+    centralView.setUint32(0, 0x02014b50, true);
+    centralView.setUint16(4, 20, true);
+    centralView.setUint16(6, 20, true);
+    centralView.setUint16(8, 0x0800, true);
+    centralView.setUint16(10, 0, true);
+    centralView.setUint16(12, 0, true);
+    centralView.setUint16(14, 0x21, true);
+    centralView.setUint32(16, crc, true);
+    centralView.setUint32(20, data.length, true);
+    centralView.setUint32(24, data.length, true);
+    centralView.setUint16(28, filename.length, true);
+    centralView.setUint32(42, localOffset, true);
+    central.set(filename, 46);
+    centralParts.push(central);
+    localOffset += local.length + data.length;
+    centralSize += central.length;
+  });
+  if (files.length > 0xffff || localOffset > 0xffffffff || centralSize > 0xffffffff) {
+    throw new Error("The ZIP archive is too large to create.");
+  }
+  const end = new Uint8Array(22);
+  const endView = new DataView(end.buffer);
+  endView.setUint32(0, 0x06054b50, true);
+  endView.setUint16(8, files.length, true);
+  endView.setUint16(10, files.length, true);
+  endView.setUint32(12, centralSize, true);
+  endView.setUint32(16, localOffset, true);
+  return new Blob([...localParts, ...centralParts, end], { type: "application/zip" });
+}
+
+function setBulkStatus(message, isError = false) {
+  const status = $("bulkStatus");
+  status.textContent = message;
+  status.classList.toggle("text-red-600", isError);
+}
+
+function fillBulkKeylineOptions() {
+  const select = $("bulkKeyline");
+  const selected = $("boxType").value || "rsc";
+  select.replaceChildren();
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Choose a keyline";
+  select.appendChild(placeholder);
+  [["rsc", "RSC 0201"], ...Object.keys(KEYLINES).map((id) => [id, KEYLINES[id].name || id])].forEach(([id, name]) => {
+    const option = document.createElement("option");
+    option.value = id;
+    option.textContent = name;
+    select.appendChild(option);
+  });
+  select.value = Array.from(select.options).some((option) => option.value === selected) ? selected : "";
+}
+
+async function generateBulkKeylines() {
+  const button = $("bulkGenerate");
+  const file = $("bulkFile").files[0];
+  const type = $("bulkKeyline").value;
+  if (!file) {
+    setBulkStatus("Choose an Excel, CSV, or TXT file.", true);
+    return;
+  }
+  if (!type) {
+    setBulkStatus("Choose the keyline to generate.", true);
+    return;
+  }
+
+  button.disabled = true;
+  setBulkStatus("Reading input file...");
+  try {
+    const table = await readBulkTable(file);
+    const base = readParams();
+    const generated = await parseBulkRows(table, type, base);
+    const typeName = type === "rsc" ? "RSC 0201" : (KEYLINES[type]?.name || type);
+    setBulkStatus(`Assembling ${generated.length} PDFs...`);
+    if (document.querySelector('input[name="bulkOutput"]:checked').value === "combined") {
+      const safeName = typeName.replace(/[\\/:*?"<>|\u0000-\u001f]+/g, "-").trim() || "keylines";
+      download(`${safeName} - bulk (${generated.length}).pdf`, toPDF(generated.map((item) => item.model)), "application/pdf");
+    } else {
+      const usedNames = new Map();
+      const files = [];
+      for (let index = 0; index < generated.length; index++) {
+        const { params, model } = generated[index];
+        const baseFileName = baseName(params);
+        const occurrence = (usedNames.get(baseFileName) || 0) + 1;
+        usedNames.set(baseFileName, occurrence);
+        const name = occurrence === 1 ? baseFileName : `${baseFileName} (${occurrence})`;
+        files.push({ name: `${name}.pdf`, content: toPDF(model) });
+        if ((index + 1) % 10 === 0 && index + 1 < generated.length) {
+          setBulkStatus(`Preparing PDFs (${index + 1} of ${generated.length})...`);
+          await new Promise((resolve) => window.setTimeout(resolve, 0));
+        }
+      }
+      download(`${typeName.replace(/[\\/:*?"<>|\u0000-\u001f]+/g, "-").trim() || "keylines"} - bulk.zip`, createPdfZip(files), "application/zip");
+    }
+    setBulkStatus(`Generated ${generated.length} keyline PDFs.`);
+  } catch (error) {
+    console.error("Could not generate bulk keylines:", error);
+    setBulkStatus(error.message || "Could not generate the requested keylines.", true);
+  } finally {
+    button.disabled = false;
+  }
 }
 
 function shareMessage() {
@@ -2225,6 +2531,8 @@ async function init() {
   });
 
   loadInputs();
+  fillBulkKeylineOptions();
+  $("bulkGenerate").addEventListener("click", generateBulkKeylines);
   applyPremiumFeatureAccess();
   $("artworkTextSize").value = $("unit").value === "in" ? (24 / 25.4).toFixed(3) : "24";
   $("artworkSizeUnit").textContent = $("unit").value;

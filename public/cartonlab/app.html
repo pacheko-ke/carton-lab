@@ -48,6 +48,37 @@
         </label>
       </section>
 
+      <section class="card" data-tour="bulk-generate">
+        <h2 class="card-title">Bulk generate</h2>
+        <div class="flex flex-col gap-3">
+          <label class="field">Keyline
+            <select id="bulkKeyline" class="input" required>
+              <option value="">Choose a keyline</option>
+            </select>
+          </label>
+          <label class="field">Excel or text file
+            <input id="bulkFile" type="file" accept=".xlsx,.csv,.txt" aria-describedby="bulkFileHelp" class="input" />
+          </label>
+          <p id="bulkFileHelp" class="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+            Up to 500 rows. First row must have L, W and H headers. Optional Job and keyline input ID columns (for example notch or strapDiameter) are supported.
+            Use the selected units. Blank inputs use saved sidebar settings or keyline defaults. CSV and TXT files may be comma- or tab-delimited.
+          </p>
+          <fieldset class="flex flex-col gap-2">
+            <legend class="field">PDF output</legend>
+            <label class="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-200">
+              <input type="radio" name="bulkOutput" value="combined" checked class="mt-1 accent-brand" />
+              One combined PDF (one page per row)
+            </label>
+            <label class="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-200">
+              <input type="radio" name="bulkOutput" value="zip" class="mt-1 accent-brand" />
+              ZIP of individual PDFs
+            </label>
+          </fieldset>
+          <button id="bulkGenerate" type="button" class="btn btn-primary">Generate bulk PDFs</button>
+          <p id="bulkStatus" role="status" aria-live="polite" class="text-xs text-slate-500 dark:text-slate-400"></p>
+        </div>
+      </section>
+
       <section class="card" data-tour="box-size">
         <h2 class="card-title">Box size (OD)</h2>
         <div class="flex flex-col gap-3">
