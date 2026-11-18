@@ -387,7 +387,7 @@ function applyTypeVisibility(type) {
   document.querySelectorAll(".rsc-only").forEach((el) => { el.hidden = !rsc; });
 }
 
-const KEYLINE_CATEGORY_ORDER = ["RSC", "Pizza", "Chicken Box", "Slotted Boxes", "Telescopic Boxes", "Flower", "Tray", "Apparel", "Other"];
+const KEYLINE_CATEGORY_ORDER = ["RSC", "Pizza", "Chicken Box", "Slotted Boxes", "Telescopic Boxes", "Flower", "Tray", "Apparel", "Envelopes", "Other"];
 const FREE_KEYLINE_CATEGORIES = new Set(["RSC", "Pizza", "Chicken Box"]);
 const LOCKED_KEYLINES = {};
 const keylineThumbnailCache = new Map();

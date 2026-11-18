@@ -1,0 +1,40 @@
+{
+  "id": "folder-presentation",
+  "name": "Presentation Folder with Pockets",
+  "title": "PRESENTATION FOLDER KEYLINE",
+  "source": "Box Blanks (boxblanks.com)",
+  "category": "Envelopes",
+  "allowZeroHeight": true,
+  "params": {
+    "refL": "220",
+    "refW": "307",
+    "refH": "0"
+  },
+  "map": {
+    "x": [
+      [11.5, "0"],
+      [231.5, "L"],
+      [233, "L + 1.5"],
+      [239, "L + 7.5"],
+      [240.5, "L + 9"],
+      [460.5, "2*L + 9"]
+    ],
+    "y": [
+      [10, "0"],
+      [320, "W + 3"],
+      [410, "W + 93"]
+    ]
+  },
+  "cuts": [
+    {
+      "id": "outline",
+      "d": "M10 320 L11.5 320 L11.5 410 L231.5 410 L231.5 320 L233 320 L239 320 L240.5 320 L240.5 410 L460.5 410 L460.5 320 L462 320 L462 10 L239 10 L233 10 L10 10 Z"
+    }
+  ],
+  "creases": [
+    { "d": "M11.5 320 L231.5 320" },
+    { "d": "M233 320 L233 10" },
+    { "d": "M239 320 L239 10" },
+    { "d": "M240.5 320 L460.5 320" }
+  ]
+}
