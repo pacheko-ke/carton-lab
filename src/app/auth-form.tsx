@@ -143,9 +143,9 @@ export default async function AuthForm({ mode, error }: AuthFormProps) {
               {(error === "AccessDenied" ||
                 (Array.isArray(error) && error.includes("AccessDenied"))) && (
                 <p className="auth-config-notice" role="alert">
-                  Google did not confirm a verified email address, so access
-                  was denied. Sign in with a Google account that has a verified
-                  email.
+                  Sign-in was denied. Either Google did not confirm a verified
+                  email address, or this account is already signed in on another
+                  device. Sign out there before trying again.
                 </p>
               )}
               <form action={signInWithGoogle} className="google-auth-form">

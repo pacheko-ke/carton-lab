@@ -19,6 +19,30 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   callbacks: {
     ...authConfig.callbacks,
+    async signIn({ user, account, profile }) {
+      if (
+        account?.provider === "google" &&
+        profile?.email_verified === true &&
+        typeof profile.email === "string" &&
+        user.id
+      ) {
+        const existingUser = await prisma.user.findUnique({
+          where: { id: user.id },
+          select: { activeSessionId: true },
+        });
+        if (existingUser?.activeSessionId) {
+          return false;
+        }
+      }
+
+      if (account?.provider !== "email-otp" || !user.id) return true;
+
+      const existingUser = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { activeSessionId: true },
+      });
+      return !existingUser?.activeSessionId;
+    },
     async jwt({ token, user, account, profile }) {
       if (user) {
         token.isEmailVerified = Boolean(user.emailVerified);

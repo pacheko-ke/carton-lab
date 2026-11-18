@@ -29,6 +29,14 @@ export async function signInWithGoogle() {
   await signIn("google", { redirectTo: "/app" });
 }
 
+async function hasActiveSession(email: string) {
+  const user = await prisma.user.findUnique({
+    where: { email: normalizeEmail(email) },
+    select: { activeSessionId: true },
+  });
+  return Boolean(user?.activeSessionId);
+}
+
 export async function requestEmailOtp(
   _previousState: EmailOtpActionState,
   formData: FormData,
@@ -48,6 +56,12 @@ export async function requestEmailOtp(
   const email = normalizeEmail(rawEmail);
   if (!isValidEmail(email)) {
     return { status: "error", message: "Enter a valid email address." };
+  }
+  if (await hasActiveSession(email)) {
+    return {
+      status: "error",
+      message: "This account is signed in on another device. Sign out there before signing in here.",
+    };
   }
 
   const requestHeaders = await headers();
@@ -116,6 +130,12 @@ export async function verifyEmailOtp(
     return {
       status: "error",
       message: "Enter the six-digit code sent to your email.",
+    };
+  }
+  if (await hasActiveSession(email)) {
+    return {
+      status: "error",
+      message: "This account is signed in on another device. Sign out there before signing in here.",
     };
   }
 
