@@ -184,6 +184,8 @@ async function AccountContent({ searchParams }: AccountPageProps) {
           <ul className="account-feature-list">
             <li>Access to every packaging keyline</li>
             <li>PDF, SVG, and DXF exports for every keyline</li>
+            <li>Bulk-generate up to 500 keylines from Excel, CSV, or TXT as one PDF or a ZIP of individual PDFs</li>
+            <li>Choose whether keyline exports include the details table and QR code</li>
             <li>Dimension markings and carton colour options</li>
           </ul>
 
