@@ -538,8 +538,10 @@ input {
 
 .proof-strip {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
   gap: clamp(35px, 7vw, 95px);
+  row-gap: 16px;
   padding: 22px 24px;
   border-top: 1px solid rgba(195, 216, 235, 0.1);
   border-bottom: 1px solid rgba(195, 216, 235, 0.1);

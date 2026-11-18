@@ -146,7 +146,8 @@ export default function Home() {
           <p className="hero-description">
             Design carton keylines and box dielines online. Customize a proven
             packaging structure, then export a clean PDF, SVG, or DXF—without
-            drawing every panel from scratch.
+            drawing every panel from scratch. Open the Studio online once, then
+            keep working offline; bookmark changes sync when you reconnect.
           </p>
           <div className="hero-actions">
             <Link href="/signup" className="button button-large">
@@ -166,6 +167,7 @@ export default function Home() {
         <div><span className="proof-icon">⌗</span><span><b>Packaging-ready keylines</b><small>Cartons, trays, pizza &amp; flower boxes</small></span></div>
         <div><span className="proof-icon">⌁</span><span><b>Control every dimension</b><small>Including adjustable strap-hole sizing</small></span></div>
         <div><span className="proof-icon">↗</span><span><b>Production-friendly output</b><small>PDF, SVG, DXF and Premium batch PDFs</small></span></div>
+        <div><span className="proof-icon">◉</span><span><b>Keep working offline</b><small>Cached keylines and bookmarks; bookmark changes sync online</small></span></div>
       </section>
 
       <section className="steps-section" id="how-it-works">
