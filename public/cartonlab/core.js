@@ -191,15 +191,17 @@ function buildModel(g, opts) {
     [["Board length:", `${f(g.boardLen)} ${u}`], ["Board width:", `${f(g.boardWid)} ${u}`]],
   ];
   const fy = (opts && opts.dims) ? g.Ht + g1 + th * 3 : g.Ht + th * 2.5;
-  addDetailsFrame(items, {
-    th,
-    u,
-    title: g.job || "RSC BOX KEYLINE",
-    rows,
-    artW: g.total,
-    fy,
-    qrCode: opts && opts.profile && opts.profile.qrCode,
-  });
+  if (!opts || opts.showDetails !== false) {
+    addDetailsFrame(items, {
+      th,
+      u,
+      title: g.job || "RSC BOX KEYLINE",
+      rows,
+      artW: g.total,
+      fy,
+      qrCode: opts && opts.profile && opts.profile.qrCode,
+    });
+  }
   return finalizeModel(items, u, size, th, g.Ht);
 }
 

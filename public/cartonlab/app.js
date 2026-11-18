@@ -19,7 +19,7 @@ document.addEventListener("keydown", (event) => {
 
   if (devToolsShortcut) event.preventDefault();
 }, true);
-const FIELDS = ["boxType", "L", "W", "H", "unit", "ply", "crease", "bwadd", "glue", "slot", "dims", "prec", "color"];
+const FIELDS = ["boxType", "L", "W", "H", "unit", "ply", "crease", "bwadd", "glue", "slot", "showDetails", "dims", "prec", "color"];
 const BOOKMARK_FIELD_IDS = new Set([...FIELDS, "date", "job"]);
 const NUMERIC = ["L", "W", "H", "crease", "bwadd", "glue", "slot"];
 const STORE_KEY = "rscKeyline.v4"; // bumped so new defaults (e.g. brown carton colour) replace old saved values
@@ -130,7 +130,7 @@ function todayISO() {
 function saveInputs() {
   try {
     const o = {};
-    FIELDS.forEach((f) => (o[f] = f === "dims" ? $(f).checked : $(f).value));
+    FIELDS.forEach((f) => (o[f] = $(f).type === "checkbox" ? $(f).checked : $(f).value));
     o.kin = kvals;
     localStorage.setItem(STORE_KEY, JSON.stringify(o));
   } catch (_) { /* storage unavailable */ }
@@ -143,7 +143,7 @@ function loadInputs() {
     if (o.kin && typeof o.kin === "object") kvals = o.kin;
     FIELDS.forEach((f) => {
       if (o[f] === undefined) return;
-      if (f === "dims") $(f).checked = !!o[f];
+      if ($(f).type === "checkbox") $(f).checked = !!o[f];
       else $(f).value = o[f];
     });
   } catch (_) { /* ignore */ }
@@ -159,6 +159,7 @@ function readParams() {
     glue: num("glue"), slot: num("slot"),
     date: $("date").value,
     job: $("job").value,
+    showDetails: !premiumFeaturesEnabled || $("showDetails").checked,
     dims: premiumFeaturesEnabled && $("dims").checked,
     prec: premiumFeaturesEnabled ? parseInt($("prec").value, 10) : 1,
     color: premiumFeaturesEnabled ? $("color").value : "brown",
@@ -168,11 +169,15 @@ function readParams() {
 }
 
 function applyPremiumFeatureAccess() {
+  $("showDetails").disabled = !premiumFeaturesEnabled;
   $("dims").disabled = !premiumFeaturesEnabled;
   $("color").disabled = !premiumFeaturesEnabled;
   $("prec").disabled = !premiumFeaturesEnabled;
   $("premiumFeaturesNotice").hidden = premiumFeaturesEnabled;
+  $("bulkControls").hidden = !premiumFeaturesEnabled;
+  $("bulkPremiumNotice").hidden = premiumFeaturesEnabled;
   if (!premiumFeaturesEnabled) {
+    $("showDetails").checked = true;
     $("dims").checked = false;
     $("color").value = "brown";
   }
@@ -223,7 +228,7 @@ function keylineInputValues(type) {
 function bookmarkSettings() {
   const fields = {};
   [...FIELDS, "date", "job"].forEach((id) => {
-    fields[id] = id === "dims" ? $(id).checked : $(id).value;
+    fields[id] = $(id).type === "checkbox" ? $(id).checked : $(id).value;
   });
   return { fields, kin: JSON.parse(JSON.stringify(kvals)) };
 }
@@ -238,7 +243,7 @@ function applyBookmark(bookmark) {
   $("boxType").dispatchEvent(new Event("change", { bubbles: true }));
   Object.entries(bookmark.settings.fields).forEach(([id, value]) => {
     if (!BOOKMARK_FIELD_IDS.has(id)) return;
-    if (id === "dims") $(id).checked = value === true;
+    if ($(id).type === "checkbox") $(id).checked = value === true;
     else $(id).value = value;
   });
   kvals = bookmark.settings.kin;
@@ -471,10 +476,7 @@ function keylineGroups() {
 
 function selectKeyline(id) {
   if (LOCKED_KEYLINES[id]) {
-    window.parent.postMessage(
-      { type: "cartonlab:upgrade" },
-      window.location.origin,
-    );
+    requestPremiumUpgrade();
     return;
   }
   activeKeylineCategory = keylineCategoryFor(id);
@@ -484,6 +486,13 @@ function selectKeyline(id) {
   } else {
     renderKeylinePicker();
   }
+}
+
+function requestPremiumUpgrade() {
+  window.parent.postMessage(
+    { type: "cartonlab:upgrade" },
+    window.location.origin,
+  );
 }
 
 function keylineChoiceLabel(def, id) {
@@ -1764,6 +1773,7 @@ function buildDrawingModel(p) {
     prec: p.prec,
     color: p.color,
     profile: creatorProfile,
+    showDetails: p.showDetails,
   };
   if (p.type === "rsc") {
     const geometry = compute(p);
@@ -2082,6 +2092,10 @@ function fillBulkKeylineOptions() {
 }
 
 async function generateBulkKeylines() {
+  if (!premiumFeaturesEnabled) {
+    requestPremiumUpgrade();
+    return;
+  }
   const button = $("bulkGenerate");
   const file = $("bulkFile").files[0];
   const type = $("bulkKeyline").value;
@@ -2254,6 +2268,8 @@ $("unit").addEventListener("change", () => {
 ["L", "W", "H", "glue", "slot"].forEach((id) => $(id).addEventListener("input", redrawSoon));
 ["crease", "bwadd", "date", "job"].forEach((id) => $(id).addEventListener("input", () => render()));
 $("dims").addEventListener("change", () => render());
+$("bulkPremiumUpgrade").addEventListener("click", requestPremiumUpgrade);
+$("showDetails").addEventListener("change", () => render());
 $("prec").addEventListener("change", () => render());
 $("color").addEventListener("change", () => render());
 $("bulkKeyline").addEventListener("change", () => {

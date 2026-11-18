@@ -50,7 +50,11 @@
 
       <section class="card" data-tour="bulk-generate">
         <h2 class="card-title">Bulk generate</h2>
-        <div class="flex flex-col gap-3">
+        <p id="bulkPremiumNotice" hidden class="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+          Bulk keyline generation is a Premium feature.
+          <button id="bulkPremiumUpgrade" type="button" class="font-semibold text-brand underline underline-offset-2">Upgrade to Premium</button>
+        </p>
+        <div id="bulkControls" class="flex flex-col gap-3">
           <label class="field">Keyline
             <select id="bulkKeyline" class="input" required>
               <option value="">Choose a keyline</option>
@@ -127,6 +131,10 @@
           </div>
           <div id="kInputs" class="grid grid-cols-2 gap-2 empty:hidden"></div>
           <label class="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
+            <input id="showDetails" type="checkbox" checked disabled aria-describedby="premiumFeaturesNotice" class="h-4 w-4 rounded accent-brand" />
+            Show details table and QR code
+          </label>
+          <label class="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
             <input id="dims" type="checkbox" disabled aria-describedby="premiumFeaturesNotice" class="h-4 w-4 rounded accent-brand" />
             Show dimension marking around artwork
           </label>
@@ -137,7 +145,7 @@
             </select>
           </label>
           <p id="premiumFeaturesNotice" hidden class="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-            Choose to show dimension marks and carton color.
+            Premium users can hide the details table and QR, show dimension marks, and choose carton color.
           </p>
           <label class="field">Dimension marking precision
             <select id="prec" disabled aria-describedby="premiumFeaturesNotice" class="input">

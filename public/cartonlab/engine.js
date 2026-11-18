@@ -566,7 +566,7 @@ function buildKeylineModel(def, p, opts) {
       const plan = detailPlans[index];
       plan.detailY = group.bounds.maxY + detailGap;
       const nextGap = opts.dims ? g1 + rowSpacing + th * 1.5 : detailGap;
-      nextGroupTop = plan.detailY + plan.frameHeight + nextGap;
+      nextGroupTop = plan.detailY + (opts.showDetails === false ? 0 : plan.frameHeight) + nextGap;
     });
     segs = groupedCutParts.flatMap((part) => {
       const offsetY = groupYOffset.get(part.group) || 0;
@@ -775,20 +775,22 @@ function buildKeylineModel(def, p, opts) {
   // Place grouped tables directly below their pieces; ungrouped layouts keep one table.
   const fy2 = opts.dims ? artH + g1 + th * 3 : artH + th * 2.5;
   let detailY = fy2;
-  detailPlans.forEach((plan, index) => {
-    const tableY = plan.detailY === undefined ? detailY : plan.detailY;
-    KC.addDetailsFrame(items, {
-      th,
-      u,
-      title: plan.title,
-      rows: plan.rows,
-      artX: plan.artX,
-      artW: plan.artW,
-      fy: tableY,
-      qrCode: index === detailPlans.length - 1 && opts.profile ? opts.profile.qrCode : undefined,
+  if (opts.showDetails !== false) {
+    detailPlans.forEach((plan, index) => {
+      const tableY = plan.detailY === undefined ? detailY : plan.detailY;
+      KC.addDetailsFrame(items, {
+        th,
+        u,
+        title: plan.title,
+        rows: plan.rows,
+        artX: plan.artX,
+        artW: plan.artW,
+        fy: tableY,
+        qrCode: index === detailPlans.length - 1 && opts.profile ? opts.profile.qrCode : undefined,
+      });
+      if (plan.detailY === undefined) detailY += plan.frameHeight + (plan.group ? th : 0);
     });
-    if (plan.detailY === undefined) detailY += plan.frameHeight + (plan.group ? th : 0);
-  });
+  }
   return KC.finalizeModel(items, u, size, th, artH);
 }
 
