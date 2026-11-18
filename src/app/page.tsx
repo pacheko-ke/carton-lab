@@ -115,8 +115,6 @@ export default function Home() {
           <span>CartonLab Lightweight 2.0</span>
         </Link>
         <nav className="header-desktop-nav" aria-label="Main navigation">
-          <Link href="/" aria-current="page">Home</Link>
-          <a href="#how-it-works">How it works</a>
           <Link href="/login">Sign in</Link>
           <Link href="/signup" className="button button-small">
             Sign up <span>↗</span>
@@ -129,8 +127,6 @@ export default function Home() {
             <span />
           </summary>
           <nav aria-label="Mobile navigation">
-            <Link href="/" aria-current="page">Home</Link>
-            <a href="#how-it-works">How it works</a>
             <Link href="/login">Sign in</Link>
             <Link href="/signup" className="button button-small">
               Sign up <span>↗</span>
@@ -141,7 +137,7 @@ export default function Home() {
 
       <section className="hero-section">
         <div className="hero-copy">
-          <div className="eyebrow"><span /> ONLINE CARTON KEYLINE &amp; BOX DIELINE GENERATOR</div>
+          <div className="eyebrow"><span /> CARTON KEYLINE &amp; BOX DIELINE GENERATOR</div>
           <h1>Turn dimensions into<br /><span>production-ready keylines.</span></h1>
           <p className="hero-description">
             Design carton keylines and box dielines online. Customize a proven
