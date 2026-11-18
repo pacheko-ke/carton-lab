@@ -117,6 +117,45 @@ body .keyline-choice-heading {
   color: #9aacc0;
 }
 
+body details.card > summary.card-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+body details.card > summary.card-title::-webkit-details-marker {
+  display: none;
+}
+
+body details.card > summary.card-title::after {
+  width: 7px;
+  height: 7px;
+  margin: 0 3px 2px 12px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  content: "";
+  transform: rotate(-45deg);
+  transition: transform 140ms ease;
+}
+
+body details.card[open] > summary.card-title {
+  margin-bottom: 0.75rem;
+}
+
+body details.card[open] > summary.card-title::after {
+  transform: rotate(45deg);
+}
+
+body details.card > summary.card-title:focus-visible {
+  border-radius: 4px;
+  outline: 2px solid #66d3e8;
+  outline-offset: 3px;
+}
+
 body .field {
   color: #c4d2df;
 }

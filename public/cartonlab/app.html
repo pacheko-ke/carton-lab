@@ -26,30 +26,30 @@
   <main class="grid items-start gap-5 px-3 py-5 md:px-6 lg:grid-cols-[340px_minmax(0,1fr)]">
     <aside class="flex flex-col gap-3">
 
-      <section class="card" data-tour="box-type">
-        <h2 class="card-title">Box type</h2>
+      <details class="card" data-tour="box-type" open>
+        <summary class="card-title"><span role="heading" aria-level="2">Box type</span></summary>
         <div id="keylineTabs" class="keyline-tabs" role="tablist" aria-label="Keyline categories"></div>
         <div id="keylineChoices" class="keyline-choices" role="tabpanel" aria-live="polite"></div>
         <select id="boxType" hidden aria-hidden="true" tabindex="-1">
           <option value="rsc" selected>RSC</option>
         </select>
-      </section>
+      </details>
 
-      <section class="card">
-        <h2 class="card-title">Bookmarks</h2>
+      <details class="card" open>
+        <summary class="card-title"><span role="heading" aria-level="2">Bookmarks</span></summary>
         <p id="bookmarkStatus" role="status" aria-live="polite" class="mt-2 text-xs text-slate-500 dark:text-slate-400"></p>
         <div id="bookmarkList" class="mt-2 flex flex-col gap-2"></div>
-      </section>
+      </details>
 
-      <section class="card">
-        <h2 class="card-title">Job</h2>
+      <details class="card" open>
+        <summary class="card-title"><span role="heading" aria-level="2">Job</span></summary>
         <label class="field">Job name
           <input id="job" type="text" maxlength="80" placeholder="Optional, blank uses default title" autocomplete="off" class="input" />
         </label>
-      </section>
+      </details>
 
-      <section class="card" data-tour="bulk-generate">
-        <h2 class="card-title">Bulk generate</h2>
+      <details class="card" data-tour="bulk-generate" open>
+        <summary class="card-title"><span role="heading" aria-level="2">Bulk generate</span></summary>
         <p id="bulkPremiumNotice" hidden class="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
           Bulk keyline generation is a Premium feature.
           <button id="bulkPremiumUpgrade" type="button" class="font-semibold text-brand underline underline-offset-2">Upgrade to Premium</button>
@@ -82,10 +82,10 @@
           <button id="bulkGenerate" type="button" class="btn btn-primary">Generate bulk PDFs</button>
           <p id="bulkStatus" role="status" aria-live="polite" class="text-xs text-slate-500 dark:text-slate-400"></p>
         </div>
-      </section>
+      </details>
 
-      <section class="card" data-tour="box-size">
-        <h2 class="card-title">Box size (OD)</h2>
+      <details class="card" data-tour="box-size" open>
+        <summary class="card-title"><span role="heading" aria-level="2">Box size (OD)</span></summary>
         <div class="flex flex-col gap-3">
           <div class="grid grid-cols-3 gap-2">
             <label class="field">Length (L)<input id="L" type="number" step="any" min="0" value="300" class="input" /></label>
@@ -99,10 +99,10 @@
             </select>
           </label>
         </div>
-      </section>
+      </details>
 
-      <section class="card" data-tour="board-settings">
-        <h2 class="card-title">Board</h2>
+      <details class="card" data-tour="board-settings" open>
+        <summary class="card-title"><span role="heading" aria-level="2">Board</span></summary>
         <div class="flex flex-col gap-3">
           <div class="grid grid-cols-2 gap-2">
             <label class="field">Plies
@@ -120,10 +120,10 @@
             </label>
           </div>
         </div>
-      </section>
+      </details>
 
-      <section class="card" data-tour="keyline-settings">
-        <h2 class="card-title">Keyline</h2>
+      <details class="card" data-tour="keyline-settings" open>
+        <summary class="card-title"><span role="heading" aria-level="2">Keyline</span></summary>
         <div class="flex flex-col gap-3">
           <div class="rsc-only grid grid-cols-2 gap-2">
             <label class="field">Glue flap<input id="glue" type="number" step="any" min="0" value="40" class="input" /></label>
@@ -156,7 +156,7 @@
             </select>
           </label>
         </div>
-      </section>
+      </details>
 
       <div class="grid grid-cols-2 gap-2" data-tour="exports">
         <button id="dlPdf" class="btn btn-primary col-span-2">
