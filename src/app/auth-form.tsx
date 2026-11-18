@@ -69,6 +69,9 @@ function GoogleMark() {
 
 export default async function AuthForm({ mode, error }: AuthFormProps) {
   const isSignup = mode === "signup";
+  const hasAccessDeniedError =
+    error === "AccessDenied" ||
+    (Array.isArray(error) && error.includes("AccessDenied"));
   const googleConfigured = isGoogleAuthConfigured();
   const emailOtpConfigured = isEmailOtpConfigured();
   const configured = isAuthConfigured();
@@ -140,13 +143,19 @@ export default async function AuthForm({ mode, error }: AuthFormProps) {
             </div>
           ) : (
             <>
-              {(error === "AccessDenied" ||
-                (Array.isArray(error) && error.includes("AccessDenied"))) && (
-                <p className="auth-config-notice" role="alert">
-                  Sign-in was denied. Either Google did not confirm a verified
-                  email address, or this account is already signed in on another
-                  device. Sign out there before trying again.
-                </p>
+              {hasAccessDeniedError && (
+                <div className="auth-access-denied" role="alert">
+                  <span className="auth-access-denied-icon" aria-hidden="true">
+                    !
+                  </span>
+                  <div>
+                    <strong>Access Denied</strong>
+                    <p>
+                      This account is already signed in on another device.
+                      Please log out on the other device before you sign in here.
+                    </p>
+                  </div>
+                </div>
               )}
               <form action={signInWithGoogle} className="google-auth-form">
                 <button

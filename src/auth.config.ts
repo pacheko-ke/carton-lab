@@ -2,7 +2,7 @@ import type { NextAuthConfig } from "next-auth";
 import Google from "next-auth/providers/google";
 
 const authConfig = {
-  pages: { signIn: "/login" },
+  pages: { signIn: "/login", error: "/login" },
   providers: [
     Google({
       profile(profile) {
