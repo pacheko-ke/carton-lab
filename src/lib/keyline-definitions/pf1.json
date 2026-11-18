@@ -12,7 +12,7 @@
     {
       "id": "strapDiameter",
       "label": "Strap hole diameter",
-      "default": 63,
+      "default": 20,
       "min": 0
     }
   ],
