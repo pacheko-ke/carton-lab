@@ -137,11 +137,11 @@ export default function Home() {
 
       <section className="hero-section">
         <div className="hero-copy">
-          <div className="eyebrow"><span /> CARTON KEYLINE &amp; BOX DIELINE GENERATOR</div>
+          <div className="eyebrow"><span /> CARTON KEYLINE &amp; BOX DIELINE STUDIO</div>
           <h1>Turn dimensions into<br /><span>production-ready keylines.</span></h1>
           <p className="hero-description">
-            Design carton keylines and box dielines online. Customize a proven
-            packaging structure, then export a clean PDF, SVG, or DXF—without
+            Customize a proven packaging structure, then export a clean PDF,
+            SVG, or DXF—without
             drawing every panel from scratch. Open the Studio online once, then
             keep working offline; bookmark changes sync when you reconnect.
           </p>
@@ -149,7 +149,7 @@ export default function Home() {
             <Link href="/signup" className="button button-large">
               Create your first keyline <span>→</span>
             </Link>
-            <Link href="/app" className="text-link">Explore the generator <span>↗</span></Link>
+            <Link href="/app" className="text-link">Visit Studio <span>↗</span></Link>
           </div>
           <div className="hero-note">
             <span className="note-icon">✳</span>
