@@ -246,12 +246,11 @@ Use **Print** to print the complete dieline and artwork. **Share** opens the dev
 attachment with the job and box dimensions. If the browser does not support file sharing, the PDF downloads
 separately so you can attach it in the app you choose.
 
-## Direct geometry editing
+## Preview grid
 
-The preview grid and grid snapping are on by default, with a 10 mm step (0.394 in). Change the grid step beside
-the preview, or switch Grid and Snap off independently. Click a cut outline or crease to show its editable nodes,
-then drag a node to reshape the geometry. Drag a dimension line or label to reposition that whole marking.
-SVG, PDF and DXF exports include the edited geometry and moved dimension marks.
+The preview grid is a visual reference only. Toggle it and change its spacing beside the preview. Cut and crease
+geometry cannot be edited directly on the preview. Dimension marks and placed artwork can still be repositioned,
+and images can be resized.
 
 ## If something is wrong
 

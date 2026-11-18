@@ -44,7 +44,7 @@ const DESIGNER_TOUR_STEPS = [
   {
     targets: ['[data-tour="preview"]'],
     title: "Work on the preview",
-    description: "Click a cut or crease to reveal edit handles, then drag to adjust it. Press T for text, I for an image, or Ctrl+V to paste an image.",
+    description: "Drag dimension marks to reposition them. Press T for text, I for an image, or Ctrl+V to paste an image.",
   },
   {
     targets: ['[data-tour="bookmark"]'],
@@ -54,7 +54,7 @@ const DESIGNER_TOUR_STEPS = [
   {
     targets: ['[data-tour="canvas-tools"]', '[data-tour="zoom-tools"]'],
     title: "Navigate and edit",
-    description: "Grid, snap and spacing are at the lower left. Zoom, fit and 1:1 controls are at the lower right.",
+    description: "Show the grid and adjust its spacing at the lower left. Zoom, fit and 1:1 controls are at the lower right.",
   },
   {
     targets: ['[data-tour="exports"]', '[data-tour="bulk-generate"]'],
@@ -694,7 +694,6 @@ function showError(msg) {
     carton3DOpen.setAttribute("aria-expanded", "false");
   }
   current = null;
-  selectedItem = null;
 }
 
 // Size fields (L, W, H, glue flap, slot width, keyline inputs such as the notch) redraw the preview
@@ -709,8 +708,6 @@ function showError(msg) {
 const view = { auto: true, s: 1, cx: 0, cy: 0 };
 const MAX_ZOOM_OVER_FIT = 120;
 const carton3DView = { yaw: -0.7, pitch: 0.55, zoom: 1, progress: 1, drag: null, animationFrame: null, keylineType: null };
-let selectedItem = null;
-let editPoints = [];
 let artworkImages = [];
 let artworkTexts = [];
 let selectedArtworkImageId = null;
@@ -748,7 +745,6 @@ function applyView() {
   svg.setAttribute("viewBox", `${view.cx - vw / 2} ${view.cy - vh / 2} ${vw} ${vh}`);
   svg.style.setProperty("--s", String(view.s));
   updateGrid(svg, vw, vh);
-  updateEditHandles(svg);
   updateArtworkControls(svg);
   $("zoomPct").textContent = Math.round((view.s / actualScale()) * 100) + "%";
 }
@@ -1323,9 +1319,6 @@ function setPreview(markup) {
     const grid = document.createElementNS(GRID_NS, "rect");
     grid.id = "keyline-grid"; grid.setAttribute("pointer-events", "none");
     grid.setAttribute("fill", "url(#keyline-grid-pattern)"); svg.insertBefore(grid, defs.nextSibling);
-    const controls = document.createElementNS(GRID_NS, "g");
-    controls.id = "edit-handles";
-    svg.appendChild(controls);
     const artworkControls = document.createElementNS(GRID_NS, "g");
     artworkControls.id = "artwork-image-controls";
     svg.appendChild(artworkControls);
@@ -1355,45 +1348,11 @@ function pointAt(e) {
   p.x = e.clientX; p.y = e.clientY;
   return p.matrixTransform(svg.getScreenCTM().inverse());
 }
-function editDescriptors(item) {
-  const points = [];
-  const add = (get, set) => points.push({ get, set });
-  if (item.t === "line") {
-    add(() => [item.x1, item.y1], (x, y) => { item.x1 = x; item.y1 = y; });
-    add(() => [item.x2, item.y2], (x, y) => { item.x2 = x; item.y2 = y; });
-  } else if (item.t === "poly") {
-    item.pts.forEach((p, index) => add(() => item.pts[index], (x, y) => { item.pts[index] = [x, y]; }));
-  } else if (item.t === "path") {
-    item.segs.forEach((seg, index) => {
-      for (let offset = 1; offset < seg.length; offset += 2) {
-        const k = offset;
-        add(() => [seg[k], seg[k + 1]], (x, y) => { item.segs[index][k] = x; item.segs[index][k + 1] = y; });
-      }
-    });
-  }
-  return points;
-}
 function translatedItem(source, target, dx, dy) {
   if (source.t === "line") { target.x1 = source.x1 + dx; target.y1 = source.y1 + dy; target.x2 = source.x2 + dx; target.y2 = source.y2 + dy; }
   else if (source.t === "text") { target.x = source.x + dx; target.y = source.y + dy; }
   else if (source.t === "poly") target.pts = source.pts.map(([x, y]) => [x + dx, y + dy]);
   else if (source.t === "path") target.segs = source.segs.map((seg) => seg[0] === "Z" ? seg.slice() : [seg[0], ...seg.slice(1).flatMap((v, i, a) => i % 2 === 0 ? [v + dx, a[i + 1] + dy] : [])]);
-}
-function updateEditHandles(svg = $("preview").querySelector("svg")) {
-  const group = svg?.querySelector("#edit-handles");
-  if (!group || !current) return;
-  group.replaceChildren();
-  const item = current.model.items[selectedItem];
-  editPoints = item && (item.layer === "CUT" || item.layer === "CREASE") ? editDescriptors(item) : [];
-  editPoints.forEach((descriptor, index) => {
-    const [x, y] = descriptor.get();
-    const handle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-    handle.setAttribute("cx", x); handle.setAttribute("cy", y);
-    handle.setAttribute("r", 5.5 / view.s); handle.setAttribute("fill", "white");
-    handle.setAttribute("stroke", "#0f6cbd"); handle.setAttribute("stroke-width", 1.5 / view.s);
-    handle.setAttribute("data-edit-point", index); handle.classList.add("keyline-edit-handle");
-    group.appendChild(handle);
-  });
 }
 function artworkBounds() {
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -1610,7 +1569,7 @@ function goActual() { if (current) { view.s = actualScale(); view.auto = false; 
 const pv = $("preview");
 const pointers = new Map();
 let pinch = null;
-let pointDrag = null;
+let dimensionDrag = null;
 pv.addEventListener("pointerdown", (e) => {
   if (e.pointerType === "mouse" && e.button !== 0) return;
   const scaleHandle = e.target.closest?.("[data-art-scale]");
@@ -1620,8 +1579,7 @@ pv.addEventListener("pointerdown", (e) => {
     if (!image) return;
     selectedArtworkImageId = id;
     selectedArtworkTextId = null;
-    selectedItem = null;
-    updateEditHandles(); updateArtworkControls();
+    updateArtworkControls();
     artworkDrag = { type: "scale", id, start: pointAt(e), x: image.x, y: image.y, width: image.width };
     try { pv.setPointerCapture(e.pointerId); } catch (_) { /* synthetic pointer */ }
     pv.focus({ preventScroll: true }); e.preventDefault();
@@ -1634,8 +1592,7 @@ pv.addEventListener("pointerdown", (e) => {
     if (!image) return;
     selectedArtworkImageId = id;
     selectedArtworkTextId = null;
-    selectedItem = null;
-    updateEditHandles(); updateArtworkControls();
+    updateArtworkControls();
     artworkDrag = { type: "move", id, start: pointAt(e), x: image.x, y: image.y };
     try { pv.setPointerCapture(e.pointerId); } catch (_) { /* synthetic pointer */ }
     pv.focus({ preventScroll: true }); e.preventDefault();
@@ -1648,20 +1605,11 @@ pv.addEventListener("pointerdown", (e) => {
     if (!text) return;
     selectedArtworkImageId = null;
     selectedArtworkTextId = id;
-    selectedItem = null;
     loadArtworkTextControls(text);
-    updateEditHandles(); updateArtworkControls();
+    updateArtworkControls();
     artworkDrag = { type: "move-text", id, start: pointAt(e), x: text.x, y: text.y };
     try { pv.setPointerCapture(e.pointerId); } catch (_) { /* synthetic pointer */ }
     pv.focus({ preventScroll: true }); e.preventDefault();
-    return;
-  }
-  const handle = e.target.closest?.("[data-edit-point]");
-  if (handle && selectedItem !== null) {
-    e.preventDefault();
-    try { pv.setPointerCapture(e.pointerId); } catch (_) { /* synthetic pointer */ }
-    pointDrag = { point: editPoints[Number(handle.getAttribute("data-edit-point"))] };
-    pv.focus({ preventScroll: true });
     return;
   }
   const target = e.target.closest?.("[data-item-index]");
@@ -1671,28 +1619,17 @@ pv.addEventListener("pointerdown", (e) => {
     }
     const item = current.model.items[Number(target.getAttribute("data-item-index"))];
     if (item && item.layer === "DIM") {
-      selectedItem = null;
-      updateEditHandles();
       const group = item.dimGroup;
       const grouped = group === undefined ? [item] : current.model.items.filter((candidate) => candidate.dimGroup === group);
       const p = pointAt(e);
-      pointDrag = { type: "move", start: p,
+      dimensionDrag = { start: p,
         items: grouped.map((candidate) => ({ index: current.model.items.indexOf(candidate), source: JSON.parse(JSON.stringify(candidate)) })) };
       try { pv.setPointerCapture(e.pointerId); } catch (_) { /* synthetic pointer */ }
       pv.focus({ preventScroll: true });
       e.preventDefault();
       return;
     }
-    if (item && (item.layer === "CUT" || item.layer === "CREASE")) {
-      selectedItem = Number(target.getAttribute("data-item-index"));
-      updateEditHandles();
-      try { pv.setPointerCapture(e.pointerId); } catch (_) { /* synthetic pointer */ }
-      pv.focus({ preventScroll: true });
-      e.preventDefault();
-      return;
-    }
   }
-  if (!target && selectedItem !== null) { selectedItem = null; updateEditHandles(); }
   if (!target && (selectedArtworkImageId !== null || selectedArtworkTextId !== null)) {
     selectedArtworkImageId = null; selectedArtworkTextId = null; updateArtworkControls();
   }
@@ -1703,30 +1640,25 @@ pv.addEventListener("pointerdown", (e) => {
 });
 pv.addEventListener("pointermove", (e) => {
   if (artworkDrag) {
-    const p = pointAt(e), step = gridStep();
+    const p = pointAt(e);
     if (artworkDrag.type === "move-text") {
       const text = artworkTexts.find((item) => item.id === artworkDrag.id);
       if (!text) { artworkDrag = null; return; }
-      let x = artworkDrag.x + p.x - artworkDrag.start.x;
-      let y = artworkDrag.y + p.y - artworkDrag.start.y;
-      if ($("snapGrid").checked) { x = Math.round(x / step) * step; y = Math.round(y / step) * step; }
-      text.x = x; text.y = y;
+      text.x = artworkDrag.x + p.x - artworkDrag.start.x;
+      text.y = artworkDrag.y + p.y - artworkDrag.start.y;
       const node = pv.querySelector(`[data-art-text-id="${text.id}"]`);
       if (node) { node.setAttribute("x", text.x); node.setAttribute("y", text.y); }
     } else {
       const image = artworkImages.find((item) => item.id === artworkDrag.id);
       if (!image) { artworkDrag = null; return; }
       if (artworkDrag.type === "move") {
-        let x = artworkDrag.x + p.x - artworkDrag.start.x;
-        let y = artworkDrag.y + p.y - artworkDrag.start.y;
-        if ($("snapGrid").checked) { x = Math.round(x / step) * step; y = Math.round(y / step) * step; }
-        image.x = x; image.y = y;
+        image.x = artworkDrag.x + p.x - artworkDrag.start.x;
+        image.y = artworkDrag.y + p.y - artworkDrag.start.y;
       } else {
         const fromX = p.x - artworkDrag.x;
         const fromY = (p.y - artworkDrag.y) * image.ratio;
-        let width = Math.max(step, Math.abs(fromX - artworkDrag.width) >= Math.abs(fromY - artworkDrag.width) ? fromX : fromY);
-        if ($("snapGrid").checked) width = Math.max(step, Math.round(width / step) * step);
-        image.width = width; image.height = width / image.ratio;
+        image.width = Math.max(0.01, Math.abs(fromX - artworkDrag.width) >= Math.abs(fromY - artworkDrag.width) ? fromX : fromY);
+        image.height = image.width / image.ratio;
       }
       const node = pv.querySelector(`[data-art-image-id="${image.id}"]`);
       if (node) { node.setAttribute("x", image.x); node.setAttribute("y", image.y); node.setAttribute("width", image.width); node.setAttribute("height", image.height); }
@@ -1735,17 +1667,10 @@ pv.addEventListener("pointermove", (e) => {
     e.preventDefault();
     return;
   }
-  if (pointDrag) {
+  if (dimensionDrag) {
     const p = pointAt(e);
-    const step = gridStep();
-    if (pointDrag.type === "move") {
-      let dx = p.x - pointDrag.start.x, dy = p.y - pointDrag.start.y;
-      if ($("snapGrid").checked) { dx = Math.round(dx / step) * step; dy = Math.round(dy / step) * step; }
-      pointDrag.items.forEach(({ index, source }) => translatedItem(source, current.model.items[index], dx, dy));
-    } else {
-      pointDrag.point.set($("snapGrid").checked ? Math.round(p.x / step) * step : p.x,
-        $("snapGrid").checked ? Math.round(p.y / step) * step : p.y);
-    }
+    const dx = p.x - dimensionDrag.start.x, dy = p.y - dimensionDrag.start.y;
+    dimensionDrag.items.forEach(({ index, source }) => translatedItem(source, current.model.items[index], dx, dy));
     const m = current.model;
     current.model = finalizeModel(m.items, m.unit, m.size, m.th, m.artH);
     view.auto = false;
@@ -1772,7 +1697,7 @@ pv.addEventListener("pointermove", (e) => {
 const endPointer = (e) => {
   pointers.delete(e.pointerId); pinch = null;
   artworkDrag = null;
-  pointDrag = null;
+  dimensionDrag = null;
 };
 pv.addEventListener("pointerup", endPointer);
 pv.addEventListener("pointercancel", endPointer);
@@ -1867,7 +1792,6 @@ function render(animate) {
   $("carton3dOpen").title = hasFoldRule
     ? "Open the 3D fold view"
     : "3D fold view is disabled until this keyline has exact folding rules";
-  selectedItem = null;
   current = { model };
   setPreview(animate === true ? toAnimatedSVG(model) : toSVG(model, "preview"));
 }

@@ -17,7 +17,6 @@
 .canvas-controls label:last-child{padding-left:12px;border-left:1px solid rgba(165,190,214,.2)}
 
 @media (max-width:480px){.canvas-controls{gap:10px;padding:6px 8px}.canvas-controls label:last-child{padding-left:8px}}
-@media (max-width:620px){.canvas-controls{top:56px}}
 #artwork-image-controls{pointer-events:none}
 #artwork-image-controls .artwork-scale-handle{pointer-events:all;cursor:nwse-resize;touch-action:none}
 .artwork-color-input{height:2.35rem;padding:.25rem;cursor:pointer}

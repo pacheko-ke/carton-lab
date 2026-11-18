@@ -343,7 +343,7 @@ function toSVG(m, mode) {
 
   const groups = ["FILL", "CUT", "CREASE", "DIM", "INFO"].map((layer) => {
     const body = m.items.map((i, index) => ({ i, index })).filter(({ i }) => i.layer === layer).map(({ i, index }) => {
-      const edit = !exp && (i.layer === "CUT" || i.layer === "CREASE" || i.layer === "DIM") ? ` data-item-index="${index}"` : "";
+      const edit = !exp && i.layer === "DIM" ? ` data-item-index="${index}"` : "";
       if (i.t === "qr") return `<path${edit} d="${qrPath(i)}" fill="#000" stroke="none"/>`;
       if (i.t === "line") return `<line${edit} x1="${r4(i.x1)}" y1="${r4(i.y1)}" x2="${r4(i.x2)}" y2="${r4(i.y2)}"/>`;
       if (i.t === "path") {
@@ -391,17 +391,17 @@ function toAnimatedSVG(m) {
 
   m.items.forEach((i, itemIndex) => {
     if (i.layer === "FILL" && i.t === "path") {
-      if (i.fill) fills.push(`<path data-item-index="${itemIndex}" d="${dOf(i)}" fill="${i.fill.rgb}" fill-rule="evenodd" stroke="none" class="kl-fade" style="--delay:${sec(T.fill)}"/>`);
+      if (i.fill) fills.push(`<path d="${dOf(i)}" fill="${i.fill.rgb}" fill-rule="evenodd" stroke="none" class="kl-fade" style="--delay:${sec(T.fill)}"/>`);
     } else if (i.layer === "CUT" && (i.t === "path" || i.t === "poly")) {
       const d = dOf(i);
       // one <path> per shape: the first (the outline) draws first, then each hole/cut-out in turn
       const parts = [];
       if (i.t === "path") i.segs.forEach((sg) => { if (sg[0] === "M") parts.push([]); parts[parts.length - 1].push(sg); });
       const ds = i.t === "path" ? parts.map((g) => g.map((sg) => sg[0] + sg.slice(1).map(r4).join(" ")).join(" ")) : [d];
-      if (i.fill) fills.push(`<path data-item-index="${itemIndex}" d="${d}" fill="${i.fill.rgb}" fill-rule="evenodd" stroke="none" class="kl-fade" style="--delay:${sec(T.fill)}"/>`);
+      if (i.fill) fills.push(`<path d="${d}" fill="${i.fill.rgb}" fill-rule="evenodd" stroke="none" class="kl-fade" style="--delay:${sec(T.fill)}"/>`);
       ds.forEach((dd, k) => {
         const delay = k === 0 ? T.cut + nCut * 0.15 : T.holes + Math.min((k - 1) * 0.06, 0.4);
-        cuts.push(`<path data-item-index="${itemIndex}" d="${dd}" pathLength="1" fill="none" stroke="#000" stroke-width="${r4(sw)}" stroke-linejoin="round" class="kl-draw kl-cut" style="--delay:${sec(delay)};--dur:${k === 0 ? "1.1s" : ".45s"}"/>`);
+        cuts.push(`<path d="${dd}" pathLength="1" fill="none" stroke="#000" stroke-width="${r4(sw)}" stroke-linejoin="round" class="kl-draw kl-cut" style="--delay:${sec(delay)};--dur:${k === 0 ? "1.1s" : ".45s"}"/>`);
       });
       nCut++;
     } else if (i.layer === "CREASE" && i.t === "line") {
@@ -409,7 +409,7 @@ function toAnimatedSVG(m) {
       const d = seg2(i.x1, i.y1, i.x2, i.y2);
       const delay = sec(T.crease + Math.min(nCr * 0.12, 0.6));
       masks.push(`<mask id="${id}" maskUnits="userSpaceOnUse" x="${r4(b.minX)}" y="${r4(b.minY)}" width="${r4(w)}" height="${r4(h)}"><path d="${d}" pathLength="1" fill="none" stroke="#fff" stroke-width="${r4(sw * 4)}" class="kl-draw" style="--delay:${delay};--dur:.7s"/></mask>`);
-      creases.push(`<path data-item-index="${itemIndex}" d="${d}" fill="none" stroke="#d13438" stroke-width="${r4(sw)}" stroke-dasharray="${dash}" mask="url(#${id})"/>`);
+      creases.push(`<path d="${d}" fill="none" stroke="#d13438" stroke-width="${r4(sw)}" stroke-dasharray="${dash}" mask="url(#${id})"/>`);
       nCr++;
     } else if (i.layer === "DIM" && i.t === "line") {
       dimLines.push(`<path data-item-index="${itemIndex}" d="${seg2(i.x1, i.y1, i.x2, i.y2)}" pathLength="1" fill="none" stroke="#555" stroke-width="${r4(swT)}" class="kl-draw" style="--delay:${sec(T.dim + Math.min(nDim * 0.025, 0.4))};--dur:.6s"/>`);
