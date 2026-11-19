@@ -137,7 +137,7 @@
           </label>
           <label class="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
             <input id="dims" type="checkbox" disabled aria-describedby="premiumFeaturesNotice" class="h-4 w-4 rounded accent-brand" />
-            Show dimension marking around artwork
+            Show dimension marking around keyline
           </label>
           <label class="field">Carton colour
             <select id="color" disabled aria-describedby="premiumFeaturesNotice" class="input">
@@ -238,7 +238,6 @@
           <label title="Show or hide the drawing grid"><input id="showGrid" type="checkbox" checked> Grid</label>
           <label title="Grid spacing in the selected unit">Step <input id="gridSpacing" type="number" min="0.01" step="any" value="1"></label>
         </div>
-        <p class="pointer-events-none absolute bottom-3 left-3 z-10 text-[11px] text-slate-400">T text &middot; I image &middot; Ctrl+V paste image &middot; select overlay and press Delete to remove</p>
         <div id="preview" data-tour="preview" tabindex="0" aria-label="Keyline preview" class="relative h-[calc(100vh-7rem)] min-h-[420px] cursor-grab touch-none select-none overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-brand/40 active:cursor-grabbing dark:border-slate-700 [&_svg]:block [&_svg]:h-full [&_svg]:w-full"></div>
       </div>
     </section>
@@ -260,48 +259,6 @@
   </aside>
 
   <div id="printArea" hidden aria-hidden="true"></div>
-  <input id="artworkImageFile" type="file" accept="image/*" hidden />
-  <dialog id="artworkTextDialog" class="artwork-dialog" aria-labelledby="artworkTextTitle">
-    <form id="artworkTextForm" class="artwork-dialog-form">
-      <header class="artwork-dialog-header">
-        <div>
-          <h2 id="artworkTextTitle">Add artwork text</h2>
-          <p>Choose the text style, then position it on the keyline.</p>
-        </div>
-        <button id="closeArtworkText" type="button" class="artwork-dialog-close" aria-label="Close text editor" title="Close">&times;</button>
-      </header>
-      <label class="field">Text
-        <input id="artworkTextValue" type="text" maxlength="200" placeholder="Enter artwork text" required class="input" />
-      </label>
-      <label class="field">Font
-        <select id="artworkFont" class="input">
-          <option value="Arial, Helvetica, sans-serif">Arial</option>
-          <option value="Arial Black, Gadget, sans-serif">Arial Black</option>
-          <option value="Verdana, Geneva, sans-serif">Verdana</option>
-          <option value="Tahoma, Geneva, sans-serif">Tahoma</option>
-          <option value="Trebuchet MS, sans-serif">Trebuchet MS</option>
-          <option value="Georgia, serif">Georgia</option>
-          <option value="Times New Roman, Times, serif">Times New Roman</option>
-          <option value="Courier New, Courier, monospace">Courier New</option>
-          <option value="Impact, Haettenschweiler, sans-serif">Impact</option>
-          <option value="system-ui, sans-serif">System UI</option>
-        </select>
-      </label>
-      <div class="grid grid-cols-2 gap-2">
-        <label class="field">Font size (<span id="artworkSizeUnit">mm</span>)
-          <input id="artworkTextSize" type="number" min="0.01" step="any" value="24" required class="input" />
-        </label>
-        <label class="field">Text colour
-          <input id="artworkTextColor" type="color" value="#111827" class="input artwork-color-input" />
-        </label>
-      </div>
-      <footer class="artwork-dialog-actions">
-        <button id="cancelArtworkText" type="button" class="btn btn-secondary">Cancel</button>
-        <button id="saveArtworkText" type="submit" class="btn btn-primary">Add text</button>
-      </footer>
-    </form>
-  </dialog>
-
   <script src="core.js"></script>
   <script src="engine.js"></script>
   <script src="app.js"></script>

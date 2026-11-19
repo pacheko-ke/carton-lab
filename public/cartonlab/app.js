@@ -46,7 +46,7 @@ const DESIGNER_TOUR_STEPS = [
   {
     targets: ['[data-tour="preview"]'],
     title: "Work on the preview",
-    description: "Drag dimension marks to reposition them. Press T for text, I for an image, or Ctrl+V to paste an image.",
+    description: "Drag dimension marks to reposition them.",
   },
   {
     targets: ['[data-tour="bookmark"]'],
@@ -1046,12 +1046,6 @@ function showError(msg) {
 const view = { auto: true, s: 1, cx: 0, cy: 0 };
 const MAX_ZOOM_OVER_FIT = 120;
 const carton3DView = { yaw: -0.7, pitch: 0.55, zoom: 1, progress: 1, drag: null, animationFrame: null, keylineType: null };
-let artworkImages = [];
-let artworkTexts = [];
-let selectedArtworkImageId = null;
-let selectedArtworkTextId = null;
-let nextArtworkImageId = 1;
-let artworkDrag = null;
 const GRID_NS = "http://www.w3.org/2000/svg";
 
 // the drawing area is the inside of the preview box (without its border)
@@ -1083,7 +1077,6 @@ function applyView() {
   svg.setAttribute("viewBox", `${view.cx - vw / 2} ${view.cy - vh / 2} ${vw} ${vh}`);
   svg.style.setProperty("--s", String(view.s));
   updateGrid(svg, vw, vh);
-  updateArtworkControls(svg);
   $("zoomPct").textContent = Math.round((view.s / actualScale()) * 100) + "%";
 }
 function adjustCarton3DZoom(factor) {
@@ -1657,11 +1650,6 @@ function setPreview(markup) {
     const grid = document.createElementNS(GRID_NS, "rect");
     grid.id = "keyline-grid"; grid.setAttribute("pointer-events", "none");
     grid.setAttribute("fill", "url(#keyline-grid-pattern)"); svg.insertBefore(grid, defs.nextSibling);
-    const artworkControls = document.createElementNS(GRID_NS, "g");
-    artworkControls.id = "artwork-image-controls";
-    svg.appendChild(artworkControls);
-    renderArtworkImages(svg);
-    updateArtworkControls(svg);
   }
   applyView();
   renderCarton3D();
@@ -1691,194 +1679,6 @@ function translatedItem(source, target, dx, dy) {
   else if (source.t === "text") { target.x = source.x + dx; target.y = source.y + dy; }
   else if (source.t === "poly") target.pts = source.pts.map(([x, y]) => [x + dx, y + dy]);
   else if (source.t === "path") target.segs = source.segs.map((seg) => seg[0] === "Z" ? seg.slice() : [seg[0], ...seg.slice(1).flatMap((v, i, a) => i % 2 === 0 ? [v + dx, a[i + 1] + dy] : [])]);
-}
-function artworkBounds() {
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  const add = (x, y) => {
-    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
-    minX = Math.min(minX, x); minY = Math.min(minY, y);
-    maxX = Math.max(maxX, x); maxY = Math.max(maxY, y);
-  };
-  (current?.model.items || []).filter((item) => item.layer === "CUT").forEach((item) => {
-    if (item.t === "line") { add(item.x1, item.y1); add(item.x2, item.y2); }
-    else if (item.t === "poly") item.pts.forEach(([x, y]) => add(x, y));
-    else if (item.t === "path") item.segs.forEach((seg) => {
-      for (let i = 1; i < seg.length; i += 2) add(seg[i], seg[i + 1]);
-    });
-  });
-  return Number.isFinite(minX) ? { minX, minY, maxX, maxY } : current.model.box;
-}
-function artworkGroupPosition(svg, group) {
-  const cut = svg.querySelector("#CUT");
-  if (!cut) { svg.appendChild(group); return; }
-  const cutItems = current.model.items.filter((item) => item.layer === "CUT");
-  const firstStroke = cutItems.findIndex((item) => !item.fill);
-  if (firstStroke >= 0) cut.insertBefore(group, cut.children[firstStroke] || null);
-  else cut.appendChild(group);
-}
-function renderArtworkImages(svg = $("preview").querySelector("svg")) {
-  if (!svg || !current) return;
-  svg.querySelector("#artwork-images")?.remove();
-  if (!artworkImages.length && !artworkTexts.length) return;
-  const layer = document.createElementNS(GRID_NS, "g");
-  layer.id = "artwork-images";
-  artworkImages.forEach((image) => {
-    const node = document.createElementNS(GRID_NS, "image");
-    node.setAttribute("href", image.href);
-    node.setAttribute("x", image.x); node.setAttribute("y", image.y);
-    node.setAttribute("width", image.width); node.setAttribute("height", image.height);
-    node.setAttribute("preserveAspectRatio", "none");
-    node.setAttribute("data-art-image-id", image.id);
-    node.setAttribute("aria-label", image.name);
-    layer.appendChild(node);
-  });
-  artworkTexts.forEach((text) => {
-    const node = document.createElementNS(GRID_NS, "text");
-    node.setAttribute("x", text.x); node.setAttribute("y", text.y);
-    node.setAttribute("font-family", text.fontFamily); node.setAttribute("font-size", text.fontSize);
-    node.setAttribute("fill", text.fill); node.setAttribute("text-anchor", "middle");
-    node.setAttribute("dominant-baseline", "middle"); node.setAttribute("data-art-text-id", text.id);
-    node.textContent = text.text;
-    layer.appendChild(node);
-  });
-  artworkGroupPosition(svg, layer);
-}
-function updateArtworkControls(svg = $("preview").querySelector("svg")) {
-  const selectedImage = artworkImages.find((image) => image.id === selectedArtworkImageId);
-  const selectedText = artworkTexts.find((text) => text.id === selectedArtworkTextId);
-  const selected = selectedImage || selectedText;
-  const group = svg?.querySelector("#artwork-image-controls");
-  if (!group) return;
-  group.replaceChildren();
-  if (!selected) return;
-  const stroke = 1.5 / view.s, size = 7 / view.s;
-  const frame = document.createElementNS(GRID_NS, "rect");
-  if (selectedImage) {
-    frame.setAttribute("x", selectedImage.x); frame.setAttribute("y", selectedImage.y);
-    frame.setAttribute("width", selectedImage.width); frame.setAttribute("height", selectedImage.height);
-  } else {
-    const node = svg.querySelector(`[data-art-text-id="${selectedText.id}"]`);
-    if (!node) return;
-    const bounds = node.getBBox(), pad = 3 / view.s;
-    frame.setAttribute("x", bounds.x - pad); frame.setAttribute("y", bounds.y - pad);
-    frame.setAttribute("width", bounds.width + pad * 2); frame.setAttribute("height", bounds.height + pad * 2);
-  }
-  frame.setAttribute("fill", "none"); frame.setAttribute("stroke", "#0f6cbd");
-  frame.setAttribute("stroke-width", stroke); frame.setAttribute("stroke-dasharray", `${4 / view.s} ${2 / view.s}`);
-  frame.setAttribute("pointer-events", "none"); group.appendChild(frame);
-  if (!selectedImage) return;
-  const handle = document.createElementNS(GRID_NS, "rect");
-  handle.setAttribute("x", selectedImage.x + selectedImage.width - size);
-  handle.setAttribute("y", selectedImage.y + selectedImage.height - size);
-  handle.setAttribute("width", size * 2); handle.setAttribute("height", size * 2);
-  handle.setAttribute("rx", size / 3); handle.setAttribute("fill", "white");
-  handle.setAttribute("stroke", "#0f6cbd"); handle.setAttribute("stroke-width", stroke);
-  handle.setAttribute("data-art-scale", selectedImage.id); handle.classList.add("artwork-scale-handle");
-  group.appendChild(handle);
-}
-function loadArtworkTextControls(text) {
-  $("artworkTextValue").value = text.text;
-  $("artworkFont").value = text.fontFamily;
-  $("artworkTextSize").value = text.fontSize;
-  $("artworkTextColor").value = text.fill;
-}
-function openArtworkTextDialog() {
-  if (!current) return;
-  const dialog = $("artworkTextDialog");
-  if (dialog.open) return;
-  const selected = artworkTexts.find((text) => text.id === selectedArtworkTextId);
-  $("artworkTextTitle").textContent = selected ? "Edit artwork text" : "Add artwork text";
-  $("saveArtworkText").textContent = selected ? "Update text" : "Add text";
-  if (selected) loadArtworkTextControls(selected);
-  else $("artworkTextValue").value = "";
-  dialog.showModal();
-  $("artworkTextValue").focus();
-}
-function saveArtworkText() {
-  const value = $("artworkTextValue").value;
-  const fontSize = parseFloat($("artworkTextSize").value);
-  if (!current || !value.trim() || !Number.isFinite(fontSize) || fontSize <= 0) return;
-  let selected = artworkTexts.find((text) => text.id === selectedArtworkTextId);
-  if (selected) {
-    selected.text = value; selected.fontFamily = $("artworkFont").value;
-    selected.fontSize = fontSize; selected.fill = $("artworkTextColor").value;
-  } else {
-    const bounds = artworkBounds(), id = `text-${nextArtworkImageId++}`;
-    selected = {
-      id, text: value, fontFamily: $("artworkFont").value, fontSize,
-      fill: $("artworkTextColor").value,
-      x: (bounds.minX + bounds.maxX) / 2, y: (bounds.minY + bounds.maxY) / 2,
-    };
-    artworkTexts.push(selected);
-  }
-  selectedArtworkImageId = null;
-  selectedArtworkTextId = selected.id;
-  renderArtworkImages(); updateArtworkControls();
-  $("artworkTextDialog").close();
-  $("preview").focus({ preventScroll: true });
-}
-function insertArtworkFile(file) {
-  if (!file || !file.type.startsWith("image/")) return;
-  const reader = new FileReader();
-  reader.addEventListener("load", () => {
-    const image = new Image();
-    image.addEventListener("load", () => {
-      if (!current || !image.naturalWidth || !image.naturalHeight) return;
-      const bounds = artworkBounds();
-      const maxW = (bounds.maxX - bounds.minX) * 0.3;
-      const maxH = (bounds.maxY - bounds.minY) * 0.3;
-      const scale = Math.min(maxW / image.naturalWidth, maxH / image.naturalHeight);
-      const width = image.naturalWidth * scale, height = image.naturalHeight * scale;
-      const id = `art-${nextArtworkImageId++}`;
-      artworkImages.push({
-        id, name: file.name || "Pasted image", href: String(reader.result),
-        x: (bounds.minX + bounds.maxX - width) / 2,
-        y: (bounds.minY + bounds.maxY - height) / 2,
-        width, height, ratio: image.naturalWidth / image.naturalHeight,
-      });
-      selectedArtworkImageId = id;
-      selectedArtworkTextId = null;
-      renderArtworkImages();
-      updateArtworkControls();
-      $("preview").focus({ preventScroll: true });
-    });
-    image.src = String(reader.result);
-  });
-  reader.readAsDataURL(file);
-}
-function removeSelectedArtworkItem() {
-  if (selectedArtworkImageId) artworkImages = artworkImages.filter((image) => image.id !== selectedArtworkImageId);
-  if (selectedArtworkTextId) artworkTexts = artworkTexts.filter((text) => text.id !== selectedArtworkTextId);
-  selectedArtworkImageId = null;
-  selectedArtworkTextId = null;
-  renderArtworkImages();
-  updateArtworkControls();
-}
-function exportSvgWithArtwork() {
-  const markup = toSVG(current.model, "export");
-  if (!artworkImages.length && !artworkTexts.length) return markup;
-  const doc = new DOMParser().parseFromString(markup, "image/svg+xml");
-  const svg = doc.documentElement;
-  const layer = doc.createElementNS(GRID_NS, "g");
-  layer.setAttribute("id", "artwork-images");
-  artworkImages.forEach((image) => {
-    const node = doc.createElementNS(GRID_NS, "image");
-    node.setAttribute("href", image.href);
-    node.setAttribute("x", image.x); node.setAttribute("y", image.y);
-    node.setAttribute("width", image.width); node.setAttribute("height", image.height);
-    node.setAttribute("preserveAspectRatio", "none");
-    layer.appendChild(node);
-  });
-  artworkTexts.forEach((text) => {
-    const node = doc.createElementNS(GRID_NS, "text");
-    node.setAttribute("x", text.x); node.setAttribute("y", text.y);
-    node.setAttribute("font-family", text.fontFamily); node.setAttribute("font-size", text.fontSize);
-    node.setAttribute("fill", text.fill); node.setAttribute("text-anchor", "middle");
-    node.setAttribute("dominant-baseline", "middle"); node.textContent = text.text;
-    layer.appendChild(node);
-  });
-  artworkGroupPosition(svg, layer);
-  return new XMLSerializer().serializeToString(svg);
 }
 // zoom by `factor`, keeping the point under (px, py) (container pixels; default centre) where it is
 function zoomAt(factor, px, py) {
@@ -1910,51 +1710,8 @@ let pinch = null;
 let dimensionDrag = null;
 pv.addEventListener("pointerdown", (e) => {
   if (e.pointerType === "mouse" && e.button !== 0) return;
-  const scaleHandle = e.target.closest?.("[data-art-scale]");
-  if (scaleHandle) {
-    const id = scaleHandle.getAttribute("data-art-scale");
-    const image = artworkImages.find((item) => item.id === id);
-    if (!image) return;
-    selectedArtworkImageId = id;
-    selectedArtworkTextId = null;
-    updateArtworkControls();
-    artworkDrag = { type: "scale", id, start: pointAt(e), x: image.x, y: image.y, width: image.width };
-    try { pv.setPointerCapture(e.pointerId); } catch (_) { /* synthetic pointer */ }
-    pv.focus({ preventScroll: true }); e.preventDefault();
-    return;
-  }
-  const artworkTarget = e.target.closest?.("[data-art-image-id]");
-  if (artworkTarget) {
-    const id = artworkTarget.getAttribute("data-art-image-id");
-    const image = artworkImages.find((item) => item.id === id);
-    if (!image) return;
-    selectedArtworkImageId = id;
-    selectedArtworkTextId = null;
-    updateArtworkControls();
-    artworkDrag = { type: "move", id, start: pointAt(e), x: image.x, y: image.y };
-    try { pv.setPointerCapture(e.pointerId); } catch (_) { /* synthetic pointer */ }
-    pv.focus({ preventScroll: true }); e.preventDefault();
-    return;
-  }
-  const textTarget = e.target.closest?.("[data-art-text-id]");
-  if (textTarget) {
-    const id = textTarget.getAttribute("data-art-text-id");
-    const text = artworkTexts.find((item) => item.id === id);
-    if (!text) return;
-    selectedArtworkImageId = null;
-    selectedArtworkTextId = id;
-    loadArtworkTextControls(text);
-    updateArtworkControls();
-    artworkDrag = { type: "move-text", id, start: pointAt(e), x: text.x, y: text.y };
-    try { pv.setPointerCapture(e.pointerId); } catch (_) { /* synthetic pointer */ }
-    pv.focus({ preventScroll: true }); e.preventDefault();
-    return;
-  }
   const target = e.target.closest?.("[data-item-index]");
   if (target && current) {
-    if (selectedArtworkImageId !== null || selectedArtworkTextId !== null) {
-      selectedArtworkImageId = null; selectedArtworkTextId = null; updateArtworkControls();
-    }
     const item = current.model.items[Number(target.getAttribute("data-item-index"))];
     if (item && item.layer === "DIM") {
       const group = item.dimGroup;
@@ -1968,43 +1725,12 @@ pv.addEventListener("pointerdown", (e) => {
       return;
     }
   }
-  if (!target && (selectedArtworkImageId !== null || selectedArtworkTextId !== null)) {
-    selectedArtworkImageId = null; selectedArtworkTextId = null; updateArtworkControls();
-  }
   try { pv.setPointerCapture(e.pointerId); } catch (_) { /* synthetic pointer */ }
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   pinch = null;
   pv.focus({ preventScroll: true });
 });
 pv.addEventListener("pointermove", (e) => {
-  if (artworkDrag) {
-    const p = pointAt(e);
-    if (artworkDrag.type === "move-text") {
-      const text = artworkTexts.find((item) => item.id === artworkDrag.id);
-      if (!text) { artworkDrag = null; return; }
-      text.x = artworkDrag.x + p.x - artworkDrag.start.x;
-      text.y = artworkDrag.y + p.y - artworkDrag.start.y;
-      const node = pv.querySelector(`[data-art-text-id="${text.id}"]`);
-      if (node) { node.setAttribute("x", text.x); node.setAttribute("y", text.y); }
-    } else {
-      const image = artworkImages.find((item) => item.id === artworkDrag.id);
-      if (!image) { artworkDrag = null; return; }
-      if (artworkDrag.type === "move") {
-        image.x = artworkDrag.x + p.x - artworkDrag.start.x;
-        image.y = artworkDrag.y + p.y - artworkDrag.start.y;
-      } else {
-        const fromX = p.x - artworkDrag.x;
-        const fromY = (p.y - artworkDrag.y) * image.ratio;
-        image.width = Math.max(0.01, Math.abs(fromX - artworkDrag.width) >= Math.abs(fromY - artworkDrag.width) ? fromX : fromY);
-        image.height = image.width / image.ratio;
-      }
-      const node = pv.querySelector(`[data-art-image-id="${image.id}"]`);
-      if (node) { node.setAttribute("x", image.x); node.setAttribute("y", image.y); node.setAttribute("width", image.width); node.setAttribute("height", image.height); }
-    }
-    updateArtworkControls();
-    e.preventDefault();
-    return;
-  }
   if (dimensionDrag) {
     const p = pointAt(e);
     const dx = p.x - dimensionDrag.start.x, dy = p.y - dimensionDrag.start.y;
@@ -2034,7 +1760,6 @@ pv.addEventListener("pointermove", (e) => {
 });
 const endPointer = (e) => {
   pointers.delete(e.pointerId); pinch = null;
-  artworkDrag = null;
   dimensionDrag = null;
 };
 pv.addEventListener("pointerup", endPointer);
@@ -2047,9 +1772,6 @@ pv.addEventListener("wheel", (e) => {
 }, { passive: false });
 pv.addEventListener("dblclick", goFit);
 pv.addEventListener("keydown", (e) => {
-  if ((e.key === "Delete" || e.key === "Backspace") && (selectedArtworkImageId || selectedArtworkTextId)) {
-    e.preventDefault(); removeSelectedArtworkItem(); return;
-  }
   const step = 60;
   const keys = {
     "+": () => zoomAt(1.25), "=": () => zoomAt(1.25), "-": () => zoomAt(0.8), "_": () => zoomAt(0.8),
@@ -2062,28 +1784,6 @@ $("zoomIn").addEventListener("click", () => zoomAt(1.25));
 $("zoomOut").addEventListener("click", () => zoomAt(0.8));
 $("zoomFit").addEventListener("click", goFit);
 $("zoomActual").addEventListener("click", goActual);
-$("artworkImageFile").addEventListener("change", (e) => {
-  insertArtworkFile(e.target.files?.[0]);
-  e.target.value = "";
-});
-$("artworkTextForm").addEventListener("submit", (e) => { e.preventDefault(); saveArtworkText(); });
-$("closeArtworkText").addEventListener("click", () => $("artworkTextDialog").close());
-$("cancelArtworkText").addEventListener("click", () => $("artworkTextDialog").close());
-$("artworkTextDialog").addEventListener("close", () => pv.focus({ preventScroll: true }));
-document.addEventListener("keydown", (e) => {
-  if (e.repeat || e.ctrlKey || e.metaKey || e.altKey || $("artworkTextDialog").open) return;
-  if (e.target.closest?.("input, textarea, select, [contenteditable='true']")) return;
-  const key = e.key.toLowerCase();
-  if (key === "t") { e.preventDefault(); openArtworkTextDialog(); }
-  else if (key === "i") { e.preventDefault(); $("artworkImageFile").click(); }
-});
-document.addEventListener("paste", (e) => {
-  const item = [...(e.clipboardData?.items || [])].find((entry) => entry.kind === "file" && entry.type.startsWith("image/"));
-  const file = item?.getAsFile();
-  if (!file) return;
-  e.preventDefault();
-  insertArtworkFile(file);
-});
 $("showGrid").addEventListener("change", () => applyView());
 $("gridSpacing").addEventListener("input", () => applyView());
 new ResizeObserver(() => applyView()).observe(pv);
@@ -2539,7 +2239,7 @@ async function shareKeyline() {
 $("print").addEventListener("click", () => {
   if (!current) return;
   const printArea = $("printArea");
-  printArea.innerHTML = exportSvgWithArtwork();
+  printArea.innerHTML = toSVG(current.model, "export");
   printArea.hidden = false;
   window.addEventListener("afterprint", () => {
     printArea.hidden = true;
@@ -2554,7 +2254,7 @@ $("dlPdf").addEventListener("click", () => {
   if (current) download(baseName() + ".pdf", toPDF(current.model), "application/pdf");
 });
 $("dlSvg").addEventListener("click", () => {
-  if (current) download(baseName() + ".svg", exportSvgWithArtwork(), "image/svg+xml");
+  if (current) download(baseName() + ".svg", toSVG(current.model, "export"), "image/svg+xml");
 });
 $("dlDxf").addEventListener("click", () => {
   if (current) download(baseName() + ".dxf", toDXF(current.model), "application/dxf");
@@ -2579,15 +2279,6 @@ $("unit").addEventListener("change", () => {
       if (!isNaN(v)) kvals[id][key] = String(+(v * k).toFixed(dp));
     });
   });
-  const artworkSize = parseFloat($("artworkTextSize").value);
-  if (Number.isFinite(artworkSize)) $("artworkTextSize").value = +(artworkSize * k).toFixed(dp);
-  artworkImages.forEach((image) => {
-    image.x *= k; image.y *= k; image.width *= k; image.height *= k;
-  });
-  artworkTexts.forEach((text) => {
-    text.x *= k; text.y *= k; text.fontSize *= k;
-  });
-  $("artworkSizeUnit").textContent = to;
   lastUnit = to;
   view.auto = true;
   buildKeylineInputs();
@@ -2614,11 +2305,6 @@ $("boxType").addEventListener("change", () => {
   if (Array.from(bulkKeyline.options).some((option) => option.value === $("boxType").value)) {
     bulkKeyline.value = $("boxType").value;
   }
-  artworkImages = [];
-  artworkTexts = [];
-  selectedArtworkImageId = null;
-  selectedArtworkTextId = null;
-  updateArtworkControls();
   activeKeylineCategory = keylineCategoryFor($("boxType").value);
   renderKeylinePicker();
   view.auto = true;
@@ -2859,8 +2545,6 @@ async function init() {
     event.currentTarget.href = `/api/keylines/bulk-template?unit=${encodeURIComponent($("unit").value)}`;
   });
   applyPremiumFeatureAccess();
-  $("artworkTextSize").value = $("unit").value === "in" ? (24 / 25.4).toFixed(3) : "24";
-  $("artworkSizeUnit").textContent = $("unit").value;
   if (!$("boxType").value) $("boxType").value = "rsc"; // a saved type that no longer exists
   activeKeylineCategory = keylineCategoryFor($("boxType").value);
   renderKeylinePicker();

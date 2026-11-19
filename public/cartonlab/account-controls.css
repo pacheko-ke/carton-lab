@@ -394,27 +394,6 @@ body .designer-tour-highlight {
   box-shadow: 0 0 0 6px rgba(102, 211, 232, 0.12);
 }
 
-body .artwork-dialog {
-  border-color: rgba(165, 190, 214, 0.24);
-  background: #102238;
-  color: #e8f0f8;
-}
-
-body .artwork-dialog-header p {
-  color: #9aacc0;
-}
-
-body .artwork-dialog-close {
-  border-color: rgba(165, 190, 214, 0.24);
-  background: #091626;
-  color: #c4d2df;
-}
-
-body .artwork-dialog-close:hover {
-  background: #203a52;
-  color: #e8f0f8;
-}
-
 body .carton3d-launch,
 body .carton3d-control {
   border-color: rgba(165, 190, 214, 0.24);
