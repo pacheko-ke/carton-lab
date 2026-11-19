@@ -115,6 +115,7 @@ export default function Home() {
           <span>CartonLab Lightweight 2.0</span>
         </Link>
         <nav className="header-desktop-nav" aria-label="Main navigation">
+          <Link href="#pricing">Pricing</Link>
           <Link href="/login">Sign in</Link>
           <Link href="/signup" className="button button-small">
             Sign up <span>↗</span>
@@ -127,6 +128,7 @@ export default function Home() {
             <span />
           </summary>
           <nav aria-label="Mobile navigation">
+            <Link href="#pricing">Pricing</Link>
             <Link href="/login">Sign in</Link>
             <Link href="/signup" className="button button-small">
               Sign up <span>↗</span>
@@ -192,6 +194,33 @@ export default function Home() {
             Start designing free <span>→</span>
           </Link>
         </div>
+      </section>
+
+      <section className="pricing-section" id="pricing" aria-labelledby="pricing-heading">
+        <div className="pricing-intro">
+          <div className="eyebrow"><span /> CLEAR, SIMPLE PRICING</div>
+          <h2 id="pricing-heading">Start free—no credit card needed.</h2>
+          <p>Explore CartonLab for free, then unlock the complete keyline library and batch tools with Premium.</p>
+        </div>
+        <article className="pricing-card" aria-labelledby="premium-plan-heading">
+          <div className="pricing-card-copy">
+            <span className="pricing-plan-label">CARTONLAB PREMIUM</span>
+            <h3 id="premium-plan-heading">Everything for production-ready work.</h3>
+            <ul className="pricing-feature-list">
+              <li>Access to every packaging keyline</li>
+              <li>PDF, SVG, and DXF exports for every keyline</li>
+              <li>Bulk-generate up to 500 keylines from Excel, CSV, or TXT</li>
+              <li>Customize export details, QR codes, dimensions, and carton colours</li>
+            </ul>
+          </div>
+          <div className="pricing-card-action">
+            <p className="pricing-price">$5<span> / month</span></p>
+            <p className="pricing-price-note">Start free—no credit card needed.</p>
+            <Link href="/signup" className="button button-large">
+              Get Premium <span>→</span>
+            </Link>
+          </div>
+        </article>
       </section>
 
       <footer className="site-footer">

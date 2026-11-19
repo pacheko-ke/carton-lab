@@ -679,6 +679,119 @@ input {
   line-height: 1.65;
 }
 
+.pricing-section {
+  width: min(1120px, calc(100% - 64px));
+  margin: 0 auto;
+  padding: 18px 0 92px;
+  scroll-margin-top: 24px;
+}
+
+.pricing-intro {
+  max-width: 640px;
+  margin-bottom: 30px;
+}
+
+.pricing-intro h2 {
+  margin-top: 14px;
+  color: #eff5fb;
+  font-size: clamp(28px, 3.2vw, 40px);
+  font-weight: 700;
+  letter-spacing: -0.055em;
+}
+
+.pricing-intro h2 span {
+  color: #65cbe2;
+}
+
+.pricing-intro > p {
+  max-width: 520px;
+  margin-top: 12px;
+  color: #91a7bb;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.pricing-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: 42px;
+  padding: 32px;
+  border: 1px solid rgba(101, 203, 226, 0.3);
+  border-radius: 14px;
+  background: linear-gradient(120deg, rgba(20, 54, 75, 0.92), rgba(15, 32, 50, 0.82));
+  box-shadow: 0 20px 55px rgba(0, 0, 0, 0.14);
+}
+
+.pricing-plan-label {
+  color: #65cbe2;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.pricing-card h3 {
+  margin-top: 12px;
+  color: #eff5fb;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.pricing-feature-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 22px;
+  padding: 0;
+  color: #b7c8d7;
+  font-size: 12px;
+  line-height: 1.55;
+  list-style: none;
+}
+
+.pricing-feature-list li {
+  position: relative;
+  padding-left: 22px;
+}
+
+.pricing-feature-list li::before {
+  position: absolute;
+  left: 0;
+  color: #65cbe2;
+  content: "✓";
+  font-weight: 700;
+}
+
+.pricing-card-action {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  padding-left: 28px;
+  border-left: 1px solid rgba(165, 190, 214, 0.15);
+}
+
+.pricing-price {
+  color: #f4f8fc;
+  font-size: 42px;
+  font-weight: 750;
+  letter-spacing: -0.06em;
+  line-height: 1;
+}
+
+.pricing-price span {
+  color: #91a7bb;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.pricing-price-note {
+  margin: 10px 0 22px;
+  color: #91a7bb;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
 .site-footer {
   min-height: 78px;
   border-top: 1px solid rgba(195, 216, 235, 0.1);
@@ -2394,6 +2507,11 @@ input {
     width: calc(100% - 40px);
   }
 
+  .pricing-section {
+    width: calc(100% - 40px);
+    padding: 5px 0 65px;
+  }
+
   .steps-section {
     padding: 65px 0;
   }
@@ -2422,6 +2540,22 @@ input {
   }
 
   .feature-cta .button {
+    width: 100%;
+  }
+
+  .pricing-card {
+    grid-template-columns: 1fr;
+    gap: 28px;
+    padding: 24px;
+  }
+
+  .pricing-card-action {
+    padding: 24px 0 0;
+    border-top: 1px solid rgba(165, 190, 214, 0.15);
+    border-left: 0;
+  }
+
+  .pricing-card-action .button {
     width: 100%;
   }
 
