@@ -2057,6 +2057,28 @@ input {
   filter: brightness(1.05);
 }
 
+.email-otp-takeover {
+  display: block;
+  width: auto;
+  min-height: 0;
+  margin: 12px auto 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: #8bdced;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.email-otp-takeover:hover:not(:disabled) {
+  color: #c1f3fc;
+  box-shadow: none;
+}
+
 .email-otp-submit:focus-visible,
 .email-otp-links button:focus-visible {
   outline: 3px solid #69cfe7;
@@ -2150,6 +2172,34 @@ input {
   color: #dcb1b1;
   font-size: 10px;
   line-height: 1.55;
+}
+
+.auth-access-denied form {
+  margin-top: 12px;
+}
+
+.auth-takeover-link {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #8bdced;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 600;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.auth-takeover-link:hover {
+  color: #c1f3fc;
+}
+
+.auth-takeover-link:focus-visible,
+.email-otp-takeover:focus-visible {
+  outline: 2px solid #69cfe7;
+  outline-offset: 3px;
 }
 
 .auth-signed-in {

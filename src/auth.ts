@@ -1,5 +1,5 @@
 import NextAuth from "next-auth";
-import { randomUUID } from "node:crypto";
+import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import Credentials from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
@@ -15,33 +15,106 @@ import { notifyNewAccount } from "@/lib/new-account-notifications";
 import { isEmailOtpConfigured } from "@/auth-config";
 import authConfig from "@/auth.config";
 
+const SESSION_TAKEOVER_TTL_SECONDS = 300;
+
+export function createSessionTakeoverToken(
+  userId: string,
+  activeSessionId: string,
+) {
+  const secret = process.env.AUTH_SECRET;
+  if (!secret) throw new Error("AUTH_SECRET is required for session takeover.");
+
+  const expiresAt = Math.floor(Date.now() / 1000) + SESSION_TAKEOVER_TTL_SECONDS;
+  const payload = `${userId}.${activeSessionId}.${expiresAt}`;
+  const signature = createHmac("sha256", secret).update(payload).digest("base64url");
+  return `${payload}.${signature}`;
+}
+
+export function verifySessionTakeoverToken(token: string) {
+  const parts = token.split(".");
+  if (
+    parts.length !== 4 ||
+    !parts[0] ||
+    !parts[1] ||
+    !/^\d+$/.test(parts[2]) ||
+    !/^[A-Za-z0-9_-]{43}$/.test(parts[3])
+  ) {
+    return null;
+  }
+
+  const secret = process.env.AUTH_SECRET;
+  if (!secret) return null;
+
+  const payload = parts.slice(0, 3).join(".");
+  const expected = createHmac("sha256", secret).update(payload).digest();
+  const provided = Buffer.from(parts[3], "base64url");
+  if (
+    expected.length !== provided.length ||
+    !timingSafeEqual(expected, provided) ||
+    Number(parts[2]) <= Math.floor(Date.now() / 1000)
+  ) {
+    return null;
+  }
+
+  return { userId: parts[0], activeSessionId: parts[1] };
+}
+
+async function allowUserSignIn(
+  userId: string,
+  takeOverExistingSession: boolean,
+) {
+  const existingUser = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { activeSessionId: true },
+  });
+  if (!existingUser) {
+    return false;
+  }
+  if (!existingUser.activeSessionId) return true;
+  if (!takeOverExistingSession) return false;
+
+  const result = await prisma.user.updateMany({
+    where: { id: userId, activeSessionId: existingUser.activeSessionId },
+    data: { activeSessionId: randomUUID() },
+  });
+  return result.count === 1;
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   callbacks: {
     ...authConfig.callbacks,
     async signIn({ user, account, profile }) {
-      if (
-        account?.provider === "google" &&
-        profile?.email_verified === true &&
-        typeof profile.email === "string" &&
-        user.id
-      ) {
+      if (account?.provider === "google") {
+        if (
+          profile?.email_verified !== true ||
+          typeof profile.email !== "string" ||
+          !user.id
+        ) {
+          return false;
+        }
+
         const existingUser = await prisma.user.findUnique({
           where: { id: user.id },
           select: { activeSessionId: true },
         });
-        if (existingUser?.activeSessionId) {
-          return false;
+        if (!existingUser) return false;
+        if (existingUser.activeSessionId) {
+          const takeoverToken = createSessionTakeoverToken(
+            user.id,
+            existingUser.activeSessionId,
+          );
+          return `/login?error=AccessDenied&takeover=${encodeURIComponent(takeoverToken)}`;
         }
+        return true;
       }
 
       if (account?.provider !== "email-otp" || !user.id) return true;
 
-      const existingUser = await prisma.user.findUnique({
-        where: { id: user.id },
-        select: { activeSessionId: true },
-      });
-      return !existingUser?.activeSessionId;
+      return allowUserSignIn(
+        user.id,
+        user.takeOverExistingSession === true,
+      );
     },
     async jwt({ token, user, account, profile }) {
       if (user) {
@@ -71,17 +144,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       });
       if (!userRecord) return null;
 
-      if (!userRecord.activeSessionId) {
-        const activeSessionId = token.activeSessionId ?? randomUUID();
-        await prisma.user.update({
-          where: { id: token.sub },
-          data: { activeSessionId },
-        });
-        token.activeSessionId = activeSessionId;
-        return token;
-      }
-
-      if (token.activeSessionId !== userRecord.activeSessionId) {
+      if (
+        !userRecord.activeSessionId ||
+        token.activeSessionId !== userRecord.activeSessionId
+      ) {
         return null;
       }
 
@@ -103,6 +169,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       credentials: {
         email: { label: "Email", type: "email" },
         code: { label: "Verification code", type: "text" },
+        takeOverExistingSession: { label: "Sign in here", type: "text" },
       },
       async authorize(credentials) {
         if (!isEmailOtpConfigured()) return null;
@@ -125,6 +192,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           email: user.email,
           image: user.image,
           emailVerified: user.emailVerified,
+          takeOverExistingSession:
+            credentials.takeOverExistingSession === "true",
         };
       },
     }),

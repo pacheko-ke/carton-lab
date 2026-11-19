@@ -1,6 +1,11 @@
 "use server";
 
-import { auth, signIn, signOut } from "@/auth";
+import {
+  auth,
+  signIn,
+  signOut,
+  verifySessionTakeoverToken,
+} from "@/auth";
 import {
   isEmailOtpConfigured,
   isGoogleAuthConfigured,
@@ -21,12 +26,39 @@ export type EmailOtpActionState = {
   status: "idle" | "sent" | "error";
   email?: string;
   message?: string;
+  canTakeOver?: boolean;
 };
 
 export async function signInWithGoogle() {
   if (!isGoogleAuthConfigured()) {
     throw new Error("Google authentication has not been configured.");
   }
+  await signIn("google", { redirectTo: "/app" });
+}
+
+export async function signInHereWithGoogle(formData: FormData) {
+  if (!isGoogleAuthConfigured()) {
+    throw new Error("Google authentication has not been configured.");
+  }
+  const rawToken = formData.get("takeoverToken");
+  const takeover = typeof rawToken === "string"
+    ? verifySessionTakeoverToken(rawToken)
+    : null;
+  if (!takeover) {
+    redirect("/login?error=TakeoverExpired");
+  }
+
+  const result = await prisma.user.updateMany({
+    where: {
+      id: takeover.userId,
+      activeSessionId: takeover.activeSessionId,
+    },
+    data: { activeSessionId: null },
+  });
+  if (result.count !== 1) {
+    redirect("/login?error=TakeoverExpired");
+  }
+
   await signIn("google", { redirectTo: "/app" });
 }
 
@@ -64,13 +96,6 @@ export async function requestEmailOtp(
       message: "Too many failed sign-in attempts. Please try again after one hour.",
     };
   }
-  if (await hasActiveSession(email)) {
-    return {
-      status: "error",
-      message: "This account is signed in on another device. Sign out there before signing in here.",
-    };
-  }
-
   const requestHeaders = await headers();
   const forwardedIp = requestHeaders
     .get("x-forwarded-for")
@@ -133,6 +158,8 @@ export async function verifyEmailOtp(
 
   const email = normalizeEmail(rawEmail);
   const code = rawCode.trim();
+  const takeOverExistingSession =
+    formData.get("takeOverExistingSession") === "true";
   if (!isValidEmail(email) || !/^\d{6}$/.test(code)) {
     return {
       status: "error",
@@ -145,15 +172,24 @@ export async function verifyEmailOtp(
       message: "Too many failed sign-in attempts. Please try again after one hour.",
     };
   }
-  if (await hasActiveSession(email)) {
+  if (
+    !takeOverExistingSession &&
+    (await hasActiveSession(email))
+  ) {
     return {
       status: "error",
-      message: "This account is signed in on another device. Sign out there before signing in here.",
+      canTakeOver: true,
+      message: "This account is signed in on another device.",
     };
   }
 
   try {
-    await signIn("email-otp", { email, code, redirectTo: "/app" });
+    await signIn("email-otp", {
+      email,
+      code,
+      takeOverExistingSession: takeOverExistingSession ? "true" : "false",
+      redirectTo: "/app",
+    });
   } catch (error) {
     if (error instanceof AuthError && error.type === "CredentialsSignin") {
       if (await isEmailSignInRateLimited(email)) {
@@ -167,6 +203,12 @@ export async function verifyEmailOtp(
         message: "That code is invalid or expired. Request a new code and try again.",
       };
     }
+    if (error instanceof AuthError && error.type === "AccessDenied") {
+      return {
+        status: "error",
+        message: "This account's session changed during sign-in. Please try again.",
+      };
+    }
     throw error;
   }
 
@@ -175,6 +217,10 @@ export async function verifyEmailOtp(
 
 export async function signOutOfCartonLab() {
   await signOut({ redirectTo: "/" });
+}
+
+export async function signOutAfterSessionReplaced() {
+  await signOut({ redirectTo: "/login?error=SessionReplaced" });
 }
 
 export async function updateAccountProfile(formData: FormData) {
