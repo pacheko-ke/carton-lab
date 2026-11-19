@@ -219,10 +219,6 @@ export async function signOutOfCartonLab() {
   await signOut({ redirectTo: "/" });
 }
 
-export async function signOutAfterSessionReplaced() {
-  await signOut({ redirectTo: "/login?error=SessionReplaced" });
-}
-
 export async function updateAccountProfile(formData: FormData) {
   const session = await auth();
   if (!session?.user.id || !session.user.isEmailVerified) {

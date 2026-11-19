@@ -2,10 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import {
-  signOutAfterSessionReplaced,
-  signOutOfCartonLab,
-} from "../auth-actions";
+import { signOutOfCartonLab } from "../auth-actions";
 
 type AppFrameProps = {
   accountId: string;
@@ -23,7 +20,6 @@ export default function AppFrame({ accountId, profile, profileQrCode }: AppFrame
   const router = useRouter();
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const signOutFormRef = useRef<HTMLFormElement>(null);
-  const replacedSessionFormRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     function handleMessage(event: MessageEvent) {
@@ -43,7 +39,7 @@ export default function AppFrame({ accountId, profile, profileQrCode }: AppFrame
       if (event.data.type === "cartonlab:sign-out") {
         signOutFormRef.current?.requestSubmit();
       } else if (event.data.type === "cartonlab:session-replaced") {
-        replacedSessionFormRef.current?.requestSubmit();
+        window.location.replace("/login?error=SessionReplaced");
       } else if (event.data.type === "cartonlab:upgrade") {
         router.push("/account");
       }
@@ -55,18 +51,7 @@ export default function AppFrame({ accountId, profile, profileQrCode }: AppFrame
 
   return (
     <>
-      <form
-        ref={replacedSessionFormRef}
-        action={signOutAfterSessionReplaced}
-        target="_top"
-        hidden
-      />
-      <form
-        ref={signOutFormRef}
-        action={signOutOfCartonLab}
-        target="_top"
-        hidden
-      />
+      <form ref={signOutFormRef} action={signOutOfCartonLab} hidden />
       <iframe
         ref={iframeRef}
         className="h-full w-full border-0"
