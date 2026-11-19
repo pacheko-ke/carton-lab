@@ -1856,33 +1856,28 @@ function removeSelectedArtworkItem() {
 }
 function exportSvgWithArtwork() {
   const markup = toSVG(current.model, "export");
+  if (!artworkImages.length && !artworkTexts.length) return markup;
   const doc = new DOMParser().parseFromString(markup, "image/svg+xml");
   const svg = doc.documentElement;
-  if (artworkImages.length || artworkTexts.length) {
-    const layer = doc.createElementNS(GRID_NS, "g");
-    layer.setAttribute("id", "artwork-images");
-    artworkImages.forEach((image) => {
-      const node = doc.createElementNS(GRID_NS, "image");
-      node.setAttribute("href", image.href);
-      node.setAttribute("x", image.x); node.setAttribute("y", image.y);
-      node.setAttribute("width", image.width); node.setAttribute("height", image.height);
-      node.setAttribute("preserveAspectRatio", "none");
-      layer.appendChild(node);
-    });
-    artworkTexts.forEach((text) => {
-      const node = doc.createElementNS(GRID_NS, "text");
-      node.setAttribute("x", text.x); node.setAttribute("y", text.y);
-      node.setAttribute("font-family", text.fontFamily); node.setAttribute("font-size", text.fontSize);
-      node.setAttribute("fill", text.fill); node.setAttribute("text-anchor", "middle");
-      node.setAttribute("dominant-baseline", "middle"); node.textContent = text.text;
-      layer.appendChild(node);
-    });
-    artworkGroupPosition(svg, layer);
-  }
-  const keylineGroup = doc.createElementNS(GRID_NS, "g");
-  keylineGroup.setAttribute("id", "keyline");
-  while (svg.firstChild) keylineGroup.appendChild(svg.firstChild);
-  svg.appendChild(keylineGroup);
+  const layer = doc.createElementNS(GRID_NS, "g");
+  layer.setAttribute("id", "artwork-images");
+  artworkImages.forEach((image) => {
+    const node = doc.createElementNS(GRID_NS, "image");
+    node.setAttribute("href", image.href);
+    node.setAttribute("x", image.x); node.setAttribute("y", image.y);
+    node.setAttribute("width", image.width); node.setAttribute("height", image.height);
+    node.setAttribute("preserveAspectRatio", "none");
+    layer.appendChild(node);
+  });
+  artworkTexts.forEach((text) => {
+    const node = doc.createElementNS(GRID_NS, "text");
+    node.setAttribute("x", text.x); node.setAttribute("y", text.y);
+    node.setAttribute("font-family", text.fontFamily); node.setAttribute("font-size", text.fontSize);
+    node.setAttribute("fill", text.fill); node.setAttribute("text-anchor", "middle");
+    node.setAttribute("dominant-baseline", "middle"); node.textContent = text.text;
+    layer.appendChild(node);
+  });
+  artworkGroupPosition(svg, layer);
   return new XMLSerializer().serializeToString(svg);
 }
 // zoom by `factor`, keeping the point under (px, py) (container pixels; default centre) where it is
