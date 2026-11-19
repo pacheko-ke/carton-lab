@@ -82,6 +82,8 @@ let offlineState = { catalog: null, bookmarks: [], pending: [], profile: null };
 let syncRunning = false;
 let offlineShell = false;
 let usingOfflineCatalog = false;
+let sessionCheckRunning = false;
+let sessionReplaced = false;
 let resolveProfile;
 const profileReady = window.parent === window
   ? Promise.resolve()
@@ -161,6 +163,45 @@ function clearOfflineAccount() {
   }
   accountId = null;
   offlineState = { catalog: null, bookmarks: [], pending: [], profile: null };
+}
+
+async function checkAccountSession() {
+  if (
+    !accountId ||
+    !navigator.onLine ||
+    sessionCheckRunning ||
+    sessionReplaced
+  ) {
+    return;
+  }
+
+  sessionCheckRunning = true;
+  try {
+    const response = await fetch("/api/auth/session", {
+      cache: "no-store",
+      credentials: "same-origin",
+    });
+    if (!response.ok) return;
+
+    const session = await response.json();
+    if (session && session.user && session.user.id === accountId) return;
+
+    sessionReplaced = true;
+    if (window.parent === window) {
+      window.location.replace("/login?error=SessionReplaced");
+    } else {
+      window.parent.postMessage(
+        { type: "cartonlab:session-replaced" },
+        window.location.origin,
+      );
+    }
+  } catch (error) {
+    if (navigator.onLine) {
+      console.warn("Could not check the Studio sign-in status; will retry.", error);
+    }
+  } finally {
+    sessionCheckRunning = false;
+  }
 }
 
 restoreOfflineAccount();
@@ -1815,28 +1856,33 @@ function removeSelectedArtworkItem() {
 }
 function exportSvgWithArtwork() {
   const markup = toSVG(current.model, "export");
-  if (!artworkImages.length && !artworkTexts.length) return markup;
   const doc = new DOMParser().parseFromString(markup, "image/svg+xml");
   const svg = doc.documentElement;
-  const layer = doc.createElementNS(GRID_NS, "g");
-  layer.setAttribute("id", "artwork-images");
-  artworkImages.forEach((image) => {
-    const node = doc.createElementNS(GRID_NS, "image");
-    node.setAttribute("href", image.href);
-    node.setAttribute("x", image.x); node.setAttribute("y", image.y);
-    node.setAttribute("width", image.width); node.setAttribute("height", image.height);
-    node.setAttribute("preserveAspectRatio", "none");
-    layer.appendChild(node);
-  });
-  artworkTexts.forEach((text) => {
-    const node = doc.createElementNS(GRID_NS, "text");
-    node.setAttribute("x", text.x); node.setAttribute("y", text.y);
-    node.setAttribute("font-family", text.fontFamily); node.setAttribute("font-size", text.fontSize);
-    node.setAttribute("fill", text.fill); node.setAttribute("text-anchor", "middle");
-    node.setAttribute("dominant-baseline", "middle"); node.textContent = text.text;
-    layer.appendChild(node);
-  });
-  artworkGroupPosition(svg, layer);
+  if (artworkImages.length || artworkTexts.length) {
+    const layer = doc.createElementNS(GRID_NS, "g");
+    layer.setAttribute("id", "artwork-images");
+    artworkImages.forEach((image) => {
+      const node = doc.createElementNS(GRID_NS, "image");
+      node.setAttribute("href", image.href);
+      node.setAttribute("x", image.x); node.setAttribute("y", image.y);
+      node.setAttribute("width", image.width); node.setAttribute("height", image.height);
+      node.setAttribute("preserveAspectRatio", "none");
+      layer.appendChild(node);
+    });
+    artworkTexts.forEach((text) => {
+      const node = doc.createElementNS(GRID_NS, "text");
+      node.setAttribute("x", text.x); node.setAttribute("y", text.y);
+      node.setAttribute("font-family", text.fontFamily); node.setAttribute("font-size", text.fontSize);
+      node.setAttribute("fill", text.fill); node.setAttribute("text-anchor", "middle");
+      node.setAttribute("dominant-baseline", "middle"); node.textContent = text.text;
+      layer.appendChild(node);
+    });
+    artworkGroupPosition(svg, layer);
+  }
+  const keylineGroup = doc.createElementNS(GRID_NS, "g");
+  keylineGroup.setAttribute("id", "keyline");
+  while (svg.firstChild) keylineGroup.appendChild(svg.firstChild);
+  svg.appendChild(keylineGroup);
   return new XMLSerializer().serializeToString(svg);
 }
 // zoom by `factor`, keeping the point under (px, py) (container pixels; default centre) where it is
@@ -2743,6 +2789,10 @@ async function init() {
     else updateOfflineStatus("Online.");
   });
   await profileReady;
+  void checkAccountSession();
+  window.setInterval(checkAccountSession, 10_000);
+  window.addEventListener("online", checkAccountSession);
+  window.addEventListener("focus", checkAccountSession);
   updateOfflineStatus(navigator.onLine ? "" : "Offline · changes are saved on this device.");
   // Fetch only the definitions permitted by the server-verified account plan.
   let loadErrors = [];
