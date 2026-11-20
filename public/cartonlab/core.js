@@ -281,7 +281,7 @@ function flattenSegs(segs) {
 }
 
 /* Bounding box of everything, with a margin, plus the model fields the renderers need. */
-function finalizeModel(items, unit, size, th, artH) {
+function finalizeModel(items, unit, size, th, artH, strokeScale = 1) {
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   const add = (x, y) => { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); };
   items.forEach((it) => {
@@ -305,7 +305,7 @@ function finalizeModel(items, unit, size, th, artH) {
     }
   });
   const m = th * 1.5;
-  return { items, unit, size, th, artH, box: { minX: x0 - m, minY: y0 - m, maxX: x1 + m, maxY: y1 + m } };
+  return { items, unit, size, th, artH, strokeScale, box: { minX: x0 - m, minY: y0 - m, maxX: x1 + m, maxY: y1 + m } };
 }
 
 /* ---------- SVG ---------- */
@@ -330,8 +330,8 @@ function toSVG(m, mode) {
   const exp = mode === "export";
   const u = m.unit;
   const b = m.box, w = b.maxX - b.minX, h = b.maxY - b.minY;
-  const sw = exp ? (u === "mm" ? 0.4 : 0.016) : m.size / 500;
-  const swCrease = exp ? (u === "mm" ? 0.5 : 0.02) : sw;
+  const sw = (exp ? (u === "mm" ? 0.4 : 0.016) : m.size / 500) * m.strokeScale;
+  const swCrease = (exp ? (u === "mm" ? 0.5 : 0.02) : m.size / 500) * m.strokeScale;
   const swT = exp ? (u === "mm" ? 0.25 : 0.01) : m.size / 1000;
   const dash = exp ? (u === "mm" ? "3 1.5" : "0.12 0.06") : `${r4(sw * 6)} ${r4(sw * 4)}`;
   const style = {
@@ -374,7 +374,7 @@ function toSVG(m, mode) {
    style is its finished look, so with reduced motion switched on the drawing simply appears. */
 function toAnimatedSVG(m) {
   const b = m.box, w = b.maxX - b.minX, h = b.maxY - b.minY;
-  const sw = m.size / 500, swT = m.size / 1000;
+  const sw = m.size / 500 * m.strokeScale, swT = m.size / 1000;
   const dash = `${r4(sw * 6)} ${r4(sw * 4)}`;
   const sec = (v) => `${v.toFixed(2)}s`;
   const seg2 = (x1, y1, x2, y2) => `M${r4(x1)} ${r4(y1)}L${r4(x2)} ${r4(y2)}`;
@@ -511,7 +511,8 @@ function renderPDFPage(m) {
   const n = (v) => (+v.toFixed(3)).toString();
   const X = (x) => (x - b.minX) * k;
   const Y = (y) => (b.maxY - y) * k;
-  const sw = (mm ? 0.4 : 0.016) * k, swCrease = (mm ? 0.5 : 0.02) * k;
+  const sw = (mm ? 0.4 : 0.016) * k * m.strokeScale;
+  const swCrease = (mm ? 0.5 : 0.02) * k * m.strokeScale;
   const swT = (mm ? 0.25 : 0.01) * k;
   const dash = (mm ? [3, 1.5] : [0.12, 0.06]).map((v) => n(v * k)).join(" ");
   const style = {

@@ -59,9 +59,14 @@ const DESIGNER_TOUR_STEPS = [
     description: "Show the grid and adjust its spacing at the lower left. Zoom, fit and 1:1 controls are at the lower right.",
   },
   {
-    targets: ['[data-tour="exports"]', '[data-tour="bulk-generate"]'],
+    targets: ['[data-tour="exports"]'],
     title: "Export your keyline",
-    description: "Download PDF, SVG or DXF, or bulk-generate keylines from an Excel, CSV or TXT file.",
+    description: "Download your keyline as a PDF, SVG or DXF file.",
+  },
+  {
+    targets: ['[data-tour="bulk-workspace-tab"]'],
+    title: "Generate a batch",
+    description: "Open Bulk generate to create up to 500 keylines from an Excel, CSV or TXT file.",
   },
 ];
 const PLY_DEFAULTS_MM = { 3: { crease: 2, bwadd: 4 }, 5: { crease: 3, bwadd: 6 } };
@@ -874,6 +879,7 @@ function keylineThumbnailSvg(id, def) {
     model.size,
     model.th,
     model.artH,
+    model.strokeScale,
   );
   thumbnailModel.size *= 6;
   const svg = toSVG(thumbnailModel, "preview");
@@ -1736,7 +1742,7 @@ pv.addEventListener("pointermove", (e) => {
     const dx = p.x - dimensionDrag.start.x, dy = p.y - dimensionDrag.start.y;
     dimensionDrag.items.forEach(({ index, source }) => translatedItem(source, current.model.items[index], dx, dy));
     const m = current.model;
-    current.model = finalizeModel(m.items, m.unit, m.size, m.th, m.artH);
+    current.model = finalizeModel(m.items, m.unit, m.size, m.th, m.artH, m.strokeScale);
     view.auto = false;
     setPreview(toSVG(current.model, "preview"));
     return;
@@ -2120,6 +2126,41 @@ function fillBulkKeylineOptions() {
   select.value = Array.from(select.options).some((option) => option.value === selected) ? selected : "";
 }
 
+function selectWorkspaceTab(workspace, moveFocus = false) {
+  const isDesigner = workspace === "designer";
+  const designerTab = $("designerTab");
+  const bulkTab = $("bulkTab");
+  designerTab.setAttribute("aria-selected", String(isDesigner));
+  bulkTab.setAttribute("aria-selected", String(!isDesigner));
+  designerTab.tabIndex = isDesigner ? 0 : -1;
+  bulkTab.tabIndex = isDesigner ? -1 : 0;
+  $("designerWorkspace").hidden = !isDesigner;
+  $("bulkWorkspace").hidden = isDesigner;
+  if (moveFocus) (isDesigner ? designerTab : bulkTab).focus();
+}
+
+function initializeWorkspaceTabs() {
+  const tabs = [$("designerTab"), $("bulkTab")];
+  tabs.forEach((tab) => {
+    tab.addEventListener("click", () => {
+      selectWorkspaceTab(tab === $("designerTab") ? "designer" : "bulk");
+    });
+  });
+  $("workspaceTabs").addEventListener("keydown", (event) => {
+    const activeIndex = tabs.indexOf(document.activeElement);
+    if (activeIndex < 0) return;
+    if (event.key === "ArrowRight" || event.key === "ArrowLeft" || event.key === "Home" || event.key === "End") {
+      event.preventDefault();
+      const nextIndex = event.key === "Home"
+        ? 0
+        : event.key === "End"
+          ? tabs.length - 1
+          : (activeIndex + (event.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length;
+      selectWorkspaceTab(tabs[nextIndex] === $("designerTab") ? "designer" : "bulk", true);
+    }
+  });
+}
+
 async function generateBulkKeylines() {
   if (!premiumFeaturesEnabled) {
     requestPremiumUpgrade();
@@ -2450,6 +2491,7 @@ function initializeCarton3D() {
 }
 
 async function init() {
+  initializeWorkspaceTabs();
   initializeCarton3D();
   $("addBookmark").addEventListener("click", addBookmark);
   if ("serviceWorker" in navigator) {

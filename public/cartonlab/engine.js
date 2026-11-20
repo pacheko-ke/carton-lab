@@ -337,6 +337,10 @@ function buildKeylineModel(def, p, opts) {
   const validHeight = def && def.allowZeroHeight ? H >= 0 : H > 0;
   if (!(L > 0 && W > 0 && validHeight)) throw new Error("Enter length, width and height greater than zero.");
   if (!def || !Array.isArray(def.cuts) || !def.cuts.length) throw new Error("Keyline has no cuts defined.");
+  const strokeScale = def.strokeScale === undefined ? 1 : def.strokeScale;
+  if (!Number.isFinite(strokeScale) || strokeScale <= 0) {
+    throw new Error(`Keyline "${def.id}" has an invalid stroke scale.`);
+  }
   const dimensionGroupFor = (shape) => {
     if (shape.dimensionGroup === undefined) return null;
     if (typeof shape.dimensionGroup !== "string" || !shape.dimensionGroup.trim()) {
@@ -791,7 +795,7 @@ function buildKeylineModel(def, p, opts) {
       if (plan.detailY === undefined) detailY += plan.frameHeight + (plan.group ? th : 0);
     });
   }
-  return KC.finalizeModel(items, u, size, th, artH);
+  return KC.finalizeModel(items, u, size, th, artH, strokeScale);
 }
 
 /* ---------- Registry: keylines/index.json lists the definition files ---------- */

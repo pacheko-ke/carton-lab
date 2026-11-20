@@ -26,6 +26,7 @@ Reload the extension. The new keyline appears in the **Box type** list. No code 
 | `id` | Unique short name (letters, digits, dash). `rsc` is reserved. |
 | `name` | Shown in the Box type list. |
 | `title` | Details table title when the job name is blank (optional). |
+| `strokeScale` | Optional multiplier for cut and crease line weights; defaults to `1`. |
 | `source` | Optional attribution/provenance metadata for the supplied drawing. |
 | `category` | Optional picker category, such as `Envelopes`; website categories must also be added to the catalog and picker order. |
 | `inputs` | Optional fields the user fills in for this keyline, such as a notch size (see below). |
