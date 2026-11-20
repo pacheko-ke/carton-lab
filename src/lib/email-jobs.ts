@@ -187,7 +187,7 @@ async function sendJobEmail(job: EmailJobWithRelations, now: Date) {
     subject: job.campaign.subject,
     heading: job.campaign.heading,
     message: job.campaign.message,
-    action: { label: "Open CartonLab", href: accountUrl },
+    action: { label: "Open PackStudio", href: accountUrl },
     unsubscribeUrl: getEmailPreferencesUrl(user.id),
   });
   return true;
@@ -229,7 +229,7 @@ async function processEmailJob(job: EmailJobWithRelations, now: Date) {
       where: { id: job.id },
       data: { status: "failed", claimedAt: null },
     });
-    console.error(`CartonLab email job ${job.id} failed:`, error);
+    console.error(`PackStudio email job ${job.id} failed:`, error);
     return "failed" as const;
   }
 }

@@ -13,7 +13,7 @@ import BrandLogo from "./brand-logo";
 import {
   signInHereWithGoogle,
   signInWithGoogle,
-  signOutOfCartonLab,
+  signOutOfPackStudio,
 } from "./auth-actions";
 import EmailOtpForm from "./email-otp-form";
 
@@ -113,8 +113,8 @@ export default async function AuthForm({
         <span className="auth-grid" />
       </div>
       <header className="auth-header">
-        <Link href="/" className="brand-lockup" aria-label="Carton Lab home">
-          <BrandLogo className="brand-logo-image" />
+        <Link href="/" className="brand-lockup" aria-label="PackStudio home">
+          <BrandLogo className="brand-wordmark" />
         </Link>
         <Link href="/" className="back-link">← Back to home</Link>
       </header>
@@ -156,7 +156,7 @@ export default async function AuthForm({
               <Link href="/app" className="button auth-submit">
                 Open the Studio <span>→</span>
               </Link>
-              <form action={signOutOfCartonLab}>
+              <form action={signOutOfPackStudio}>
                 <button type="submit" className="auth-signout">Sign out</button>
               </form>
             </div>
@@ -212,7 +212,7 @@ export default async function AuthForm({
             </>
           )}
           <div className="auth-switch">
-            {isSignup ? "Already have an account?" : "New to CartonLab?"}{" "}
+            {isSignup ? "Already have an account?" : "New to PackStudio?"}{" "}
             <Link href={isSignup ? "/login" : "/signup"}>
               {isSignup ? "Log in" : "Create an account"}
             </Link>

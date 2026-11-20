@@ -37,8 +37,8 @@ async function ProfileContent({ searchParams }: ProfilePageProps) {
   return (
     <main className="account-page">
       <header className="account-header">
-        <Link href="/" className="brand-lockup" aria-label="Carton Lab home">
-          <BrandLogo className="brand-logo-image" />
+        <Link href="/" className="brand-lockup" aria-label="PackStudio home">
+          <BrandLogo className="brand-wordmark" />
         </Link>
         <nav className="account-header-links" aria-label="Profile navigation">
           {isAdminEmail(user.email) && (

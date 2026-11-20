@@ -62,7 +62,7 @@ export async function startPremiumCheckout(formData: FormData) {
     redirect("/account?billing=plan-mismatch");
   }
 
-  const txRef = `cartonlab-${user.id}-${randomUUID()}`;
+  const txRef = `packstudio-${user.id}-${randomUUID()}`;
   const checkout = await paystackRequest<PaystackCheckout>(
     "/transaction/initialize",
     {

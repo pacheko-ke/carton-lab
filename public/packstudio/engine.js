@@ -835,10 +835,10 @@ async function loadKeylines(base) {
       throw new Error("The verified keyline catalog is invalid.");
     }
 
-    window.CARTONLAB_PLAN = catalog.plan;
-    window.CARTONLAB_TRIAL_ACTIVE = catalog.trialActive;
-    window.CARTONLAB_TRIAL_ENDS_AT = catalog.trialEndsAt;
-    window.CARTONLAB_LOCKED_KEYLINES = catalog.locked;
+    window.PACKSTUDIO_PLAN = catalog.plan;
+    window.PACKSTUDIO_TRIAL_ACTIVE = catalog.trialActive;
+    window.PACKSTUDIO_TRIAL_ENDS_AT = catalog.trialEndsAt;
+    window.PACKSTUDIO_LOCKED_KEYLINES = catalog.locked;
     for (const definition of catalog.definitions) {
       try {
         registerKeyline(definition);

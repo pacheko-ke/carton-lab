@@ -503,7 +503,7 @@ function renderPDFPage(m) {
   const k = mm ? 72 / 25.4 : 72;
   const b = m.box;
   const pw = (b.maxX - b.minX) * k, ph = (b.maxY - b.minY) * k;
-  const header = "CartonLab Lightweight 2.0";
+  const header = "PackStudio";
   const dimensionText = m.items.find((item) => item.layer === "DIM" && item.t === "text");
   const headerFontSize = (dimensionText ? dimensionText.size : m.th) * k;
   const headerMargin = 3 * 72 / 25.4;

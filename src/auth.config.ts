@@ -44,6 +44,7 @@ const authConfig = {
     authorized({ auth, request }) {
       if (
         request.nextUrl.pathname.startsWith("/app") ||
+        request.nextUrl.pathname.startsWith("/packstudio") ||
         request.nextUrl.pathname.startsWith("/cartonlab")
       ) {
         return Boolean(auth?.user?.id);

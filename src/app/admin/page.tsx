@@ -216,8 +216,8 @@ async function AdminDashboard({ searchParams }: AdminPageProps) {
   return (
     <main className="account-page admin-page">
       <header className="account-header admin-header">
-        <Link href="/" className="brand-lockup" aria-label="Carton Lab home">
-          <BrandLogo className="brand-logo-image" />
+        <Link href="/" className="brand-lockup" aria-label="PackStudio home">
+          <BrandLogo className="brand-wordmark" />
         </Link>
         <nav className="account-header-links" aria-label="Admin navigation">
           <Link href="/account" className="account-back-link">

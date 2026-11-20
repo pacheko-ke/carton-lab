@@ -50,7 +50,7 @@ function formatEmail(input: ResendEmailInput) {
     ? `\n\n${input.action.label}: ${input.action.href}`
     : "";
   const unsubscribe = input.unsubscribeUrl
-    ? `<p style="margin:22px 0 0;color:#76879a;font-size:12px">You are receiving product updates from Carton Lab. <a href="${escapeHtml(input.unsubscribeUrl)}" style="color:#147cac">Unsubscribe</a></p>`
+    ? `<p style="margin:22px 0 0;color:#76879a;font-size:12px">You are receiving product updates from PackStudio. <a href="${escapeHtml(input.unsubscribeUrl)}" style="color:#147cac">Unsubscribe</a></p>`
     : "";
   const textUnsubscribe = input.unsubscribeUrl
     ? `\n\nUnsubscribe: ${input.unsubscribeUrl}`
@@ -60,7 +60,7 @@ function formatEmail(input: ResendEmailInput) {
     html: `<!doctype html>
 <html>
   <body style="margin:0;background:#edf3f9;font-family:Arial,Helvetica,sans-serif;color:#20364a">
-    <div style="display:none;max-height:0;overflow:hidden">Carton Lab email notification</div>
+    <div style="display:none;max-height:0;overflow:hidden">PackStudio email notification</div>
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#edf3f9;padding:36px 12px">
       <tr>
         <td align="center">
@@ -71,7 +71,7 @@ function formatEmail(input: ResendEmailInput) {
                   <tr>
                     <td style="width:42px;height:42px;border-radius:11px;background:#102238;color:#66d3e8;text-align:center;vertical-align:middle;font-size:22px;font-weight:700">C</td>
                     <td style="padding-left:13px;vertical-align:middle">
-                      <div style="color:#f0f7ff;font-size:15px;font-weight:700;letter-spacing:.02em">Carton Lab</div>
+                      <div style="color:#f0f7ff;font-size:15px;font-weight:700;letter-spacing:.02em">PackStudio</div>
                       <div style="margin-top:4px;color:#9aacc0;font-size:10px;font-weight:700;letter-spacing:.14em">PACKAGING DESIGN STUDIO</div>
                     </td>
                   </tr>
@@ -83,7 +83,7 @@ function formatEmail(input: ResendEmailInput) {
               <td style="padding:30px">
                 <p style="margin:0;color:#425466;font-size:15px;line-height:1.75">${message}</p>
                 ${details}${action}${unsubscribe}
-                <p style="margin:30px 0 0;padding-top:18px;border-top:1px solid #e0e8f0;color:#76879a;font-size:12px;line-height:1.6">Carton Lab · Packaging design, made simple</p>
+                <p style="margin:30px 0 0;padding-top:18px;border-top:1px solid #e0e8f0;color:#76879a;font-size:12px;line-height:1.6">PackStudio · Packaging design, made simple</p>
               </td>
             </tr>
           </table>
@@ -92,7 +92,7 @@ function formatEmail(input: ResendEmailInput) {
     </table>
   </body>
 </html>`,
-    text: `${input.heading}\n\n${input.message}${textDetails}${textAction}${textUnsubscribe}\n\nCarton Lab`,
+    text: `${input.heading}\n\n${input.message}${textDetails}${textAction}${textUnsubscribe}\n\nPackStudio`,
   };
 }
 
@@ -114,7 +114,7 @@ export async function sendResendEmail(input: ResendEmailInput) {
         : {}),
     },
     body: JSON.stringify({
-      from: `Carton Lab <${senderAddress}>`,
+      from: `PackStudio <${senderAddress}>`,
       to: [input.to],
       subject: input.subject,
       html: email.html,
@@ -154,13 +154,13 @@ export async function sendEmailAlert(
 ) {
   const { recipients, ...message } = email;
   if (!recipients.length) {
-    console.error("CartonLab email alert has no recipients.", email.subject);
+    console.error("PackStudio email alert has no recipients.", email.subject);
     return;
   }
 
   if (!process.env.RESEND_API_KEY || !process.env.RESEND_FROM_EMAIL) {
     console.error(
-      "CartonLab email alert not sent: RESEND_API_KEY and RESEND_FROM_EMAIL must be configured.",
+      "PackStudio email alert not sent: RESEND_API_KEY and RESEND_FROM_EMAIL must be configured.",
     );
     return;
   }
@@ -171,7 +171,7 @@ export async function sendEmailAlert(
         await sendResendEmail({ ...message, to });
       } catch (error) {
         console.error(
-          `Could not send CartonLab email alert to ${to}:`,
+          `Could not send PackStudio email alert to ${to}:`,
           error,
         );
       }

@@ -7,7 +7,7 @@ type BrandIconProps = {
 export default function BrandIcon({ className }: BrandIconProps) {
   return (
     <Image
-      src="/cartonlab-symbol.png"
+      src="/packstudio-symbol.png"
       alt=""
       aria-hidden="true"
       className={className}

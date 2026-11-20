@@ -173,7 +173,7 @@ async function createLocalSubscription(
       recipients: getEmailAlertRecipients(user.email),
       subject: "Premium subscription started",
       heading: "Your Premium subscription is active",
-      message: "A Premium subscription is now active for this CartonLab account.",
+      message: "A Premium subscription is now active for this PackStudio account.",
       details: [
         { label: "Plan", value: "$5 USD / month" },
         {
@@ -238,7 +238,7 @@ async function updateLocalSubscription(
       recipients: getEmailAlertRecipients(existing.user.email),
       subject: "Premium subscription renewed",
       heading: "Your Premium subscription renewed",
-      message: "The latest payment extended this CartonLab Premium subscription.",
+      message: "The latest payment extended this PackStudio Premium subscription.",
       details: [
         { label: "Plan", value: "$5 USD / month" },
         {

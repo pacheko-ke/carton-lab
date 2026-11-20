@@ -31,8 +31,8 @@ const billingMessages: Record<string, string> = {
   "already-premium": "Your Premium subscription is already active.",
   "plan-mismatch":
     "Paystack's selected plan must match $5 USD per month. Check that PAYSTACK_PLAN_CODE points to a USD 5 monthly plan in the same Live Paystack account as your API key.",
-  "marketing-enabled": "You are subscribed to CartonLab product emails.",
-  "marketing-disabled": "You are unsubscribed from CartonLab product emails.",
+  "marketing-enabled": "You are subscribed to PackStudio product emails.",
+  "marketing-disabled": "You are unsubscribed from PackStudio product emails.",
 };
 
 export default function AccountPage(props: AccountPageProps) {
@@ -95,8 +95,8 @@ async function AccountContent({ searchParams }: AccountPageProps) {
   return (
     <main className="account-page">
       <header className="account-header">
-        <Link href="/" className="brand-lockup" aria-label="Carton Lab home">
-          <BrandLogo className="brand-logo-image" />
+        <Link href="/" className="brand-lockup" aria-label="PackStudio home">
+          <BrandLogo className="brand-wordmark" />
         </Link>
         <nav className="account-header-links" aria-label="Account navigation">
           {isAdminEmail(user.email) && (
@@ -117,7 +117,7 @@ async function AccountContent({ searchParams }: AccountPageProps) {
           <p>
             {user.name || user.email
               ? `Signed in as ${user.name || user.email}.`
-              : "Manage your CartonLab account and plan."}
+              : "Manage your PackStudio account and plan."}
           </p>
         </div>
 

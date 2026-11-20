@@ -4,9 +4,9 @@ import type { Metadata } from "next";
 import BrandLogo from "./brand-logo";
 
 export const metadata: Metadata = {
-  title: "CartonLab | Carton Keyline & Box Dieline Generator",
+  title: "PackStudio | Carton Keyline & Box Dieline Generator",
   description:
-    "Create carton keylines and box dielines online. Customize dimensions, explore FEFCO-style packaging, and export production-ready PDF, SVG, or DXF with CartonLab.",
+    "Create carton keylines and box dielines online. Customize dimensions, explore FEFCO-style packaging, and export production-ready PDF, SVG, or DXF with PackStudio.",
   keywords: [
     "carton keyline generator",
     "box dieline generator",
@@ -18,9 +18,9 @@ export const metadata: Metadata = {
     "packaging dieline export",
   ],
   openGraph: {
-    title: "CartonLab | Carton Keyline & Box Dieline Generator",
+    title: "PackStudio | Carton Keyline & Box Dieline Generator",
     description:
-      "Turn box dimensions into production-ready carton keylines. Design, customize, and export with CartonLab.",
+      "Turn box dimensions into production-ready carton keylines. Design, customize, and export with PackStudio.",
     type: "website",
   },
 };
@@ -94,7 +94,7 @@ function KeylineArtwork() {
           </div>
         </div>
         <div className="artwork-footer">
-          <span>CartonLab Lightweight 2.0</span>
+          <span>PackStudio</span>
           <span>210 × 294.9 × 114.7 MM · 3 PLY</span>
         </div>
       </div>
@@ -110,8 +110,8 @@ export default function Home() {
   return (
     <main className="site-shell">
       <header className="site-header">
-        <Link href="/" className="brand-lockup" aria-label="Carton Lab home">
-          <BrandLogo className="brand-logo-image" />
+        <Link href="/" className="brand-lockup" aria-label="PackStudio home">
+          <BrandLogo className="brand-wordmark" />
         </Link>
         <nav className="header-desktop-nav" aria-label="Main navigation">
           <Link href="#pricing">Pricing</Link>
@@ -187,7 +187,7 @@ export default function Home() {
         <div className="feature-cta">
           <div>
             <h3>Make your next dieline <span>the easy part.</span></h3>
-            <p>Start designing with CartonLab and get from dimensions to a file your team can use.</p>
+            <p>Start designing with PackStudio and get from dimensions to a file your team can use.</p>
           </div>
           <Link href="/signup" className="button button-large">
             Start designing free <span>→</span>
@@ -199,11 +199,11 @@ export default function Home() {
         <div className="pricing-intro">
           <div className="eyebrow"><span /> CLEAR, SIMPLE PRICING</div>
           <h2 id="pricing-heading">Start free—no credit card needed.</h2>
-          <p>Explore CartonLab for free, then unlock the complete keyline library and batch tools with Premium.</p>
+          <p>Explore PackStudio for free, then unlock the complete keyline library and batch tools with Premium.</p>
         </div>
         <article className="pricing-card" aria-labelledby="premium-plan-heading">
           <div className="pricing-card-copy">
-            <span className="pricing-plan-label">CARTONLAB PREMIUM</span>
+            <span className="pricing-plan-label">PACKSTUDIO PREMIUM</span>
             <h3 id="premium-plan-heading">Everything for production-ready work.</h3>
             <ul className="pricing-feature-list">
               <li>Access to every packaging keyline</li>
@@ -223,12 +223,12 @@ export default function Home() {
       </section>
 
       <footer className="site-footer">
-        <Link href="/" className="brand-lockup footer-brand" aria-label="Carton Lab home">
-          <BrandLogo className="brand-logo-image" />
+        <Link href="/" className="brand-lockup footer-brand" aria-label="PackStudio home">
+          <BrandLogo className="brand-wordmark" />
         </Link>
         <nav className="site-footer-meta" aria-label="Footer">
           <Link href="/terms">Terms of Use</Link>
-          <span>© 2026 CartonLab</span>
+          <span>© 2026 PackStudio</span>
         </nav>
       </footer>
     </main>

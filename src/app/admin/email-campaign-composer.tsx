@@ -179,7 +179,7 @@ export default function EmailCampaignComposer({
           <div className="admin-email-inbox-sender">
             <span className="admin-email-sender-mark">C</span>
             <span>
-              <strong>Carton Lab</strong>
+              <strong>PackStudio</strong>
               <small>to subscribed {audience} members</small>
             </span>
           </div>
@@ -187,17 +187,17 @@ export default function EmailCampaignComposer({
         <div className="admin-email-preview-card">
           <div className="admin-email-preview-brand">
             <span className="admin-email-brand-mark">C</span>
-            <span>CARTON LAB</span>
+            <span>PACKSTUDIO</span>
           </div>
           <h3>{heading || "Your email heading"}</h3>
           <p className={message ? "" : "is-placeholder"}>
             {message || "Your message will appear here as you write it."}
           </p>
           <span className="admin-email-preview-cta">
-            Open Carton Lab <span aria-hidden="true">→</span>
+            Open PackStudio <span aria-hidden="true">→</span>
           </span>
           <div className="admin-email-preview-footer">
-            Carton Lab · Packaging design, made simple
+            PackStudio · Packaging design, made simple
             <span>Unsubscribe</span>
           </div>
         </div>

@@ -1,6 +1,6 @@
-# Contributing to CartonLab
+# Contributing to PackStudio
 
-Thanks for helping improve CartonLab. This guide covers the project-specific
+Thanks for helping improve PackStudio. This guide covers the project-specific
 workflow for proposing and validating changes.
 
 ## Getting started

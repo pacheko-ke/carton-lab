@@ -46,8 +46,8 @@ async function EmailPreferencesContent({
   return (
     <main className="account-page">
       <header className="account-header">
-        <Link href="/" className="brand-lockup" aria-label="Carton Lab home">
-          <BrandLogo className="brand-logo-image" />
+        <Link href="/" className="brand-lockup" aria-label="PackStudio home">
+          <BrandLogo className="brand-wordmark" />
         </Link>
       </header>
       <section className="account-content email-preferences-content">
@@ -55,13 +55,13 @@ async function EmailPreferencesContent({
           <span className="eyebrow"><span /> EMAIL PREFERENCES</span>
           <h1>Manage product emails</h1>
           <p>
-            Manage whether CartonLab can email you about Premium features and
+            Manage whether PackStudio can email you about Premium features and
             product updates.
           </p>
         </div>
         {unsubscribed ? (
           <p className="account-notice" role="status">
-            You have been unsubscribed from CartonLab product and promotional
+            You have been unsubscribed from PackStudio product and promotional
             emails.
           </p>
         ) : !user || !token ? (

@@ -171,7 +171,7 @@ export async function POST(request: Request) {
       recipients: getEmailAlertRecipients(checkout.user.email),
       subject: "Premium payment failed",
       heading: "Payment needs attention",
-      message: "The M-Pesa payment could not be completed. You can try the checkout again from your CartonLab account.",
+      message: "The M-Pesa payment could not be completed. You can try the checkout again from your PackStudio account.",
       details: [
         {
           label: "Amount",

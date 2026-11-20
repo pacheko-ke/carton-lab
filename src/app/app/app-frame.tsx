@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { signOutOfCartonLab } from "../auth-actions";
+import { signOutOfPackStudio } from "../auth-actions";
 
 type AppFrameProps = {
   accountId: string;
@@ -29,18 +29,18 @@ export default function AppFrame({ accountId, profile, profileQrCode }: AppFrame
         typeof event.data !== "object" ||
         event.data === null ||
         !("type" in event.data) ||
-        (event.data.type !== "cartonlab:sign-out" &&
-          event.data.type !== "cartonlab:upgrade" &&
-          event.data.type !== "cartonlab:session-replaced")
+        (event.data.type !== "packstudio:sign-out" &&
+          event.data.type !== "packstudio:upgrade" &&
+          event.data.type !== "packstudio:session-replaced")
       ) {
         return;
       }
 
-      if (event.data.type === "cartonlab:sign-out") {
+      if (event.data.type === "packstudio:sign-out") {
         signOutFormRef.current?.requestSubmit();
-      } else if (event.data.type === "cartonlab:session-replaced") {
+      } else if (event.data.type === "packstudio:session-replaced") {
         window.location.replace("/login?error=SessionReplaced");
-      } else if (event.data.type === "cartonlab:upgrade") {
+      } else if (event.data.type === "packstudio:upgrade") {
         router.push("/account");
       }
     }
@@ -51,15 +51,15 @@ export default function AppFrame({ accountId, profile, profileQrCode }: AppFrame
 
   return (
     <>
-      <form ref={signOutFormRef} action={signOutOfCartonLab} hidden />
+      <form ref={signOutFormRef} action={signOutOfPackStudio} hidden />
       <iframe
         ref={iframeRef}
         className="h-full w-full border-0"
-        src="/cartonlab/app.html"
-        title="CartonLab Studio"
+        src="/packstudio/app.html"
+        title="PackStudio"
         onLoad={(event) =>
           event.currentTarget.contentWindow?.postMessage(
-            { type: "cartonlab:profile", accountId, profile, qrCode: profileQrCode },
+            { type: "packstudio:profile", accountId, profile, qrCode: profileQrCode },
             window.location.origin,
           )
         }

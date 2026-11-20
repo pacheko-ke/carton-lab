@@ -14,10 +14,10 @@ export async function notifyNewAccount({
 }: NewAccountNotificationInput) {
   await sendEmailAlert({
     recipients: getAdminEmailRecipients(),
-    subject: "New CartonLab account",
+    subject: "New PackStudio account",
     heading: "A new account is ready",
     message:
-      "A new CartonLab account has been created and its 7-day Premium trial has started.",
+      "A new PackStudio account has been created and its 7-day Premium trial has started.",
     details: [
       { label: "Name", value: name ?? "Not provided" },
       { label: "Email", value: email ?? "Not provided" },

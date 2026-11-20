@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import AuthForm, { AuthLoading } from "../auth-form";
 
 export const metadata: Metadata = {
-  title: "Create an account | CartonLab Lightweight 2.0",
+  title: "Create an account | PackStudio",
 };
 
 type SignupPageProps = {

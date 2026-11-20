@@ -7,12 +7,12 @@ type BrandLogoProps = {
 export default function BrandLogo({ className }: BrandLogoProps) {
   return (
     <Image
-      src="/cartonlab-wordmark-white.png"
-      alt=""
-      aria-hidden="true"
+      src="/packstudio-wordmark.png"
+      alt="PackStudio"
       className={className}
       width={264}
       height={41}
+      unoptimized
     />
   );
 }

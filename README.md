@@ -1,9 +1,9 @@
-# CartonLab Lightweight 2.0
+# PackStudio
 
 Next.js and Tailwind CSS. The Next.js
 home page is a product landing page. The carton keyline application is available
 at `/app`; its original UI and browser-based features are served from
-`public/cartonlab`.
+`public/packstudio`.
 Verified users can bookmark the current keyline and its settings in the Studio;
 bookmarks are saved to their account and can be reopened or removed later.
 After a verified user has opened the Studio online, its editor shell, permitted
@@ -29,6 +29,10 @@ and in Vercel; the sender address must use a domain verified with Resend.
 `APP_URL` sets the destination of the welcome email's Studio link. Resend
 delivery failures are logged without preventing account creation or payment
 processing.
+
+The current production hostname remains `cartonlab-web.vercel.app` until a
+PackStudio domain is configured. Update the Google OAuth redirect URLs, Paystack
+webhook URL, and `APP_URL` when changing the production hostname.
 
 Premium feature announcements and product updates are enabled by default for
 new accounts. Existing accounts without a saved email preference are enabled
@@ -147,7 +151,7 @@ scheduled cancellations retain access through the paid period end.
    POSTGRES_URL_NON_POOLING=<Direct PostgreSQL connection string for migrations>
    ADMIN_EMAILS=<verified admin email addresses, comma-separated>
    RESEND_API_KEY=<Resend API key>
-   RESEND_FROM_EMAIL=<sender on a Resend-verified domain>
+   RESEND_FROM_EMAIL="PackStudio <hello@your-verified-domain.com>"
    CRON_SECRET=<long random secret>
    PAYSTACK_SECRET_KEY=<Paystack server-side secret key>
    PAYSTACK_PLAN_CODE=<Paystack plan code for $5 USD per month>

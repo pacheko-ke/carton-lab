@@ -206,7 +206,7 @@ export async function initiateStkPush(input: {
         PhoneNumber: input.phoneNumber,
         CallBackURL: settings.callbackUrl,
         AccountReference: input.accountReference,
-        TransactionDesc: "CartonLab Premium",
+        TransactionDesc: "PackStudio Premium",
       }),
       cache: "no-store",
       signal: AbortSignal.timeout(15000),

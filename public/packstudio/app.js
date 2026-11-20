@@ -24,9 +24,12 @@ const BOOKMARK_FIELD_IDS = new Set([...FIELDS, "date", "job"]);
 const NUMERIC = ["L", "W", "H", "crease", "bwadd", "glue", "slot"];
 const STORE_KEY = "rscKeyline.v4"; // bumped so new defaults (e.g. brown carton colour) replace old saved values
 const RSC_DEFAULTS_MM = { L: 300, W: 200, H: 150 };
-const DESIGNER_TOUR_KEY = "cartonlab.designer-tour.dismissed.v1";
-const OFFLINE_STORAGE_PREFIX = "cartonlab.studio.offline.v1";
-const OFFLINE_ACCOUNT_KEY = "cartonlab.studio.last-account.v1";
+const DESIGNER_TOUR_KEY = "packstudio.designer-tour.dismissed.v1";
+const OFFLINE_STORAGE_PREFIX = "packstudio.studio.offline.v1";
+const OFFLINE_ACCOUNT_KEY = "packstudio.studio.last-account.v1";
+const LEGACY_DESIGNER_TOUR_KEY = "cartonlab.designer-tour.dismissed.v1";
+const LEGACY_OFFLINE_STORAGE_PREFIX = "cartonlab.studio.offline.v1.";
+const LEGACY_OFFLINE_ACCOUNT_KEY = "cartonlab.studio.last-account.v1";
 const DESIGNER_TOUR_STEPS = [
   {
     targets: ['[data-tour="box-type"]'],
@@ -95,6 +98,37 @@ const profileReady = window.parent === window
   : new Promise((resolve) => { resolveProfile = resolve; });
 function offlineStorageKey(id) {
   return `${OFFLINE_STORAGE_PREFIX}.${encodeURIComponent(id)}`;
+}
+
+function migrateLegacyStorage() {
+  try {
+    const migrateKey = (legacyKey, currentKey) => {
+      const value = localStorage.getItem(legacyKey);
+      if (value === null) return;
+      if (localStorage.getItem(currentKey) === null) {
+        localStorage.setItem(currentKey, value);
+      }
+      localStorage.removeItem(legacyKey);
+    };
+
+    migrateKey(LEGACY_DESIGNER_TOUR_KEY, DESIGNER_TOUR_KEY);
+    migrateKey(LEGACY_OFFLINE_ACCOUNT_KEY, OFFLINE_ACCOUNT_KEY);
+
+    const legacyKeys = [];
+    for (let index = 0; index < localStorage.length; index++) {
+      const key = localStorage.key(index);
+      if (key?.startsWith(LEGACY_OFFLINE_STORAGE_PREFIX)) {
+        legacyKeys.push(key);
+      }
+    }
+
+    for (const legacyKey of legacyKeys) {
+      const currentKey = `${OFFLINE_STORAGE_PREFIX}.${legacyKey.slice(LEGACY_OFFLINE_STORAGE_PREFIX.length)}`;
+      migrateKey(legacyKey, currentKey);
+    }
+  } catch (error) {
+    console.error("Could not migrate PackStudio browser data:", error);
+  }
 }
 
 function isProfile(value) {
@@ -196,7 +230,7 @@ async function checkAccountSession() {
       window.location.replace("/login?error=SessionReplaced");
     } else {
       window.parent.postMessage(
-        { type: "cartonlab:session-replaced" },
+        { type: "packstudio:session-replaced" },
         window.location.origin,
       );
     }
@@ -209,6 +243,7 @@ async function checkAccountSession() {
   }
 }
 
+migrateLegacyStorage();
 restoreOfflineAccount();
 if (window.parent !== window) {
   offlineShell = !navigator.onLine;
@@ -223,7 +258,7 @@ window.addEventListener("message", (event) => {
     event.origin !== window.location.origin ||
     event.source !== window.parent ||
     !event.data ||
-    event.data.type !== "cartonlab:profile" ||
+    event.data.type !== "packstudio:profile" ||
     typeof event.data.accountId !== "string" ||
     !event.data.profile ||
     typeof event.data.profile.createdBy !== "string" ||
@@ -630,21 +665,21 @@ function restoreOfflineCatalog() {
     ? catalog.definitions.filter((definition) => !lockedIds.has(definition.id))
     : catalog.definitions;
 
-  window.CARTONLAB_PLAN = trialExpired ? "free" : catalog.plan;
-  window.CARTONLAB_TRIAL_ACTIVE = !trialExpired && catalog.trialActive;
-  window.CARTONLAB_TRIAL_ENDS_AT = catalog.trialEndsAt;
-  window.CARTONLAB_LOCKED_KEYLINES = catalog.locked;
+  window.PACKSTUDIO_PLAN = trialExpired ? "free" : catalog.plan;
+  window.PACKSTUDIO_TRIAL_ACTIVE = !trialExpired && catalog.trialActive;
+  window.PACKSTUDIO_TRIAL_ENDS_AT = catalog.trialEndsAt;
+  window.PACKSTUDIO_LOCKED_KEYLINES = catalog.locked;
   definitions.forEach((definition) => registerKeyline(definition));
   return true;
 }
 
 function cacheOnlineCatalog() {
   offlineState.catalog = {
-    plan: window.CARTONLAB_PLAN,
-    trialActive: window.CARTONLAB_TRIAL_ACTIVE,
-    trialEndsAt: window.CARTONLAB_TRIAL_ENDS_AT,
+    plan: window.PACKSTUDIO_PLAN,
+    trialActive: window.PACKSTUDIO_TRIAL_ACTIVE,
+    trialEndsAt: window.PACKSTUDIO_TRIAL_ENDS_AT,
     definitions: Object.values(KEYLINES),
-    locked: window.CARTONLAB_LOCKED_KEYLINES || [],
+    locked: window.PACKSTUDIO_LOCKED_KEYLINES || [],
   };
   saveOfflineState();
 }
@@ -824,7 +859,7 @@ function selectKeyline(id) {
 
 function requestPremiumUpgrade() {
   window.parent.postMessage(
-    { type: "cartonlab:upgrade" },
+    { type: "packstudio:upgrade" },
     window.location.origin,
   );
 }
@@ -2220,7 +2255,7 @@ function shareMessage() {
   const typeName = p.type === "rsc" ? "RSC" : (KEYLINES[p.type] && KEYLINES[p.type].name) || p.type;
   const format = (value) => Number.isFinite(value) ? String(+value.toFixed(3)) : "n/a";
   const lines = [
-    "CartonLab Lightweight 2.0 keyline",
+    "PackStudio keyline",
     p.job.trim() ? `Job: ${p.job.trim()}` : null,
     `Box type: ${typeName}`,
     `Size (L x W x H): ${format(p.L)} x ${format(p.W)} x ${format(p.H)} ${p.unit}`,
@@ -2241,7 +2276,7 @@ async function shareKeyline() {
   const file = typeof File === "function"
     ? new File([pdf], `${name}.pdf`, { type: "application/pdf" })
     : null;
-  const title = `CartonLab Lightweight 2.0 keyline: ${name}`;
+  const title = `PackStudio keyline: ${name}`;
   const text = shareMessage();
   const canShareFile = file && typeof navigator.share === "function"
     && typeof navigator.canShare === "function"
@@ -2507,7 +2542,7 @@ async function init() {
   window.addEventListener("online", () => {
     accountControls.hidden =
       offlineShell || usingOfflineCatalog ||
-      (window.CARTONLAB_PLAN !== "free" && window.CARTONLAB_PLAN !== "premium");
+      (window.PACKSTUDIO_PLAN !== "free" && window.PACKSTUDIO_PLAN !== "premium");
     if (offlineState.pending.length) syncPendingChanges();
     else updateOfflineStatus("Online.");
   });
@@ -2532,14 +2567,14 @@ async function init() {
       return;
     }
   }
-  (window.CARTONLAB_LOCKED_KEYLINES || []).forEach((definition) => {
+  (window.PACKSTUDIO_LOCKED_KEYLINES || []).forEach((definition) => {
     LOCKED_KEYLINES[definition.id] = definition;
   });
-  const plan = window.CARTONLAB_PLAN;
-  const trialActive = window.CARTONLAB_TRIAL_ACTIVE === true;
+  const plan = window.PACKSTUDIO_PLAN;
+  const trialActive = window.PACKSTUDIO_TRIAL_ACTIVE === true;
   premiumFeaturesEnabled = plan === "premium";
-  if (typeof window.CARTONLAB_TRIAL_ENDS_AT === "string") {
-    const expiresIn = Date.parse(window.CARTONLAB_TRIAL_ENDS_AT) - Date.now();
+  if (typeof window.PACKSTUDIO_TRIAL_ENDS_AT === "string") {
+    const expiresIn = Date.parse(window.PACKSTUDIO_TRIAL_ENDS_AT) - Date.now();
     if (Number.isFinite(expiresIn) && expiresIn > 0) {
       window.setTimeout(() => window.location.reload(), expiresIn);
     }
@@ -2567,7 +2602,7 @@ async function init() {
       }
       clearOfflineAccount();
       window.parent.postMessage(
-        { type: "cartonlab:sign-out" },
+        { type: "packstudio:sign-out" },
         window.location.origin,
       );
     });

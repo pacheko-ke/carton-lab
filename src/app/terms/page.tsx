@@ -5,8 +5,8 @@ export default function TermsPage() {
   return (
     <main className="legal-page">
       <header className="site-header">
-        <Link href="/" className="brand-lockup" aria-label="Carton Lab home">
-          <BrandLogo className="brand-logo-image" />
+        <Link href="/" className="brand-lockup" aria-label="PackStudio home">
+          <BrandLogo className="brand-wordmark" />
         </Link>
         <Link href="/" className="back-link">
           Home
@@ -14,11 +14,11 @@ export default function TermsPage() {
       </header>
 
       <article className="terms-content">
-        <div className="eyebrow"><span /> CARTONLAB POLICIES</div>
+        <div className="eyebrow"><span /> PACKSTUDIO POLICIES</div>
         <h1>Terms of Use</h1>
         <p className="terms-effective-date">Effective date: November 13, 2026</p>
         <p>
-          These Terms of Use (“Terms”) apply to CartonLab Lightweight 2.0,
+          These Terms of Use (“Terms”) apply to PackStudio,
           including its website, keyline Studio, packaging templates, and
           exported files (the “Service”). By accessing or using the Service, you
           agree to these Terms. If you do not agree, do not use the Service.
@@ -38,7 +38,7 @@ export default function TermsPage() {
         <section>
           <h2>2. The Service and acceptable use</h2>
           <p>
-            CartonLab provides tools to select packaging keylines, enter
+            PackStudio provides tools to select packaging keylines, enter
             dimensions, arrange artwork, and export or print design files. You
             may use the Service for lawful personal or business work.
           </p>
@@ -92,14 +92,14 @@ export default function TermsPage() {
             You retain your rights to artwork and other content you provide.
             You are responsible for having the rights needed to use that
             content. If you submit or transmit content through the Service, you
-            allow CartonLab to use it only as needed to provide, secure, and
+            allow PackStudio to use it only as needed to provide, secure, and
             support the features you request.
           </p>
           <p>
             You may use the files you create or export for your own projects,
             subject to these Terms and any rights in materials you add. The
             Service and its built-in software, templates, and catalog remain
-            CartonLab&apos;s or its licensors&apos; property; using the Service
+            PackStudio&apos;s or its licensors&apos; property; using the Service
             does not transfer ownership of those materials to you.
           </p>
         </section>
@@ -110,7 +110,7 @@ export default function TermsPage() {
             Keylines and exports are generated as design aids. You must review
             dimensions, units, allowances, scaling, material requirements, and
             machine compatibility before printing, manufacturing, or relying on
-            an output. CartonLab does not certify that a design complies with a
+            an output. PackStudio does not certify that a design complies with a
             particular packaging standard or is suitable for a specific
             production process.
           </p>
@@ -135,7 +135,7 @@ export default function TermsPage() {
             for checking files before production.
           </p>
           <p>
-            To the extent permitted by law, CartonLab is not responsible for
+            To the extent permitted by law, PackStudio is not responsible for
             indirect or consequential losses, including lost profits, lost
             data, or production losses arising from use of the Service. Nothing
             in these Terms excludes liability or consumer rights that cannot
@@ -157,18 +157,18 @@ export default function TermsPage() {
         <p>
           These Terms do not limit any rights you have under laws that apply to
           you. Questions about the Terms can be raised through the contact
-          channel made available by CartonLab.
+          channel made available by PackStudio.
         </p>
       </article>
 
       <footer className="site-footer">
-        <Link href="/" className="brand-lockup footer-brand" aria-label="Carton Lab home">
-          <BrandLogo className="brand-logo-image" />
+        <Link href="/" className="brand-lockup footer-brand" aria-label="PackStudio home">
+          <BrandLogo className="brand-wordmark" />
         </Link>
         <span>Terms of Use</span>
         <nav className="site-footer-meta" aria-label="Footer">
           <Link href="/terms">Terms of Use</Link>
-          <span>© 2026 CartonLab</span>
+          <span>© 2026 PackStudio</span>
           <Link href="/">Home</Link>
         </nav>
       </footer>

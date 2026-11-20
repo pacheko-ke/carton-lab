@@ -3,7 +3,7 @@ import QRCode from "qrcode";
 import { Suspense } from "react";
 import AppFrame from "./app-frame";
 
-export default function CartonLabApp() {
+export default function PackStudioApp() {
   return (
     <Suspense
       fallback={
@@ -12,12 +12,12 @@ export default function CartonLabApp() {
         </main>
       }
     >
-      <AuthenticatedCartonLabApp />
+      <AuthenticatedPackStudioApp />
     </Suspense>
   );
 }
 
-async function AuthenticatedCartonLabApp() {
+async function AuthenticatedPackStudioApp() {
   const user = await requireVerifiedUser();
   const profile = {
     createdBy: (user.name ?? "").slice(0, 100),

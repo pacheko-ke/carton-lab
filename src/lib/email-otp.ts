@@ -201,17 +201,17 @@ export async function sendEmailOtpCode(email: string, ipAddress: string | null) 
   try {
     await sendResendEmail({
       to: email,
-      subject: "Your CartonLab verification code",
+      subject: "Your PackStudio verification code",
       heading: "Verify your email",
       message:
-        "Enter this one-time code to sign up or sign in to CartonLab. It expires in 10 minutes. If you did not request a code, you can ignore this email.",
+        "Enter this one-time code to sign up or sign in to PackStudio. It expires in 10 minutes. If you did not request a code, you can ignore this email.",
       details: [
         { label: "Verification code", value: code },
         { label: "Expires in", value: "10 minutes" },
       ],
     });
   } catch (error) {
-    console.error("Could not deliver CartonLab email verification code:", error);
+    console.error("Could not deliver PackStudio email verification code:", error);
     return { status: "delivery-error" } as const;
   }
 

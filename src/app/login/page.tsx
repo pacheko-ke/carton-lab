@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import AuthForm, { AuthLoading } from "../auth-form";
 
 export const metadata: Metadata = {
-  title: "Log in | CartonLab Lightweight 2.0",
+  title: "Log in | PackStudio",
 };
 
 type LoginPageProps = {

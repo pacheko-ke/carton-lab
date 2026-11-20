@@ -1,15 +1,15 @@
 "use strict";
 
-const CACHE_NAME = "cartonlab-studio-v7";
+const CACHE_NAME = "packstudio-studio-v2";
 const APP_ASSETS = [
   "/offline.html",
-  "/cartonlab-icon.png",
-  "/cartonlab/app.html",
-  "/cartonlab/app.css",
-  "/cartonlab/account-controls.css",
-  "/cartonlab/core.js",
-  "/cartonlab/engine.js",
-  "/cartonlab/app.js",
+  "/packstudio-icon.png",
+  "/packstudio/app.html",
+  "/packstudio/app.css",
+  "/packstudio/account-controls.css",
+  "/packstudio/core.js",
+  "/packstudio/engine.js",
+  "/packstudio/app.js",
 ];
 const APP_ASSET_PATHS = new Set(APP_ASSETS);
 
@@ -25,7 +25,12 @@ self.addEventListener("activate", (event) => {
     caches.keys().then((keys) =>
       Promise.all(
         keys
-          .filter((key) => key.startsWith("cartonlab-studio-") && key !== CACHE_NAME)
+          .filter(
+            (key) =>
+              (key.startsWith("packstudio-studio-") ||
+                key.startsWith("cartonlab-studio-")) &&
+              key !== CACHE_NAME,
+          )
           .map((key) => caches.delete(key)),
       ),
     ),

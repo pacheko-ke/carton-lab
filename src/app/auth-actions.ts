@@ -246,7 +246,7 @@ export async function verifyEmailOtp(
   throw new Error("Email sign-in returned without redirecting.");
 }
 
-export async function signOutOfCartonLab() {
+export async function signOutOfPackStudio() {
   await signOut({ redirectTo: "/" });
 }
 

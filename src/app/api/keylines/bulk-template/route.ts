@@ -27,7 +27,7 @@ export async function GET(request: Request) {
 
   const guide = workbook.addWorksheet("Guide");
   guide.addRows([
-    ["CartonLab bulk keyline sample"],
+    ["PackStudio bulk keyline sample"],
     ["Use the Dimensions sheet for bulk generation. Its first row contains the required L, W and H headers."],
     [`Measurements are in ${unit === "in" ? "inches" : "millimeters"}, matching the unit selected when this file was downloaded.`],
     ["Job is optional. Add one column per keyline input using its exact input ID to override that input for a row."],
@@ -40,7 +40,7 @@ export async function GET(request: Request) {
   return new Response(new Uint8Array(content), {
     headers: {
       "Cache-Control": "no-store",
-      "Content-Disposition": 'attachment; filename="cartonlab-bulk-sample.xlsx"',
+      "Content-Disposition": 'attachment; filename="packstudio-bulk-sample.xlsx"',
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     },
   });
