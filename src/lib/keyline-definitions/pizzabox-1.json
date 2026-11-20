@@ -74,6 +74,114 @@
     "holeX": "1.858*kL",
     "holeY": "1.575*kW"
   },
+  "folding": {
+  "type": "panel-network",
+
+  "basePanel": "base",
+
+  "panels": [
+    {
+      "id": "base",
+      "kind": "panel",
+      "points": [
+        [0, 0],
+        ["L", 0],
+        ["L", "W"],
+        [0, "W"]
+      ]
+    },
+
+    {
+      "id": "left-wall",
+      "kind": "wall",
+      "parent": "base",
+      "hinge": [
+        [0, 0],
+        [0, "W"]
+      ],
+      "angle": "-pi/2",
+      "order": 1,
+      "points": [
+        ["-H", 0],
+        [0, 0],
+        [0, "W"],
+        ["-H", "W"]
+      ]
+    },
+
+    {
+      "id": "right-wall",
+      "kind": "wall",
+      "parent": "base",
+      "hinge": [
+        ["L", 0],
+        ["L", "W"]
+      ],
+      "angle": "pi/2",
+      "order": 1,
+      "points": [
+        ["L", 0],
+        ["L+H", 0],
+        ["L+H", "W"],
+        ["L", "W"]
+      ]
+    },
+
+    {
+      "id": "front-wall",
+      "kind": "wall",
+      "parent": "base",
+      "hinge": [
+        [0, "W"],
+        ["L", "W"]
+      ],
+      "angle": "pi/2",
+      "order": 2,
+      "points": [
+        [0, "W"],
+        ["L", "W"],
+        ["L", "W+H"],
+        [0, "W+H"]
+      ]
+    },
+
+    {
+      "id": "rear-wall",
+      "kind": "wall",
+      "parent": "base",
+      "hinge": [
+        [0, 0],
+        ["L", 0]
+      ],
+      "angle": "-pi/2",
+      "order": 2,
+      "points": [
+        [0, "-H"],
+        ["L", "-H"],
+        ["L", 0],
+        [0, 0]
+      ]
+    },
+
+    {
+      "id": "lid",
+      "kind": "panel",
+      "parent": "rear-wall",
+      "hinge": [
+        [0, "-H"],
+        ["L", "-H"]
+      ],
+      "angle": "-pi",
+      "order": 3,
+      "points": [
+        [0, "-H-W"],
+        ["L", "-H-W"],
+        ["L", "-H"],
+        [0, "-H"]
+      ]
+    }
+  ]
+},
   "require": [
     {
       "expr": "band < H",

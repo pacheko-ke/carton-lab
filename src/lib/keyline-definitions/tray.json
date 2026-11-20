@@ -20,6 +20,36 @@
     "bl": "L + 2*H",
     "bw": "W + 2*H"
   },
+  "folding": {
+  "type": "slotted-box",
+
+  "wallWidths": [
+    "H + gap",
+    "L",
+    "H + gap",
+    "L"
+  ],
+
+  "wallHeight": "W",
+
+  "topFlapDepths": [
+    "1",
+    "H",
+    "1",
+    "H"
+  ],
+
+  "bottomFlapDepths": [
+    "1",
+    "H",
+    "1",
+    "H"
+  ],
+
+  "glueFlapWidth": "1",
+
+  "slotGap": "0"
+},
   "require": [
     {
       "expr": "gap < H",

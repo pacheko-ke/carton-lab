@@ -37,6 +37,36 @@
     "hole2Y": "H + 200*kW",
     "strapR": "strapDiameter / 2"
   },
+  "folding": {
+  "type": "slotted-box",
+
+  "wallWidths": [
+    "H + notch/2",
+    "L",
+    "H + notch/2",
+    "L"
+  ],
+
+  "wallHeight": "W",
+
+  "topFlapDepths": [
+    "1",
+    "H",
+    "1",
+    "H"
+  ],
+
+  "bottomFlapDepths": [
+    "1",
+    "H",
+    "1",
+    "H"
+  ],
+
+  "glueFlapWidth": "1",
+
+  "slotGap": "0"
+},
   "require": [
     {
       "expr": "notch / 2 + strapR < 225*kL",
