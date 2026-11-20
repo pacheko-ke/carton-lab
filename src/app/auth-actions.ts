@@ -10,6 +10,7 @@ import {
   isEmailOtpConfigured,
   isGoogleAuthConfigured,
 } from "@/auth-config";
+import { clearExpiredAuthSession } from "@/lib/auth-session";
 import { AuthError } from "next-auth";
 import { headers } from "next/headers";
 import {
@@ -53,7 +54,7 @@ export async function signInHereWithGoogle(formData: FormData) {
       id: takeover.userId,
       activeSessionId: takeover.activeSessionId,
     },
-    data: { activeSessionId: null },
+    data: { activeSessionId: null, activeSessionExpiresAt: null },
   });
   if (result.count !== 1) {
     redirect("/login?error=TakeoverExpired");
@@ -65,9 +66,39 @@ export async function signInHereWithGoogle(formData: FormData) {
 async function hasActiveSession(email: string) {
   const user = await prisma.user.findUnique({
     where: { email: normalizeEmail(email) },
-    select: { activeSessionId: true },
+    select: {
+      id: true,
+      activeSessionId: true,
+      activeSessionExpiresAt: true,
+    },
   });
-  return Boolean(user?.activeSessionId);
+  if (!user?.activeSessionId) return false;
+  const now = new Date();
+  if (user.activeSessionExpiresAt && user.activeSessionExpiresAt > now) {
+    return true;
+  }
+  if (
+    await clearExpiredAuthSession(
+      user.id,
+      user.activeSessionId,
+      user.activeSessionExpiresAt,
+      now,
+    )
+  ) {
+    return false;
+  }
+  const currentUser = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: {
+      activeSessionId: true,
+      activeSessionExpiresAt: true,
+    },
+  });
+  return Boolean(
+    currentUser?.activeSessionId &&
+      currentUser.activeSessionExpiresAt &&
+      currentUser.activeSessionExpiresAt > now,
+  );
 }
 
 export async function requestEmailOtp(

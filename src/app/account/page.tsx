@@ -10,7 +10,7 @@ import {
   isPaystackBillingConfigured,
   MPESA_PROVIDER_PLAN_ID,
 } from "@/lib/billing";
-import BrandIcon from "../brand-icon";
+import BrandLogo from "../brand-logo";
 import { isAdminEmail } from "@/lib/admin";
 import { updateEmailPreferences } from "../email-actions";
 
@@ -95,11 +95,8 @@ async function AccountContent({ searchParams }: AccountPageProps) {
   return (
     <main className="account-page">
       <header className="account-header">
-        <Link href="/" className="brand-lockup" aria-label="CartonLab home">
-          <span className="brand-mark">
-            <BrandIcon className="brand-mark-image" />
-          </span>
-          <span>CartonLab Lightweight 2.0</span>
+        <Link href="/" className="brand-lockup" aria-label="Carton Lab home">
+          <BrandLogo className="brand-logo-image" />
         </Link>
         <nav className="account-header-links" aria-label="Account navigation">
           {isAdminEmail(user.email) && (

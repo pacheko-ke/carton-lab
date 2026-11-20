@@ -19,6 +19,7 @@ model User {
   emailVerified            DateTime?
   image                    String?
   activeSessionId          String?
+  activeSessionExpiresAt   DateTime?
   premiumAccessGranted     Boolean           @default(false)
   trialEndsAt              DateTime?
   marketingEmailsEnabled   Boolean           @default(true)

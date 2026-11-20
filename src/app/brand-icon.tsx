@@ -7,12 +7,12 @@ type BrandIconProps = {
 export default function BrandIcon({ className }: BrandIconProps) {
   return (
     <Image
-      src="/cartonlab-icon.png"
+      src="/cartonlab-symbol.png"
       alt=""
       aria-hidden="true"
       className={className}
-      width={128}
-      height={128}
+      width={37}
+      height={37}
     />
   );
 }

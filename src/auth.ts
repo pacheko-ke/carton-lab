@@ -12,11 +12,15 @@ import {
   normalizeEmail,
 } from "@/lib/email-otp";
 import { notifyNewAccount } from "@/lib/new-account-notifications";
+import {
+  AUTH_SESSION_MAX_AGE_SECONDS,
+  clearExpiredAuthSession,
+  getAuthSessionExpiresAt,
+} from "@/lib/auth-session";
 import { isEmailOtpConfigured } from "@/auth-config";
 import authConfig from "@/auth.config";
 
 const SESSION_TAKEOVER_TTL_SECONDS = 300;
-const SESSION_MAX_AGE_SECONDS = 12 * 60 * 60;
 
 export function createSessionTakeoverToken(
   userId: string,
@@ -66,17 +70,30 @@ async function allowUserSignIn(
 ) {
   const existingUser = await prisma.user.findUnique({
     where: { id: userId },
-    select: { activeSessionId: true },
+    select: { activeSessionId: true, activeSessionExpiresAt: true },
   });
   if (!existingUser) {
     return false;
   }
   if (!existingUser.activeSessionId) return true;
+
+  if (
+    await clearExpiredAuthSession(
+      userId,
+      existingUser.activeSessionId,
+      existingUser.activeSessionExpiresAt,
+    )
+  ) {
+    return true;
+  }
   if (!takeOverExistingSession) return false;
 
   const result = await prisma.user.updateMany({
     where: { id: userId, activeSessionId: existingUser.activeSessionId },
-    data: { activeSessionId: randomUUID() },
+    data: {
+      activeSessionId: randomUUID(),
+      activeSessionExpiresAt: getAuthSessionExpiresAt(),
+    },
   });
   return result.count === 1;
 }
@@ -97,15 +114,28 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         const existingUser = await prisma.user.findUnique({
           where: { id: user.id },
-          select: { activeSessionId: true },
+          select: { activeSessionId: true, activeSessionExpiresAt: true },
         });
         if (!existingUser) return false;
         if (existingUser.activeSessionId) {
-          const takeoverToken = createSessionTakeoverToken(
+          const expired = await clearExpiredAuthSession(
             user.id,
             existingUser.activeSessionId,
+            existingUser.activeSessionExpiresAt,
           );
-          return `/login?error=AccessDenied&takeover=${encodeURIComponent(takeoverToken)}`;
+          if (!expired) {
+            const currentUser = await prisma.user.findUnique({
+              where: { id: user.id },
+              select: { activeSessionId: true },
+            });
+            if (currentUser?.activeSessionId) {
+              const takeoverToken = createSessionTakeoverToken(
+                user.id,
+                currentUser.activeSessionId,
+              );
+              return `/login?error=AccessDenied&takeover=${encodeURIComponent(takeoverToken)}`;
+            }
+          }
         }
         return true;
       }
@@ -125,7 +155,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (user.id) {
           await prisma.user.update({
             where: { id: user.id },
-            data: { activeSessionId },
+            data: {
+              activeSessionId,
+              activeSessionExpiresAt: getAuthSessionExpiresAt(),
+            },
           });
         }
       }
@@ -141,15 +174,49 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
       const userRecord = await prisma.user.findUnique({
         where: { id: token.sub },
-        select: { activeSessionId: true },
+        select: { activeSessionId: true, activeSessionExpiresAt: true },
       });
       if (!userRecord) return null;
 
+      const now = new Date();
       if (
         !userRecord.activeSessionId ||
-        token.activeSessionId !== userRecord.activeSessionId
+        token.activeSessionId !== userRecord.activeSessionId ||
+        !userRecord.activeSessionExpiresAt ||
+        userRecord.activeSessionExpiresAt <= now
       ) {
         return null;
+      }
+
+      if (
+        userRecord.activeSessionExpiresAt.getTime() <=
+        now.getTime() + AUTH_SESSION_MAX_AGE_SECONDS * 1000
+      ) {
+        const nextSessionExpiry = getAuthSessionExpiresAt(now);
+        const result = await prisma.user.updateMany({
+          where: {
+            id: token.sub,
+            activeSessionId: token.activeSessionId,
+            activeSessionExpiresAt: {
+              gt: now,
+              lte: nextSessionExpiry,
+            },
+          },
+          data: { activeSessionExpiresAt: nextSessionExpiry },
+        });
+        if (result.count !== 1) {
+          const currentUser = await prisma.user.findUnique({
+            where: { id: token.sub },
+            select: { activeSessionId: true, activeSessionExpiresAt: true },
+          });
+          if (
+            currentUser?.activeSessionId !== token.activeSessionId ||
+            !currentUser.activeSessionExpiresAt ||
+            currentUser.activeSessionExpiresAt <= now
+          ) {
+            return null;
+          }
+        }
       }
 
       return token;
@@ -200,7 +267,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   adapter: PrismaAdapter(prisma),
-  session: { strategy: "jwt", maxAge: SESSION_MAX_AGE_SECONDS },
+  session: { strategy: "jwt", maxAge: AUTH_SESSION_MAX_AGE_SECONDS },
   events: {
     async signOut(event) {
       if (!("token" in event) || !event.token) return;
@@ -211,7 +278,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           id: token.sub,
           activeSessionId: token.activeSessionId,
         },
-        data: { activeSessionId: null },
+        data: { activeSessionId: null, activeSessionExpiresAt: null },
       });
     },
     async createUser({ user }) {

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { unsubscribeFromMarketingEmails } from "@/app/email-actions";
 import { verifyEmailPreferenceToken } from "@/lib/email-preferences";
 import { prisma } from "@/lib/prisma";
-import BrandIcon from "../brand-icon";
+import BrandLogo from "../brand-logo";
 
 type EmailPreferencesPageProps = {
   searchParams: Promise<{
@@ -46,11 +46,8 @@ async function EmailPreferencesContent({
   return (
     <main className="account-page">
       <header className="account-header">
-        <Link href="/" className="brand-lockup" aria-label="CartonLab home">
-          <span className="brand-mark">
-            <BrandIcon className="brand-mark-image" />
-          </span>
-          <span>CartonLab Lightweight 2.0</span>
+        <Link href="/" className="brand-lockup" aria-label="Carton Lab home">
+          <BrandLogo className="brand-logo-image" />
         </Link>
       </header>
       <section className="account-content email-preferences-content">

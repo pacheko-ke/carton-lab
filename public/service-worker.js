@@ -1,6 +1,6 @@
 "use strict";
 
-const CACHE_NAME = "cartonlab-studio-v6";
+const CACHE_NAME = "cartonlab-studio-v7";
 const APP_ASSETS = [
   "/offline.html",
   "/cartonlab-icon.png",

@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
-import BrandIcon from "./brand-icon";
+import BrandLogo from "./brand-logo";
 
 export const metadata: Metadata = {
   title: "CartonLab | Carton Keyline & Box Dieline Generator",
@@ -110,9 +110,8 @@ export default function Home() {
   return (
     <main className="site-shell">
       <header className="site-header">
-        <Link href="/" className="brand-lockup" aria-label="CartonLab home">
-          <span className="brand-mark"><BrandIcon className="brand-mark-image" /></span>
-          <span>CartonLab Lightweight 2.0</span>
+        <Link href="/" className="brand-lockup" aria-label="Carton Lab home">
+          <BrandLogo className="brand-logo-image" />
         </Link>
         <nav className="header-desktop-nav" aria-label="Main navigation">
           <Link href="#pricing">Pricing</Link>
@@ -224,9 +223,8 @@ export default function Home() {
       </section>
 
       <footer className="site-footer">
-        <Link href="/" className="brand-lockup footer-brand">
-          <span className="brand-mark"><BrandIcon className="brand-mark-image" /></span>
-          <span>CartonLab Lightweight 2.0</span>
+        <Link href="/" className="brand-lockup footer-brand" aria-label="Carton Lab home">
+          <BrandLogo className="brand-logo-image" />
         </Link>
         <nav className="site-footer-meta" aria-label="Footer">
           <Link href="/terms">Terms of Use</Link>

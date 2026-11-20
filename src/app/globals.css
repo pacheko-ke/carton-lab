@@ -78,19 +78,10 @@ input {
   line-height: 1.1;
 }
 
-.brand-lockup > span:last-child {
-  white-space: nowrap;
-}
-
-.brand-mark {
-  display: inline-flex;
-  width: 38px;
-  height: 38px;
-}
-
-.brand-mark-image {
-  width: 100%;
-  height: 100%;
+.brand-logo-image {
+  display: block;
+  width: min(190px, 48vw);
+  height: auto;
 }
 
 .site-header {
@@ -2652,16 +2643,6 @@ input {
 
   .account-header-links .account-back-link {
     font-size: 10px;
-  }
-
-  .brand-lockup {
-    gap: 7px;
-    font-size: 12px;
-  }
-
-  .brand-mark {
-    width: 33px;
-    height: 33px;
   }
 
   .hero-actions {

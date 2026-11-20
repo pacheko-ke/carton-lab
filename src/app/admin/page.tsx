@@ -5,7 +5,7 @@ import { MPESA_PROVIDER_PLAN_ID } from "@/lib/billing";
 import { getEmailCampaignAudienceCounts } from "@/lib/email-campaigns";
 import { prisma } from "@/lib/prisma";
 import EmailCampaignComposer from "./email-campaign-composer";
-import BrandIcon from "../brand-icon";
+import BrandLogo from "../brand-logo";
 
 const dateFormatter = new Intl.DateTimeFormat("en-KE", {
   dateStyle: "medium",
@@ -216,11 +216,8 @@ async function AdminDashboard({ searchParams }: AdminPageProps) {
   return (
     <main className="account-page admin-page">
       <header className="account-header admin-header">
-        <Link href="/" className="brand-lockup" aria-label="CartonLab home">
-          <span className="brand-mark">
-            <BrandIcon className="brand-mark-image" />
-          </span>
-          <span>CartonLab Lightweight 2.0</span>
+        <Link href="/" className="brand-lockup" aria-label="Carton Lab home">
+          <BrandLogo className="brand-logo-image" />
         </Link>
         <nav className="account-header-links" aria-label="Admin navigation">
           <Link href="/account" className="account-back-link">

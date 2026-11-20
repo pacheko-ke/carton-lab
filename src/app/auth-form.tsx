@@ -9,6 +9,7 @@ import {
   isGoogleAuthConfigured,
 } from "@/auth-config";
 import BrandIcon from "./brand-icon";
+import BrandLogo from "./brand-logo";
 import {
   signInHereWithGoogle,
   signInWithGoogle,
@@ -38,14 +39,6 @@ export function AuthLoading() {
         </div>
       </section>
     </main>
-  );
-}
-
-function BrandMark() {
-  return (
-    <span className="brand-mark">
-      <BrandIcon className="brand-mark-image" />
-    </span>
   );
 }
 
@@ -120,9 +113,8 @@ export default async function AuthForm({
         <span className="auth-grid" />
       </div>
       <header className="auth-header">
-        <Link href="/" className="brand-lockup" aria-label="CartonLab home">
-          <BrandMark />
-          <span>CartonLab Lightweight 2.0</span>
+        <Link href="/" className="brand-lockup" aria-label="Carton Lab home">
+          <BrandLogo className="brand-logo-image" />
         </Link>
         <Link href="/" className="back-link">← Back to home</Link>
       </header>

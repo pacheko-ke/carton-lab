@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { requireVerifiedUser } from "@/lib/account";
 import { isAdminEmail } from "@/lib/admin";
-import BrandIcon from "../../brand-icon";
+import BrandLogo from "../../brand-logo";
 import { updateAccountProfile } from "../../auth-actions";
 
 type ProfilePageProps = {
@@ -37,11 +37,8 @@ async function ProfileContent({ searchParams }: ProfilePageProps) {
   return (
     <main className="account-page">
       <header className="account-header">
-        <Link href="/" className="brand-lockup" aria-label="CartonLab home">
-          <span className="brand-mark">
-            <BrandIcon className="brand-mark-image" />
-          </span>
-          <span>CartonLab Lightweight 2.0</span>
+        <Link href="/" className="brand-lockup" aria-label="Carton Lab home">
+          <BrandLogo className="brand-logo-image" />
         </Link>
         <nav className="account-header-links" aria-label="Profile navigation">
           {isAdminEmail(user.email) && (

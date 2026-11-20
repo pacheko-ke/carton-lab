@@ -1,15 +1,12 @@
 import Link from "next/link";
-import BrandIcon from "../brand-icon";
+import BrandLogo from "../brand-logo";
 
 export default function TermsPage() {
   return (
     <main className="legal-page">
       <header className="site-header">
-        <Link href="/" className="brand-lockup" aria-label="CartonLab home">
-          <span className="brand-mark">
-            <BrandIcon className="brand-mark-image" />
-          </span>
-          <span>CartonLab Lightweight 2.0</span>
+        <Link href="/" className="brand-lockup" aria-label="Carton Lab home">
+          <BrandLogo className="brand-logo-image" />
         </Link>
         <Link href="/" className="back-link">
           Home
@@ -165,11 +162,8 @@ export default function TermsPage() {
       </article>
 
       <footer className="site-footer">
-        <Link href="/" className="brand-lockup footer-brand">
-          <span className="brand-mark">
-            <BrandIcon className="brand-mark-image" />
-          </span>
-          <span>CartonLab Lightweight 2.0</span>
+        <Link href="/" className="brand-lockup footer-brand" aria-label="Carton Lab home">
+          <BrandLogo className="brand-logo-image" />
         </Link>
         <span>Terms of Use</span>
         <nav className="site-footer-meta" aria-label="Footer">
