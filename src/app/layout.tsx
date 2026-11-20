@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import InspectionGuard from "./inspection-guard";
 import "./globals.css";
 
@@ -17,6 +18,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="h-full">
         <InspectionGuard />
         {children}
+        <Analytics />
       </body>
     </html>
   );
