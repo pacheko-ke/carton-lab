@@ -27,6 +27,36 @@
     "hole1Y": "H + W / 4",
     "hole2Y": "H + 3*W / 4"
   },
+  "folding": {
+  "type": "slotted-box",
+
+  "wallWidths": [
+    "H + notch/2",
+    "L",
+    "H + notch/2",
+    "L"
+  ],
+
+  "wallHeight": "W",
+
+  "topFlapDepths": [
+    "1",
+    "H",
+    "1",
+    "H"
+  ],
+
+  "bottomFlapDepths": [
+    "1",
+    "H",
+    "1",
+    "H"
+  ],
+
+  "glueFlapWidth": "1",
+
+  "slotGap": "0"
+},
   "require": [
     {
       "expr": "notch < L",

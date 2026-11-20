@@ -10,6 +10,36 @@
     "boardLength": "455 + L + W",
     "boardWidth": "400 + H"
   },
+  "folding": {
+  "type": "hangingbasin",
+
+  "wallWidths": [
+    "H + notch/2",
+    "L",
+    "H + notch/2",
+    "L"
+  ],
+
+  "wallHeight": "W",
+
+  "topFlapDepths": [
+    "1",
+    "H",
+    "1",
+    "H"
+  ],
+
+  "bottomFlapDepths": [
+    "1",
+    "H",
+    "1",
+    "H"
+  ],
+
+  "glueFlapWidth": "1",
+
+  "slotGap": "0"
+},
   "map": {
     "x": [
       [0, "0"],

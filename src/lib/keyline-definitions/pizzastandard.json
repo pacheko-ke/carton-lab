@@ -62,6 +62,36 @@
     "fingerR": "11.5*pr",
     "fingerX": "xwall0 - 6.45"
   },
+  "folding": {
+  "type": "slotted-box",
+
+  "wallWidths": [
+    "H + notch/2",
+    "L",
+    "H + notch/2",
+    "L"
+  ],
+
+  "wallHeight": "W",
+
+  "topFlapDepths": [
+    "1",
+    "H",
+    "1",
+    "H"
+  ],
+
+  "bottomFlapDepths": [
+    "1",
+    "H",
+    "1",
+    "H"
+  ],
+
+  "glueFlapWidth": "1",
+
+  "slotGap": "0"
+},
   "require": [
     {
       "expr": "band < H",
