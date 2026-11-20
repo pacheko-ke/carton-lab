@@ -26,12 +26,13 @@
 
   <main class="px-3 py-5 md:px-6">
     <nav id="workspaceTabs" class="workspace-tabs" role="tablist" aria-label="Studio workspace">
-      <button id="designerTab" class="workspace-tab" type="button" role="tab" aria-selected="true" aria-controls="designerWorkspace" tabindex="0">Studio</button>
+      <button id="designerTab" class="workspace-tab" type="button" role="tab" aria-selected="true" aria-controls="studioSidebar" tabindex="0">Studio</button>
       <button id="bulkTab" class="workspace-tab" type="button" role="tab" aria-selected="false" aria-controls="bulkWorkspace" tabindex="-1" data-tour="bulk-workspace-tab">Bulk generate</button>
     </nav>
 
-    <div id="designerWorkspace" class="grid items-start gap-5 lg:grid-cols-[340px_minmax(0,1fr)]" role="tabpanel" aria-labelledby="designerTab">
+    <div id="workspaceLayout" class="grid items-start gap-5 lg:grid-cols-[340px_minmax(0,1fr)]">
       <aside class="flex flex-col gap-3">
+      <div id="studioSidebar" class="flex flex-col gap-3" role="tabpanel" aria-labelledby="designerTab">
 
       <details class="card" data-tour="box-type" open>
         <summary class="card-title"><span role="heading" aria-level="2">Box type</span></summary>
@@ -158,6 +159,59 @@
         <span class="inline-flex items-center gap-1.5"><span class="inline-block w-6 border-t-2 border-dashed border-red-600"></span>Crease</span>
       </p>
 
+      </div>
+
+      <section id="bulkWorkspace" class="batch-workspace" role="tabpanel" aria-labelledby="bulkTab" hidden>
+        <header class="batch-heading">
+          <p class="batch-eyebrow">BATCH WORKFLOW</p>
+          <h2>Generate keylines in bulk</h2>
+          <p>Upload a spreadsheet or text file and download production-ready PDFs for up to 500 boxes.</p>
+          <p class="batch-context-note">Uses the units and print settings currently selected in Studio.</p>
+        </header>
+
+        <p id="bulkPremiumNotice" hidden class="batch-premium-notice">
+          Bulk generation is included with Premium.
+          <button id="bulkPremiumUpgrade" type="button">View Premium</button>
+        </p>
+
+        <div id="bulkControls" class="batch-card">
+          <div class="batch-form-grid">
+            <label class="field">1. Choose a keyline
+              <select id="bulkKeyline" class="input" required>
+                <option value="">Choose a keyline</option>
+              </select>
+            </label>
+
+            <div class="batch-file-section">
+              <label class="field" for="bulkFile">2. Upload your data file</label>
+              <input id="bulkFile" type="file" accept=".xlsx,.csv,.txt" aria-describedby="bulkFileHelp" class="input" />
+              <p id="bulkFileHelp" class="batch-file-hint">Excel (.xlsx), CSV or TXT · Up to 500 rows</p>
+              <a id="bulkSample" href="/api/keylines/bulk-template?unit=mm" download class="batch-sample-link">Download sample Excel</a>
+              <details class="batch-file-details">
+                <summary>What should my file include?</summary>
+                <p>The first row needs L, W and H column headers. You can also add Job and keyline input ID columns (such as notch or strapDiameter). CSV and TXT files can be comma- or tab-delimited. Use the selected units; blank optional inputs use your saved settings or keyline defaults.</p>
+              </details>
+            </div>
+          </div>
+
+          <fieldset class="batch-output">
+            <legend>3. Choose your PDF format</legend>
+            <div class="batch-output-options">
+              <label class="batch-output-option">
+                <input type="radio" name="bulkOutput" value="combined" checked />
+                <span><strong>One combined PDF</strong><small>One page per box</small></span>
+              </label>
+              <label class="batch-output-option">
+                <input type="radio" name="bulkOutput" value="zip" />
+                <span><strong>Separate PDFs in a ZIP</strong><small>One file per box</small></span>
+              </label>
+            </div>
+          </fieldset>
+
+          <button id="bulkGenerate" type="button" class="btn btn-primary batch-generate-button">Generate PDFs</button>
+          <p id="bulkStatus" role="status" aria-live="polite" class="batch-status"></p>
+        </div>
+      </section>
       </aside>
 
       <section class="min-w-0 lg:sticky lg:top-4">
@@ -213,57 +267,6 @@
       </section>
     </div>
 
-    <section id="bulkWorkspace" class="batch-workspace" role="tabpanel" aria-labelledby="bulkTab" hidden>
-      <header class="batch-heading">
-        <p class="batch-eyebrow">BATCH WORKFLOW</p>
-        <h2>Generate keylines in bulk</h2>
-        <p>Upload a spreadsheet or text file and download production-ready PDFs for up to 500 boxes.</p>
-        <p class="batch-context-note">Uses the units and print settings currently selected in Studio.</p>
-      </header>
-
-      <p id="bulkPremiumNotice" hidden class="batch-premium-notice">
-        Bulk generation is included with Premium.
-        <button id="bulkPremiumUpgrade" type="button">View Premium</button>
-      </p>
-
-      <div id="bulkControls" class="batch-card">
-        <div class="batch-form-grid">
-          <label class="field">1. Choose a keyline
-            <select id="bulkKeyline" class="input" required>
-              <option value="">Choose a keyline</option>
-            </select>
-          </label>
-
-          <div class="batch-file-section">
-            <label class="field" for="bulkFile">2. Upload your data file</label>
-            <input id="bulkFile" type="file" accept=".xlsx,.csv,.txt" aria-describedby="bulkFileHelp" class="input" />
-            <p id="bulkFileHelp" class="batch-file-hint">Excel (.xlsx), CSV or TXT · Up to 500 rows</p>
-            <a id="bulkSample" href="/api/keylines/bulk-template?unit=mm" download class="batch-sample-link">Download sample Excel</a>
-            <details class="batch-file-details">
-              <summary>What should my file include?</summary>
-              <p>The first row needs L, W and H column headers. You can also add Job and keyline input ID columns (such as notch or strapDiameter). CSV and TXT files can be comma- or tab-delimited. Use the selected units; blank optional inputs use your saved settings or keyline defaults.</p>
-            </details>
-          </div>
-        </div>
-
-        <fieldset class="batch-output">
-          <legend>3. Choose your PDF format</legend>
-          <div class="batch-output-options">
-            <label class="batch-output-option">
-              <input type="radio" name="bulkOutput" value="combined" checked />
-              <span><strong>One combined PDF</strong><small>One page per box</small></span>
-            </label>
-            <label class="batch-output-option">
-              <input type="radio" name="bulkOutput" value="zip" />
-              <span><strong>Separate PDFs in a ZIP</strong><small>One file per box</small></span>
-            </label>
-          </div>
-        </fieldset>
-
-        <button id="bulkGenerate" type="button" class="btn btn-primary batch-generate-button">Generate PDFs</button>
-        <p id="bulkStatus" role="status" aria-live="polite" class="batch-status"></p>
-      </div>
-    </section>
   </main>
 
   <aside id="designerTour" class="designer-tour" role="region" aria-label="Studio quick tour" hidden>

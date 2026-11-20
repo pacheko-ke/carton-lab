@@ -16,6 +16,7 @@ import { isEmailOtpConfigured } from "@/auth-config";
 import authConfig from "@/auth.config";
 
 const SESSION_TAKEOVER_TTL_SECONDS = 300;
+const SESSION_MAX_AGE_SECONDS = 12 * 60 * 60;
 
 export function createSessionTakeoverToken(
   userId: string,
@@ -199,7 +200,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   adapter: PrismaAdapter(prisma),
-  session: { strategy: "jwt" },
+  session: { strategy: "jwt", maxAge: SESSION_MAX_AGE_SECONDS },
   events: {
     async signOut(event) {
       if (!("token" in event) || !event.token) return;

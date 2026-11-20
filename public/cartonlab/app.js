@@ -2134,7 +2134,7 @@ function selectWorkspaceTab(workspace, moveFocus = false) {
   bulkTab.setAttribute("aria-selected", String(!isDesigner));
   designerTab.tabIndex = isDesigner ? 0 : -1;
   bulkTab.tabIndex = isDesigner ? -1 : 0;
-  $("designerWorkspace").hidden = !isDesigner;
+  $("studioSidebar").hidden = !isDesigner;
   $("bulkWorkspace").hidden = isDesigner;
   if (moveFocus) (isDesigner ? designerTab : bulkTab).focus();
 }
@@ -2513,7 +2513,7 @@ async function init() {
   });
   await profileReady;
   void checkAccountSession();
-  window.setInterval(checkAccountSession, 10_000);
+  window.setInterval(checkAccountSession, 10 * 60 * 1000);
   window.addEventListener("online", checkAccountSession);
   window.addEventListener("focus", checkAccountSession);
   updateOfflineStatus(navigator.onLine ? "" : "Offline · changes are saved on this device.");

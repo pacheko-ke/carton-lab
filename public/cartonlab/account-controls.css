@@ -521,7 +521,7 @@ body .text-red-700 {
   color: #fca5a5;
 }
 
-body #designerWorkspace[hidden],
+body #studioSidebar[hidden],
 body #bulkWorkspace[hidden],
 body #bulkControls[hidden],
 body #bulkPremiumNotice[hidden] {
@@ -578,10 +578,29 @@ body .batch-workspace {
   padding: clamp(0.5rem, 3vw, 2rem) 0;
 }
 
+body aside > .batch-workspace {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
 body .batch-heading {
   max-width: 650px;
   margin: 0 auto 1.5rem;
   text-align: center;
+}
+
+body aside .batch-heading {
+  margin: 0 0 1rem;
+  text-align: left;
+}
+
+body aside .batch-heading h2 {
+  font-size: 1.3rem;
+}
+
+body aside .batch-heading > p:last-child {
+  font-size: 0.76rem;
 }
 
 body .batch-eyebrow {
@@ -632,6 +651,11 @@ body .batch-form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1.5rem;
+}
+
+body aside .batch-form-grid,
+body aside .batch-output-options {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 body .batch-file-section {
@@ -750,6 +774,10 @@ body .batch-generate-button {
   font-weight: 700;
 }
 
+body aside .batch-generate-button {
+  width: 100%;
+}
+
 body .batch-generate-button:disabled {
   cursor: wait;
   opacity: 0.65;
@@ -773,6 +801,12 @@ body .batch-premium-notice {
   color: #c4d2df;
   line-height: 1.5;
   text-align: center;
+}
+
+body aside .batch-premium-notice {
+  max-width: none;
+  margin: 0;
+  text-align: left;
 }
 
 body .batch-premium-notice button {
