@@ -28,7 +28,7 @@
     <nav id="workspaceTabs" class="workspace-tabs" role="tablist" aria-label="Studio workspace">
       <button id="designerTab" class="workspace-tab" type="button" role="tab" aria-selected="true" aria-controls="studioSidebar" tabindex="0">Studio</button>
       <button id="bulkTab" class="workspace-tab" type="button" role="tab" aria-selected="false" aria-controls="bulkWorkspace" tabindex="-1" data-tour="bulk-workspace-tab">Bulk generate</button>
-      <button id="jobSheetTab" class="workspace-tab" type="button" role="tab" aria-selected="false" aria-controls="jobSheetWorkspace" tabindex="-1" data-tour="job-sheet-tab">Job sheet</button>
+      <button id="jobSheetTab" class="workspace-tab" type="button" role="tab" aria-selected="false" aria-controls="jobSheetWorkspace" tabindex="-1" data-tour="job-sheet-tab">Production</button>
     </nav>
 
     <div id="workspaceLayout" class="grid items-start gap-5 lg:grid-cols-[340px_minmax(0,1fr)]">
@@ -285,7 +285,13 @@
     </header>
     <p id="jobSheetStatus" class="job-sheet-status" role="status" aria-live="polite"></p>
 
-    <div class="job-sheet-form-grid">
+    <div class="job-sheet-stages">
+      <section class="job-sheet-stage" aria-labelledby="jobSheetOriginationTitle">
+        <header class="job-sheet-stage-heading">
+          <span class="job-sheet-stage-number" aria-hidden="true">01</span>
+          <div><h3 id="jobSheetOriginationTitle">Origination</h3><p>Customer, job details and carton specification</p></div>
+        </header>
+        <div class="job-sheet-stage-content">
       <section class="card job-sheet-card">
         <h3 class="card-title">Job and customer</h3>
         <div class="job-sheet-fields">
@@ -316,6 +322,21 @@
           <label class="field">Artwork<input class="input" data-job-field="artwork" maxlength="80" /></label>
           <label class="field">Creasing allowance<input class="input" data-job-field="crease" type="number" step="any" /></label>
           <label class="field">Board width allowance<input class="input" data-job-field="bwadd" type="number" step="any" /></label>
+        </div>
+      </section>
+
+        </div>
+      </section>
+
+      <section class="job-sheet-stage" aria-labelledby="jobSheetPaperBookingTitle">
+        <header class="job-sheet-stage-heading">
+          <span class="job-sheet-stage-number" aria-hidden="true">02</span>
+          <div><h3 id="jobSheetPaperBookingTitle">Paper Booking</h3><p>Board specification, material requirements and reel quantities</p></div>
+        </header>
+        <div class="job-sheet-stage-content">
+      <section class="card job-sheet-card">
+        <h3 class="card-title">Paper and board specification</h3>
+        <div class="job-sheet-fields">
           <label class="field">Top liner<input class="input" data-job-field="topLiner" maxlength="60" /></label>
           <label class="field">Medium (fluting)<input class="input" data-job-field="medium" maxlength="60" /></label>
           <label class="field">Bottom liner<input class="input" data-job-field="bottomLiner" maxlength="60" /></label>
@@ -346,22 +367,15 @@
         <p class="job-sheet-help">Reel run uses board length × cuts to run. Board area uses reel width × reel run, including trim.</p>
       </section>
 
-      <section class="card job-sheet-card">
-        <h3 class="card-title">Printing</h3>
-        <div class="job-sheet-fields">
-          <label class="field">Printing<select class="input" data-job-field="printing"><option>Yes</option><option>No</option></select></label>
-          <label class="field">Method<input class="input" data-job-field="printMethod" maxlength="80" /></label>
-          <label class="field">Colour 1<input class="input" data-job-field="printColor" maxlength="80" /></label>
-          <label class="field">Ink type<input class="input" data-job-field="inkType" maxlength="60" /></label>
-          <label class="field">Artwork ref / revision<input class="input" data-job-field="artworkRef" maxlength="80" /></label>
-          <label class="field">Plate / cylinder ref<input class="input" data-job-field="plateRef" maxlength="80" /></label>
-          <label class="field">Print area<input class="input" data-job-field="printArea" maxlength="60" /></label>
-          <label class="field">Registration tolerance<input class="input" data-job-field="registration" maxlength="30" /></label>
-          <label class="field">Print position<input class="input" data-job-field="printPosition" maxlength="80" /></label>
         </div>
-        <label class="field job-sheet-wide-field">Print instructions<textarea class="input job-sheet-textarea" data-job-field="printInstructions" rows="2" maxlength="300"></textarea></label>
       </section>
 
+      <section class="job-sheet-stage" aria-labelledby="jobSheetBoardProductionTitle">
+        <header class="job-sheet-stage-heading">
+          <span class="job-sheet-stage-number" aria-hidden="true">03</span>
+          <div><h3 id="jobSheetBoardProductionTitle">Board Production</h3><p>Converting, quality checks and production tracking</p></div>
+        </header>
+        <div class="job-sheet-stage-content">
       <section class="card job-sheet-card">
         <h3 class="card-title">Converting and quality control</h3>
         <div class="job-sheet-fields">
@@ -378,24 +392,6 @@
           <label class="field">Joint check<input class="input" data-job-field="jointCheck" maxlength="80" /></label>
           <label class="field">Minimum compression (BCT)<input class="input" data-job-field="bct" maxlength="40" /></label>
         </div>
-      </section>
-
-      <section class="card job-sheet-card">
-        <h3 class="card-title">Packing and dispatch</h3>
-        <div class="job-sheet-fields">
-          <label class="field">Pack as<input class="input" data-job-field="packAs" maxlength="60" /></label>
-          <label class="field">Pieces per bundle<input class="input" data-job-field="pcsPerBundle" type="number" min="1" step="1" /></label>
-          <label class="field">Strapping<input class="input" data-job-field="strapping" maxlength="60" /></label>
-          <label class="field">Pallet size<input class="input" data-job-field="palletSize" maxlength="60" /></label>
-          <label class="field">Pieces per pallet<input class="input" data-job-field="pcsPerPallet" type="number" min="1" step="1" /></label>
-          <label class="field">Deliver to<input class="input" data-job-field="deliverTo" maxlength="120" /></label>
-          <label class="field">Delivery address<input class="input" data-job-field="deliveryAddress" maxlength="160" /></label>
-          <label class="field">Contact / phone<input class="input" data-job-field="deliveryContact" maxlength="100" /></label>
-          <label class="field">Delivery window<input class="input" data-job-field="deliveryWindow" maxlength="80" /></label>
-          <label class="field">Vehicle / driver<input class="input" data-job-field="vehicleDriver" maxlength="80" /></label>
-          <label class="field">Delivery note no.<input class="input" data-job-field="deliveryNote" maxlength="60" /></label>
-        </div>
-        <label class="field job-sheet-wide-field">Packing / dispatch instructions<textarea class="input job-sheet-textarea" data-job-field="dispatchInstructions" rows="2" maxlength="400"></textarea></label>
       </section>
 
       <section class="card job-sheet-card job-sheet-tracking-card">
@@ -417,6 +413,58 @@
         </div>
       </section>
 
+        </div>
+      </section>
+
+      <section class="job-sheet-stage" aria-labelledby="jobSheetPrintingTitle">
+        <header class="job-sheet-stage-heading">
+          <span class="job-sheet-stage-number" aria-hidden="true">04</span>
+          <div><h3 id="jobSheetPrintingTitle">Printing</h3><p>Print setup, artwork references and print instructions</p></div>
+        </header>
+        <div class="job-sheet-stage-content">
+      <section class="card job-sheet-card">
+        <h3 class="card-title">Printing</h3>
+        <div class="job-sheet-fields">
+          <label class="field">Printing<select class="input" data-job-field="printing"><option>Yes</option><option>No</option></select></label>
+          <label class="field">Method<input class="input" data-job-field="printMethod" maxlength="80" /></label>
+          <label class="field">Colour 1<input class="input" data-job-field="printColor" maxlength="80" /></label>
+          <label class="field">Ink type<input class="input" data-job-field="inkType" maxlength="60" /></label>
+          <label class="field">Artwork ref / revision<input class="input" data-job-field="artworkRef" maxlength="80" /></label>
+          <label class="field">Plate / cylinder ref<input class="input" data-job-field="plateRef" maxlength="80" /></label>
+          <label class="field">Print area<input class="input" data-job-field="printArea" maxlength="60" /></label>
+          <label class="field">Registration tolerance<input class="input" data-job-field="registration" maxlength="30" /></label>
+          <label class="field">Print position<input class="input" data-job-field="printPosition" maxlength="80" /></label>
+        </div>
+        <label class="field job-sheet-wide-field">Print instructions<textarea class="input job-sheet-textarea" data-job-field="printInstructions" rows="2" maxlength="300"></textarea></label>
+      </section>
+
+        </div>
+      </section>
+
+      <section class="job-sheet-stage" aria-labelledby="jobSheetDispatchTitle">
+        <header class="job-sheet-stage-heading">
+          <span class="job-sheet-stage-number" aria-hidden="true">05</span>
+          <div><h3 id="jobSheetDispatchTitle">Dispatch</h3><p>Packing, delivery details and final approvals</p></div>
+        </header>
+        <div class="job-sheet-stage-content">
+      <section class="card job-sheet-card">
+        <h3 class="card-title">Packing and dispatch</h3>
+        <div class="job-sheet-fields">
+          <label class="field">Pack as<input class="input" data-job-field="packAs" maxlength="60" /></label>
+          <label class="field">Pieces per bundle<input class="input" data-job-field="pcsPerBundle" type="number" min="1" step="1" /></label>
+          <label class="field">Strapping<input class="input" data-job-field="strapping" maxlength="60" /></label>
+          <label class="field">Pallet size<input class="input" data-job-field="palletSize" maxlength="60" /></label>
+          <label class="field">Pieces per pallet<input class="input" data-job-field="pcsPerPallet" type="number" min="1" step="1" /></label>
+          <label class="field">Deliver to<input class="input" data-job-field="deliverTo" maxlength="120" /></label>
+          <label class="field">Delivery address<input class="input" data-job-field="deliveryAddress" maxlength="160" /></label>
+          <label class="field">Contact / phone<input class="input" data-job-field="deliveryContact" maxlength="100" /></label>
+          <label class="field">Delivery window<input class="input" data-job-field="deliveryWindow" maxlength="80" /></label>
+          <label class="field">Vehicle / driver<input class="input" data-job-field="vehicleDriver" maxlength="80" /></label>
+          <label class="field">Delivery note no.<input class="input" data-job-field="deliveryNote" maxlength="60" /></label>
+        </div>
+        <label class="field job-sheet-wide-field">Packing / dispatch instructions<textarea class="input job-sheet-textarea" data-job-field="dispatchInstructions" rows="2" maxlength="400"></textarea></label>
+      </section>
+
       <section class="card job-sheet-card">
         <h3 class="card-title">Special instructions and approvals</h3>
         <label class="field">Special instructions<textarea class="input job-sheet-textarea" data-job-field="specialInstructions" rows="3" maxlength="500" placeholder="Check the first-off against this sheet before running the full job."></textarea></label>
@@ -427,6 +475,8 @@
           <label class="field">Production supervisor<input class="input" data-job-field="supervisor" maxlength="80" /></label>
           <label class="field">QC approved<input class="input" data-job-field="qcApproved" maxlength="80" /></label>
           <label class="field">Dispatch / driver<input class="input" data-job-field="dispatchBy" maxlength="80" /></label>
+        </div>
+      </section>
         </div>
       </section>
     </div>
