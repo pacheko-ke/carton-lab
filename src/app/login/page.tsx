@@ -9,7 +9,6 @@ export const metadata: Metadata = {
 type LoginPageProps = {
   searchParams: Promise<{
     error?: string | string[];
-    takeover?: string | string[];
   }>;
 };
 
@@ -22,6 +21,6 @@ export default function LoginPage({ searchParams }: LoginPageProps) {
 }
 
 async function LoginPageContent({ searchParams }: LoginPageProps) {
-  const { error, takeover } = await searchParams;
-  return <AuthForm mode="login" error={error} takeoverToken={takeover} />;
+  const { error } = await searchParams;
+  return <AuthForm mode="login" error={error} />;
 }

@@ -1,16 +1,10 @@
 "use server";
 
-import {
-  auth,
-  signIn,
-  signOut,
-  verifySessionTakeoverToken,
-} from "@/auth";
+import { auth, signIn, signOut } from "@/auth";
 import {
   isEmailOtpConfigured,
   isGoogleAuthConfigured,
 } from "@/auth-config";
-import { clearExpiredAuthSession } from "@/lib/auth-session";
 import { AuthError } from "next-auth";
 import { headers } from "next/headers";
 import {
@@ -27,7 +21,6 @@ export type EmailOtpActionState = {
   status: "idle" | "sent" | "error";
   email?: string;
   message?: string;
-  canTakeOver?: boolean;
 };
 
 export async function signInWithGoogle() {
@@ -35,70 +28,6 @@ export async function signInWithGoogle() {
     throw new Error("Google authentication has not been configured.");
   }
   await signIn("google", { redirectTo: "/app" });
-}
-
-export async function signInHereWithGoogle(formData: FormData) {
-  if (!isGoogleAuthConfigured()) {
-    throw new Error("Google authentication has not been configured.");
-  }
-  const rawToken = formData.get("takeoverToken");
-  const takeover = typeof rawToken === "string"
-    ? verifySessionTakeoverToken(rawToken)
-    : null;
-  if (!takeover) {
-    redirect("/login?error=TakeoverExpired");
-  }
-
-  const result = await prisma.user.updateMany({
-    where: {
-      id: takeover.userId,
-      activeSessionId: takeover.activeSessionId,
-    },
-    data: { activeSessionId: null, activeSessionExpiresAt: null },
-  });
-  if (result.count !== 1) {
-    redirect("/login?error=TakeoverExpired");
-  }
-
-  await signIn("google", { redirectTo: "/app" });
-}
-
-async function hasActiveSession(email: string) {
-  const user = await prisma.user.findUnique({
-    where: { email: normalizeEmail(email) },
-    select: {
-      id: true,
-      activeSessionId: true,
-      activeSessionExpiresAt: true,
-    },
-  });
-  if (!user?.activeSessionId) return false;
-  const now = new Date();
-  if (user.activeSessionExpiresAt && user.activeSessionExpiresAt > now) {
-    return true;
-  }
-  if (
-    await clearExpiredAuthSession(
-      user.id,
-      user.activeSessionId,
-      user.activeSessionExpiresAt,
-      now,
-    )
-  ) {
-    return false;
-  }
-  const currentUser = await prisma.user.findUnique({
-    where: { id: user.id },
-    select: {
-      activeSessionId: true,
-      activeSessionExpiresAt: true,
-    },
-  });
-  return Boolean(
-    currentUser?.activeSessionId &&
-      currentUser.activeSessionExpiresAt &&
-      currentUser.activeSessionExpiresAt > now,
-  );
 }
 
 export async function requestEmailOtp(
@@ -189,8 +118,6 @@ export async function verifyEmailOtp(
 
   const email = normalizeEmail(rawEmail);
   const code = rawCode.trim();
-  const takeOverExistingSession =
-    formData.get("takeOverExistingSession") === "true";
   if (!isValidEmail(email) || !/^\d{6}$/.test(code)) {
     return {
       status: "error",
@@ -203,22 +130,10 @@ export async function verifyEmailOtp(
       message: "Too many failed sign-in attempts. Please try again after one hour.",
     };
   }
-  if (
-    !takeOverExistingSession &&
-    (await hasActiveSession(email))
-  ) {
-    return {
-      status: "error",
-      canTakeOver: true,
-      message: "This account is signed in on another device.",
-    };
-  }
-
   try {
     await signIn("email-otp", {
       email,
       code,
-      takeOverExistingSession: takeOverExistingSession ? "true" : "false",
       redirectTo: "/app",
     });
   } catch (error) {
@@ -237,7 +152,7 @@ export async function verifyEmailOtp(
     if (error instanceof AuthError && error.type === "AccessDenied") {
       return {
         status: "error",
-        message: "This account's session changed during sign-in. Please try again.",
+        message: "This account could not sign in. Please try again.",
       };
     }
     throw error;

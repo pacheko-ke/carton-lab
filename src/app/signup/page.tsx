@@ -9,7 +9,6 @@ export const metadata: Metadata = {
 type SignupPageProps = {
   searchParams: Promise<{
     error?: string | string[];
-    takeover?: string | string[];
   }>;
 };
 
@@ -22,6 +21,6 @@ export default function SignupPage({ searchParams }: SignupPageProps) {
 }
 
 async function SignupPageContent({ searchParams }: SignupPageProps) {
-  const { error, takeover } = await searchParams;
-  return <AuthForm mode="signup" error={error} takeoverToken={takeover} />;
+  const { error } = await searchParams;
+  return <AuthForm mode="signup" error={error} />;
 }

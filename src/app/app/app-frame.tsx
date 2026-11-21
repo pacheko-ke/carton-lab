@@ -31,15 +31,15 @@ export default function AppFrame({ accountId, profile, profileQrCode }: AppFrame
         !("type" in event.data) ||
         (event.data.type !== "packstudio:sign-out" &&
           event.data.type !== "packstudio:upgrade" &&
-          event.data.type !== "packstudio:session-replaced")
+          event.data.type !== "packstudio:auth-required")
       ) {
         return;
       }
 
       if (event.data.type === "packstudio:sign-out") {
         signOutFormRef.current?.requestSubmit();
-      } else if (event.data.type === "packstudio:session-replaced") {
-        window.location.replace("/login?error=SessionReplaced");
+      } else if (event.data.type === "packstudio:auth-required") {
+        window.location.replace("/login");
       } else if (event.data.type === "packstudio:upgrade") {
         router.push("/account");
       }

@@ -28,6 +28,7 @@
     <nav id="workspaceTabs" class="workspace-tabs" role="tablist" aria-label="Studio workspace">
       <button id="designerTab" class="workspace-tab" type="button" role="tab" aria-selected="true" aria-controls="studioSidebar" tabindex="0">Studio</button>
       <button id="bulkTab" class="workspace-tab" type="button" role="tab" aria-selected="false" aria-controls="bulkWorkspace" tabindex="-1" data-tour="bulk-workspace-tab">Bulk generate</button>
+      <button id="jobSheetTab" class="workspace-tab" type="button" role="tab" aria-selected="false" aria-controls="jobSheetWorkspace" tabindex="-1" data-tour="job-sheet-tab">Job sheet</button>
     </nav>
 
     <div id="workspaceLayout" class="grid items-start gap-5 lg:grid-cols-[340px_minmax(0,1fr)]">
@@ -269,6 +270,168 @@
 
   </main>
 
+  <section id="jobSheetWorkspace" class="job-sheet-workspace" role="tabpanel" aria-labelledby="jobSheetTab" hidden>
+    <header class="job-sheet-heading">
+      <div>
+        <p class="batch-eyebrow">PRODUCTION WORKFLOW</p>
+        <h2>Production job sheet</h2>
+        <p>Prepare a complete, print-ready production copy from the current keyline and job details.</p>
+      </div>
+      <div class="job-sheet-actions">
+        <button id="jobSheetNew" type="button" class="btn btn-secondary">New sheet</button>
+        <button id="jobSheetPrint" type="button" class="btn btn-secondary">Print</button>
+        <button id="jobSheetDownload" type="button" class="btn btn-primary">Download PDF</button>
+      </div>
+    </header>
+    <p id="jobSheetStatus" class="job-sheet-status" role="status" aria-live="polite"></p>
+
+    <div class="job-sheet-form-grid">
+      <section class="card job-sheet-card">
+        <h3 class="card-title">Job and customer</h3>
+        <div class="job-sheet-fields">
+          <label class="field">Job number<input class="input" data-job-field="jobNo" maxlength="40" /></label>
+          <label class="field">Issue date<input class="input" data-job-field="issueDate" type="date" /></label>
+          <label class="field">Document type<select class="input" data-job-field="documentType"><option>JOB</option><option>SAMPLE</option></select></label>
+          <label class="field">Priority<select class="input" data-job-field="priority"><option>Normal</option><option>Urgent</option><option>Critical</option></select></label>
+          <label class="field">Customer<input class="input" data-job-field="customer" maxlength="120" /></label>
+          <label class="field">Job name<input class="input" data-job-field="jobName" maxlength="100" /></label>
+          <label class="field">Customer PO no.<input class="input" data-job-field="customerPO" maxlength="60" /></label>
+          <label class="field">Order date<input class="input" data-job-field="orderDate" type="date" /></label>
+          <label class="field">Delivery date<input class="input" data-job-field="deliveryDate" type="date" /></label>
+        </div>
+      </section>
+
+      <section class="card job-sheet-card">
+        <div class="job-sheet-card-heading">
+          <h3 class="card-title">Box and board specification</h3>
+          <button id="jobSheetUseStudio" type="button" class="job-sheet-text-button">Use current Studio values</button>
+        </div>
+        <div class="job-sheet-fields">
+          <label class="field">Box type<input class="input" data-job-field="boxType" maxlength="80" /></label>
+          <label class="field">Dimensions (L × W × H)<span class="job-sheet-inline-fields"><input class="input" aria-label="Length" data-job-field="length" type="number" min="0" step="any" /><input class="input" aria-label="Width" data-job-field="width" type="number" min="0" step="any" /><input class="input" aria-label="Height" data-job-field="height" type="number" min="0" step="any" /></span></label>
+          <label class="field">Units<select class="input" data-job-field="unit"><option value="mm">mm</option><option value="in">inches</option></select></label>
+          <label class="field">Plies / flute<span class="job-sheet-inline-fields"><select class="input" data-job-field="plies"><option>3 ply</option><option>5 ply</option></select><input class="input" data-job-field="flute" maxlength="30" aria-label="Flute" placeholder="B flute" /></span></label>
+          <label class="field">Glue flap / slot width<span class="job-sheet-inline-fields"><input class="input" aria-label="Glue flap" data-job-field="glue" type="number" min="0" step="any" /><input class="input" aria-label="Slot width" data-job-field="slot" type="number" min="0" step="any" /></span></label>
+          <label class="field">Joint<input class="input" data-job-field="joint" maxlength="60" /></label>
+          <label class="field">Artwork<input class="input" data-job-field="artwork" maxlength="80" /></label>
+          <label class="field">Creasing allowance<input class="input" data-job-field="crease" type="number" step="any" /></label>
+          <label class="field">Board width allowance<input class="input" data-job-field="bwadd" type="number" step="any" /></label>
+          <label class="field">Top liner<input class="input" data-job-field="topLiner" maxlength="60" /></label>
+          <label class="field">Medium (fluting)<input class="input" data-job-field="medium" maxlength="60" /></label>
+          <label class="field">Bottom liner<input class="input" data-job-field="bottomLiner" maxlength="60" /></label>
+          <label class="field">Nominal board weight<input class="input" data-job-field="boardWeight" maxlength="40" /></label>
+          <label class="field">Moisture content<input class="input" data-job-field="moisture" maxlength="40" /></label>
+          <label class="field">Board supplier / batch<input class="input" data-job-field="boardSupplier" maxlength="100" /></label>
+        </div>
+      </section>
+
+      <section class="card job-sheet-card">
+        <h3 class="card-title">Board, cutting and quantity requirements</h3>
+        <div class="job-sheet-fields">
+          <label class="field">Board length (cut-off)<input class="input" data-job-field="boardLength" type="number" min="0" step="any" /></label>
+          <label class="field">Board width<input class="input" data-job-field="boardWidth" type="number" min="0" step="any" /></label>
+          <label class="field">Creasing dimension<input class="input" data-job-field="creasing" maxlength="100" /></label>
+          <label class="field">Reel width<input class="input" data-job-field="reelWidth" type="number" min="0" step="any" /></label>
+          <label class="field">Ups across<input class="input" data-job-field="ups" type="number" min="1" step="1" /></label>
+          <label class="field">Grain / flute direction<input class="input" data-job-field="grain" maxlength="80" /></label>
+          <label class="field">Order quantity<input class="input" data-job-field="orderQty" type="number" min="0" step="1" /></label>
+          <label class="field">Production quantity<input class="input" data-job-field="productionQty" type="number" min="0" step="1" placeholder="Calculated from spoilage" /></label>
+          <label class="field">Spoilage allowance (%)<input class="input" data-job-field="spoilage" type="number" min="0" step="any" /></label>
+          <label class="field">Trim<input class="input" data-job-output="trim" readonly /></label>
+          <label class="field">Cuts to run<input class="input" data-job-output="cuts" readonly /></label>
+          <label class="field">Reel run length (approx.)<input class="input" data-job-output="reelRun" readonly /></label>
+          <label class="field">Board area (approx.)<input class="input" data-job-output="boardArea" readonly /></label>
+          <label class="field">Pallets (order quantity)<input class="input" data-job-output="pallets" readonly /></label>
+        </div>
+        <p class="job-sheet-help">Reel run uses board length × cuts to run. Board area uses reel width × reel run, including trim.</p>
+      </section>
+
+      <section class="card job-sheet-card">
+        <h3 class="card-title">Printing</h3>
+        <div class="job-sheet-fields">
+          <label class="field">Printing<select class="input" data-job-field="printing"><option>Yes</option><option>No</option></select></label>
+          <label class="field">Method<input class="input" data-job-field="printMethod" maxlength="80" /></label>
+          <label class="field">Colour 1<input class="input" data-job-field="printColor" maxlength="80" /></label>
+          <label class="field">Ink type<input class="input" data-job-field="inkType" maxlength="60" /></label>
+          <label class="field">Artwork ref / revision<input class="input" data-job-field="artworkRef" maxlength="80" /></label>
+          <label class="field">Plate / cylinder ref<input class="input" data-job-field="plateRef" maxlength="80" /></label>
+          <label class="field">Print area<input class="input" data-job-field="printArea" maxlength="60" /></label>
+          <label class="field">Registration tolerance<input class="input" data-job-field="registration" maxlength="30" /></label>
+          <label class="field">Print position<input class="input" data-job-field="printPosition" maxlength="80" /></label>
+        </div>
+        <label class="field job-sheet-wide-field">Print instructions<textarea class="input job-sheet-textarea" data-job-field="printInstructions" rows="2" maxlength="300"></textarea></label>
+      </section>
+
+      <section class="card job-sheet-card">
+        <h3 class="card-title">Converting and quality control</h3>
+        <div class="job-sheet-fields">
+          <label class="field">Slotting / scoring<input class="input" data-job-field="slotting" maxlength="80" /></label>
+          <label class="field">Slot width<input class="input" data-job-field="slotWidth" type="number" min="0" step="any" /></label>
+          <label class="field">Joint type<input class="input" data-job-field="jointType" maxlength="80" /></label>
+          <label class="field">Stitches<input class="input" data-job-field="stitches" maxlength="40" /></label>
+          <label class="field">Stitch position<input class="input" data-job-field="stitchPosition" maxlength="60" /></label>
+          <label class="field">Box squareness<input class="input" data-job-field="squareness" maxlength="50" /></label>
+          <label class="field">Size tolerance (L, W, H)<input class="input" data-job-field="sizeTolerance" maxlength="40" /></label>
+          <label class="field">Crease check<input class="input" data-job-field="creaseCheck" maxlength="80" /></label>
+          <label class="field">Sampling<input class="input" data-job-field="sampling" maxlength="60" /></label>
+          <label class="field">Print check<input class="input" data-job-field="printCheck" maxlength="80" /></label>
+          <label class="field">Joint check<input class="input" data-job-field="jointCheck" maxlength="80" /></label>
+          <label class="field">Minimum compression (BCT)<input class="input" data-job-field="bct" maxlength="40" /></label>
+        </div>
+      </section>
+
+      <section class="card job-sheet-card">
+        <h3 class="card-title">Packing and dispatch</h3>
+        <div class="job-sheet-fields">
+          <label class="field">Pack as<input class="input" data-job-field="packAs" maxlength="60" /></label>
+          <label class="field">Pieces per bundle<input class="input" data-job-field="pcsPerBundle" type="number" min="1" step="1" /></label>
+          <label class="field">Strapping<input class="input" data-job-field="strapping" maxlength="60" /></label>
+          <label class="field">Pallet size<input class="input" data-job-field="palletSize" maxlength="60" /></label>
+          <label class="field">Pieces per pallet<input class="input" data-job-field="pcsPerPallet" type="number" min="1" step="1" /></label>
+          <label class="field">Deliver to<input class="input" data-job-field="deliverTo" maxlength="120" /></label>
+          <label class="field">Delivery address<input class="input" data-job-field="deliveryAddress" maxlength="160" /></label>
+          <label class="field">Contact / phone<input class="input" data-job-field="deliveryContact" maxlength="100" /></label>
+          <label class="field">Delivery window<input class="input" data-job-field="deliveryWindow" maxlength="80" /></label>
+          <label class="field">Vehicle / driver<input class="input" data-job-field="vehicleDriver" maxlength="80" /></label>
+          <label class="field">Delivery note no.<input class="input" data-job-field="deliveryNote" maxlength="60" /></label>
+        </div>
+        <label class="field job-sheet-wide-field">Packing / dispatch instructions<textarea class="input job-sheet-textarea" data-job-field="dispatchInstructions" rows="2" maxlength="400"></textarea></label>
+      </section>
+
+      <section class="card job-sheet-card job-sheet-tracking-card">
+        <h3 class="card-title">Production tracking</h3>
+        <div class="job-sheet-table-wrap">
+          <table class="job-sheet-tracking">
+            <thead><tr><th>Stage</th><th>Date</th><th>Operator</th><th>Qty in</th><th>Qty out</th><th>Rejects</th><th>Sign</th></tr></thead>
+            <tbody>
+              <tr data-stage="Board issued"><th>Board issued</th><td><input data-track-field="date" aria-label="Board issued date" type="date" /></td><td><input data-track-field="operator" aria-label="Board issued operator" /></td><td><input data-track-field="qtyIn" aria-label="Board issued quantity in" type="number" min="0" /></td><td><input data-track-field="qtyOut" aria-label="Board issued quantity out" type="number" min="0" /></td><td><input data-track-field="rejects" aria-label="Board issued rejects" type="number" min="0" /></td><td><input data-track-field="sign" aria-label="Board issued sign" /></td></tr>
+              <tr data-stage="Cut & creased"><th>Cut & creased</th><td><input data-track-field="date" aria-label="Cut and creased date" type="date" /></td><td><input data-track-field="operator" aria-label="Cut and creased operator" /></td><td><input data-track-field="qtyIn" aria-label="Cut and creased quantity in" type="number" min="0" /></td><td><input data-track-field="qtyOut" aria-label="Cut and creased quantity out" type="number" min="0" /></td><td><input data-track-field="rejects" aria-label="Cut and creased rejects" type="number" min="0" /></td><td><input data-track-field="sign" aria-label="Cut and creased sign" /></td></tr>
+              <tr data-stage="Printing"><th>Printing</th><td><input data-track-field="date" aria-label="Printing date" type="date" /></td><td><input data-track-field="operator" aria-label="Printing operator" /></td><td><input data-track-field="qtyIn" aria-label="Printing quantity in" type="number" min="0" /></td><td><input data-track-field="qtyOut" aria-label="Printing quantity out" type="number" min="0" /></td><td><input data-track-field="rejects" aria-label="Printing rejects" type="number" min="0" /></td><td><input data-track-field="sign" aria-label="Printing sign" /></td></tr>
+              <tr data-stage="Slotting"><th>Slotting</th><td><input data-track-field="date" aria-label="Slotting date" type="date" /></td><td><input data-track-field="operator" aria-label="Slotting operator" /></td><td><input data-track-field="qtyIn" aria-label="Slotting quantity in" type="number" min="0" /></td><td><input data-track-field="qtyOut" aria-label="Slotting quantity out" type="number" min="0" /></td><td><input data-track-field="rejects" aria-label="Slotting rejects" type="number" min="0" /></td><td><input data-track-field="sign" aria-label="Slotting sign" /></td></tr>
+              <tr data-stage="Joint (stitch)"><th>Joint (stitch)</th><td><input data-track-field="date" aria-label="Joint date" type="date" /></td><td><input data-track-field="operator" aria-label="Joint operator" /></td><td><input data-track-field="qtyIn" aria-label="Joint quantity in" type="number" min="0" /></td><td><input data-track-field="qtyOut" aria-label="Joint quantity out" type="number" min="0" /></td><td><input data-track-field="rejects" aria-label="Joint rejects" type="number" min="0" /></td><td><input data-track-field="sign" aria-label="Joint sign" /></td></tr>
+              <tr data-stage="QC"><th>QC</th><td><input data-track-field="date" aria-label="QC date" type="date" /></td><td><input data-track-field="operator" aria-label="QC operator" /></td><td><input data-track-field="qtyIn" aria-label="QC quantity in" type="number" min="0" /></td><td><input data-track-field="qtyOut" aria-label="QC quantity out" type="number" min="0" /></td><td><input data-track-field="rejects" aria-label="QC rejects" type="number" min="0" /></td><td><input data-track-field="sign" aria-label="QC sign" /></td></tr>
+              <tr data-stage="Packing"><th>Packing</th><td><input data-track-field="date" aria-label="Packing date" type="date" /></td><td><input data-track-field="operator" aria-label="Packing operator" /></td><td><input data-track-field="qtyIn" aria-label="Packing quantity in" type="number" min="0" /></td><td><input data-track-field="qtyOut" aria-label="Packing quantity out" type="number" min="0" /></td><td><input data-track-field="rejects" aria-label="Packing rejects" type="number" min="0" /></td><td><input data-track-field="sign" aria-label="Packing sign" /></td></tr>
+              <tr data-stage="Dispatch"><th>Dispatch</th><td><input data-track-field="date" aria-label="Dispatch date" type="date" /></td><td><input data-track-field="operator" aria-label="Dispatch operator" /></td><td><input data-track-field="qtyIn" aria-label="Dispatch quantity in" type="number" min="0" /></td><td><input data-track-field="qtyOut" aria-label="Dispatch quantity out" type="number" min="0" /></td><td><input data-track-field="rejects" aria-label="Dispatch rejects" type="number" min="0" /></td><td><input data-track-field="sign" aria-label="Dispatch sign" /></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card job-sheet-card">
+        <h3 class="card-title">Special instructions and approvals</h3>
+        <label class="field">Special instructions<textarea class="input job-sheet-textarea" data-job-field="specialInstructions" rows="3" maxlength="500" placeholder="Check the first-off against this sheet before running the full job."></textarea></label>
+        <div class="job-sheet-fields job-sheet-signatures">
+          <label class="field">Prepared by<input class="input" data-job-field="preparedBy" maxlength="80" /></label>
+          <label class="field">Approved by<input class="input" data-job-field="approvedBy" maxlength="80" /></label>
+          <label class="field">Received by (production)<input class="input" data-job-field="receivedBy" maxlength="80" /></label>
+          <label class="field">Production supervisor<input class="input" data-job-field="supervisor" maxlength="80" /></label>
+          <label class="field">QC approved<input class="input" data-job-field="qcApproved" maxlength="80" /></label>
+          <label class="field">Dispatch / driver<input class="input" data-job-field="dispatchBy" maxlength="80" /></label>
+        </div>
+      </section>
+    </div>
+  </section>
+
   <aside id="designerTour" class="designer-tour" role="region" aria-label="Studio quick tour" hidden>
     <div class="designer-tour-heading" aria-live="polite" aria-atomic="true">
       <p id="designerTourProgress" class="designer-tour-progress"></p>
@@ -287,6 +450,7 @@
   <div id="printArea" hidden aria-hidden="true"></div>
   <script src="core.js"></script>
   <script src="engine.js"></script>
+  <script src="job-sheet.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

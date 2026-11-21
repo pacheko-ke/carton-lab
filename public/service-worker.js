@@ -1,6 +1,6 @@
 "use strict";
 
-const CACHE_NAME = "packstudio-studio-v2";
+const CACHE_NAME = "packstudio-studio-v3";
 const APP_ASSETS = [
   "/offline.html",
   "/packstudio-icon.png",
@@ -9,6 +9,7 @@ const APP_ASSETS = [
   "/packstudio/account-controls.css",
   "/packstudio/core.js",
   "/packstudio/engine.js",
+  "/packstudio/job-sheet.js",
   "/packstudio/app.js",
 ];
 const APP_ASSET_PATHS = new Set(APP_ASSETS);

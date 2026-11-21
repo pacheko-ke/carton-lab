@@ -11,7 +11,6 @@ import {
 import BrandIcon from "./brand-icon";
 import BrandLogo from "./brand-logo";
 import {
-  signInHereWithGoogle,
   signInWithGoogle,
   signOutOfPackStudio,
 } from "./auth-actions";
@@ -20,7 +19,6 @@ import EmailOtpForm from "./email-otp-form";
 type AuthFormProps = {
   mode: "login" | "signup";
   error?: string | string[];
-  takeoverToken?: string | string[];
 };
 
 export function AuthLoading() {
@@ -68,20 +66,11 @@ function GoogleMark() {
 export default async function AuthForm({
   mode,
   error,
-  takeoverToken,
 }: AuthFormProps) {
   const isSignup = mode === "signup";
   const hasAccessDeniedError =
     error === "AccessDenied" ||
     (Array.isArray(error) && error.includes("AccessDenied"));
-  const hasSessionReplacedError =
-    error === "SessionReplaced" ||
-    (Array.isArray(error) && error.includes("SessionReplaced"));
-  const hasTakeoverExpiredError =
-    error === "TakeoverExpired" ||
-    (Array.isArray(error) && error.includes("TakeoverExpired"));
-  const validTakeoverToken =
-    typeof takeoverToken === "string" ? takeoverToken : undefined;
   const googleConfigured = isGoogleAuthConfigured();
   const emailOtpConfigured = isEmailOtpConfigured();
   const configured = isAuthConfigured();
@@ -138,16 +127,6 @@ export default async function AuthForm({
               status was out of date. Sign out and sign back in to refresh it.
             </p>
           )}
-          {hasSessionReplacedError && (
-            <p className="auth-config-notice" role="status">
-              This session was signed out because you signed in on another device.
-            </p>
-          )}
-          {hasTakeoverExpiredError && (
-            <p className="auth-config-notice" role="alert">
-              This sign-in request expired or is no longer current. Please try signing in again.
-            </p>
-          )}
           {session?.user ? (
             <div className="auth-signed-in">
               <p>
@@ -163,33 +142,9 @@ export default async function AuthForm({
           ) : (
             <>
               {hasAccessDeniedError && (
-                <div className="auth-access-denied" role="alert">
-                  <span className="auth-access-denied-icon" aria-hidden="true">
-                    !
-                  </span>
-                  <div>
-                    <strong>Access Denied</strong>
-                    <p>
-                      This account is already signed in on another device. You
-                      can sign in here and end that session.
-                    </p>
-                    {googleConfigured && validTakeoverToken && (
-                      <form action={signInHereWithGoogle}>
-                        <input
-                          name="takeoverToken"
-                          type="hidden"
-                          value={validTakeoverToken}
-                        />
-                        <button
-                          className="auth-takeover-link"
-                          type="submit"
-                        >
-                          Sign in here and log out other device
-                        </button>
-                      </form>
-                    )}
-                  </div>
-                </div>
+                <p className="auth-config-notice" role="alert">
+                  Sign-in was denied. Please try again or use another sign-in method.
+                </p>
               )}
               <form action={signInWithGoogle} className="google-auth-form">
                 <button

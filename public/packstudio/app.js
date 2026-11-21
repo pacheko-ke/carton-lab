@@ -71,6 +71,11 @@ const DESIGNER_TOUR_STEPS = [
     title: "Generate a batch",
     description: "Open Bulk generate to create up to 500 keylines from an Excel, CSV or TXT file.",
   },
+  {
+    targets: ['[data-tour="job-sheet-tab"]'],
+    title: "Prepare a production job sheet",
+    description: "Complete customer, board, print, quality and dispatch details, then download or print a two-page production sheet.",
+  },
 ];
 const PLY_DEFAULTS_MM = { 3: { crease: 2, bwadd: 4 }, 5: { crease: 3, bwadd: 6 } };
 
@@ -91,7 +96,7 @@ let syncRunning = false;
 let offlineShell = false;
 let usingOfflineCatalog = false;
 let sessionCheckRunning = false;
-let sessionReplaced = false;
+let authenticationRequired = false;
 let resolveProfile;
 const profileReady = window.parent === window
   ? Promise.resolve()
@@ -209,7 +214,7 @@ async function checkAccountSession() {
     !accountId ||
     !navigator.onLine ||
     sessionCheckRunning ||
-    sessionReplaced
+    authenticationRequired
   ) {
     return;
   }
@@ -225,12 +230,12 @@ async function checkAccountSession() {
     const session = await response.json();
     if (session && session.user && session.user.id === accountId) return;
 
-    sessionReplaced = true;
+    authenticationRequired = true;
     if (window.parent === window) {
-      window.location.replace("/login?error=SessionReplaced");
+      window.location.replace("/login");
     } else {
       window.parent.postMessage(
-        { type: "packstudio:session-replaced" },
+        { type: "packstudio:auth-required" },
         window.location.origin,
       );
     }
@@ -2163,22 +2168,30 @@ function fillBulkKeylineOptions() {
 
 function selectWorkspaceTab(workspace, moveFocus = false) {
   const isDesigner = workspace === "designer";
+  const isJobSheet = workspace === "job-sheet";
   const designerTab = $("designerTab");
   const bulkTab = $("bulkTab");
+  const jobSheetTab = $("jobSheetTab");
   designerTab.setAttribute("aria-selected", String(isDesigner));
-  bulkTab.setAttribute("aria-selected", String(!isDesigner));
+  bulkTab.setAttribute("aria-selected", String(!isDesigner && !isJobSheet));
+  jobSheetTab.setAttribute("aria-selected", String(isJobSheet));
   designerTab.tabIndex = isDesigner ? 0 : -1;
-  bulkTab.tabIndex = isDesigner ? -1 : 0;
+  bulkTab.tabIndex = !isDesigner && !isJobSheet ? 0 : -1;
+  jobSheetTab.tabIndex = isJobSheet ? 0 : -1;
+  $("workspaceLayout").hidden = isJobSheet;
+  $("jobSheetWorkspace").hidden = !isJobSheet;
   $("studioSidebar").hidden = !isDesigner;
-  $("bulkWorkspace").hidden = isDesigner;
-  if (moveFocus) (isDesigner ? designerTab : bulkTab).focus();
+  $("bulkWorkspace").hidden = isDesigner || isJobSheet;
+  if (moveFocus) (isDesigner ? designerTab : isJobSheet ? jobSheetTab : bulkTab).focus();
 }
 
 function initializeWorkspaceTabs() {
-  const tabs = [$("designerTab"), $("bulkTab")];
+  const tabs = [$("designerTab"), $("bulkTab"), $("jobSheetTab")];
   tabs.forEach((tab) => {
     tab.addEventListener("click", () => {
-      selectWorkspaceTab(tab === $("designerTab") ? "designer" : "bulk");
+      selectWorkspaceTab(
+        tab === $("designerTab") ? "designer" : tab === $("jobSheetTab") ? "job-sheet" : "bulk",
+      );
     });
   });
   $("workspaceTabs").addEventListener("keydown", (event) => {
@@ -2191,9 +2204,35 @@ function initializeWorkspaceTabs() {
         : event.key === "End"
           ? tabs.length - 1
           : (activeIndex + (event.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length;
-      selectWorkspaceTab(tabs[nextIndex] === $("designerTab") ? "designer" : "bulk", true);
+      selectWorkspaceTab(
+        tabs[nextIndex] === $("designerTab") ? "designer" : tabs[nextIndex] === $("jobSheetTab") ? "job-sheet" : "bulk",
+        true,
+      );
     }
   });
+}
+
+function jobSheetStudioContext() {
+  const params = readParams();
+  const typeName = params.type === "rsc"
+    ? "RSC 0201"
+    : (KEYLINES[params.type] && KEYLINES[params.type].name) || params.type;
+  let geometry = null;
+  if (params.type === "rsc") {
+    const result = compute(params);
+    if (!result.error) geometry = result;
+  }
+  return {
+    params,
+    model: current && current.model,
+    profile: creatorProfile,
+    typeName,
+    boardLength: geometry ? geometry.boardLen : undefined,
+    boardWidth: geometry ? geometry.boardWid : undefined,
+    creasing: geometry
+      ? `${fmt(geometry.creaseFlap, params.unit)} - ${fmt(geometry.H, params.unit)} - ${fmt(geometry.creaseFlap, params.unit)}`
+      : undefined,
+  };
 }
 
 async function generateBulkKeylines() {
@@ -2631,6 +2670,7 @@ async function init() {
   applyKeylineDefaults($("boxType").value);
   buildKeylineInputs();
   render(true);
+  window.PackStudioJobSheet.initializeJobSheet(jobSheetStudioContext);
   try {
     await loadBookmarks();
   } catch (error) {

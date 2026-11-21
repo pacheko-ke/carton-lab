@@ -80,19 +80,6 @@ export default function EmailOtpForm({ configured }: EmailOtpFormProps) {
             >
               {isVerifying ? "Verifying…" : "Verify email and continue"}
             </button>
-            {verifyState.canTakeOver && (
-              <button
-                className="email-otp-takeover"
-                disabled={isVerifying}
-                name="takeOverExistingSession"
-                type="submit"
-                value="true"
-              >
-                {isVerifying
-                  ? "Signing in…"
-                  : "Sign in here and log out other device"}
-              </button>
-            )}
           </form>
           {resendState.message && (
             <p
