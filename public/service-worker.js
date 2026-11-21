@@ -1,6 +1,6 @@
 "use strict";
 
-const CACHE_NAME = "packstudio-studio-v6";
+const CACHE_NAME = "packstudio-studio-v9";
 const APP_ASSETS = [
   "/offline.html",
   "/packstudio-icon.png",
@@ -59,7 +59,7 @@ self.addEventListener("fetch", (event) => {
 
   if (APP_ASSET_PATHS.has(url.pathname)) {
     event.respondWith(
-      caches.match(request).then((cached) => cached || fetch(request)),
+      caches.match(`${url.origin}${url.pathname}`).then((cached) => cached || fetch(request)),
     );
   }
 });

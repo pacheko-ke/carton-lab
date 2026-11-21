@@ -223,6 +223,9 @@ async function AdminDashboard({ searchParams }: AdminPageProps) {
           <Link href="/account" className="account-back-link">
             Account
           </Link>
+          <Link href="/admin/production" className="account-back-link">
+            Production access
+          </Link>
           <Link href="/app" className="account-back-link">
             Studio
           </Link>

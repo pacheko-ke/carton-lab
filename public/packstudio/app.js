@@ -72,9 +72,9 @@ const DESIGNER_TOUR_STEPS = [
     description: "Open Bulk generate to create up to 500 keylines from an Excel, CSV or TXT file.",
   },
   {
-    targets: ['[data-tour="job-sheet-tab"]'],
-    title: "Prepare a production job sheet",
-    description: "Complete customer, board, print, quality and dispatch details, then download or print a two-page production sheet.",
+    targets: ["#productionDashboardLink"],
+    title: "Open the Production dashboard",
+    description: "Create shared jobs, follow the production workflow, and attach artwork in the dedicated Production dashboard.",
   },
 ];
 const PLY_DEFAULTS_MM = { 3: { crease: 2, bwadd: 4 }, 5: { crease: 3, bwadd: 6 } };
@@ -2171,27 +2171,31 @@ function selectWorkspaceTab(workspace, moveFocus = false) {
   const isJobSheet = workspace === "job-sheet";
   const designerTab = $("designerTab");
   const bulkTab = $("bulkTab");
-  const jobSheetTab = $("jobSheetTab");
   designerTab.setAttribute("aria-selected", String(isDesigner));
   bulkTab.setAttribute("aria-selected", String(!isDesigner && !isJobSheet));
-  jobSheetTab.setAttribute("aria-selected", String(isJobSheet));
   designerTab.tabIndex = isDesigner ? 0 : -1;
   bulkTab.tabIndex = !isDesigner && !isJobSheet ? 0 : -1;
-  jobSheetTab.tabIndex = isJobSheet ? 0 : -1;
   $("workspaceLayout").hidden = isJobSheet;
   $("jobSheetWorkspace").hidden = !isJobSheet;
   $("studioSidebar").hidden = !isDesigner;
   $("bulkWorkspace").hidden = isDesigner || isJobSheet;
-  if (moveFocus) (isDesigner ? designerTab : isJobSheet ? jobSheetTab : bulkTab).focus();
+  if (moveFocus) (isDesigner ? designerTab : bulkTab).focus();
 }
 
 function initializeWorkspaceTabs() {
-  const tabs = [$("designerTab"), $("bulkTab"), $("jobSheetTab")];
+  const isProductionDashboard =
+    new URLSearchParams(window.location.search).get("workspace") === "production";
+  $("studioWorkspaceMain").hidden = isProductionDashboard;
+  $("appTitle").textContent = isProductionDashboard ? "Production dashboard" : "PackStudio";
+  $("productionDashboardLink").hidden = isProductionDashboard;
+  $("studioDashboardLink").hidden = !isProductionDashboard;
+  $("designerHelp").hidden = isProductionDashboard;
+  if (isProductionDashboard) document.title = "Production dashboard | PackStudio";
+
+  const tabs = [$("designerTab"), $("bulkTab")];
   tabs.forEach((tab) => {
     tab.addEventListener("click", () => {
-      selectWorkspaceTab(
-        tab === $("designerTab") ? "designer" : tab === $("jobSheetTab") ? "job-sheet" : "bulk",
-      );
+      selectWorkspaceTab(tab === $("designerTab") ? "designer" : "bulk");
     });
   });
   $("workspaceTabs").addEventListener("keydown", (event) => {
@@ -2204,12 +2208,10 @@ function initializeWorkspaceTabs() {
         : event.key === "End"
           ? tabs.length - 1
           : (activeIndex + (event.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length;
-      selectWorkspaceTab(
-        tabs[nextIndex] === $("designerTab") ? "designer" : tabs[nextIndex] === $("jobSheetTab") ? "job-sheet" : "bulk",
-        true,
-      );
+      selectWorkspaceTab(tabs[nextIndex] === $("designerTab") ? "designer" : "bulk", true);
     }
   });
+  selectWorkspaceTab(isProductionDashboard ? "job-sheet" : "designer");
 }
 
 function jobSheetStudioContext() {

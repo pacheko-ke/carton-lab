@@ -6,6 +6,7 @@ import { signOutOfPackStudio } from "../auth-actions";
 
 type AppFrameProps = {
   accountId: string;
+  workspace?: "studio" | "production";
   profile: {
     createdBy: string;
     companyName: string;
@@ -16,7 +17,12 @@ type AppFrameProps = {
   profileQrCode: boolean[][];
 };
 
-export default function AppFrame({ accountId, profile, profileQrCode }: AppFrameProps) {
+export default function AppFrame({
+  accountId,
+  workspace = "studio",
+  profile,
+  profileQrCode,
+}: AppFrameProps) {
   const router = useRouter();
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const signOutFormRef = useRef<HTMLFormElement>(null);
@@ -55,8 +61,8 @@ export default function AppFrame({ accountId, profile, profileQrCode }: AppFrame
       <iframe
         ref={iframeRef}
         className="h-full w-full border-0"
-        src="/packstudio/app.html"
-        title="PackStudio"
+        src={workspace === "production" ? "/packstudio/app.html?workspace=production" : "/packstudio/app.html"}
+        title={workspace === "production" ? "Production dashboard" : "PackStudio"}
         onLoad={(event) =>
           event.currentTarget.contentWindow?.postMessage(
             { type: "packstudio:profile", accountId, profile, qrCode: profileQrCode },

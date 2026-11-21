@@ -974,6 +974,55 @@ input {
   background: rgba(16, 34, 54, 0.9);
 }
 
+.admin-production-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.admin-production-field {
+  display: grid;
+  flex: 1 1 220px;
+  gap: 7px;
+  color: #b6c9d9;
+  font-size: 11px;
+}
+
+.admin-production-field input,
+.admin-production-field select,
+.admin-production-inline-form select {
+  min-height: 42px;
+  padding: 9px 11px;
+  border: 1px solid rgba(178, 204, 225, 0.2);
+  border-radius: 8px;
+  background: #0c1a2a;
+  color: #eff6fc;
+  font: inherit;
+}
+
+.admin-production-inline-form {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.admin-production-inline-form select {
+  min-height: 34px;
+  padding: 6px 8px;
+}
+
+.admin-production-remove {
+  padding: 6px 9px;
+  border: 1px solid rgba(255, 154, 154, 0.24);
+  border-radius: 7px;
+  background: rgba(127, 29, 29, 0.2);
+  color: #ffb0b0;
+  font: inherit;
+  font-size: 10px;
+}
+
 .admin-panel-heading {
   display: flex;
   align-items: center;

@@ -11,6 +11,7 @@ const JOB_SHEET_TRACKING_STAGES = [
   "Packing",
   "Dispatch",
 ];
+const MAX_JOB_SHEET_ARTWORK_BYTES = 5 * 1024 * 1024;
 
 function jobSheetToday() {
   const date = new Date();
@@ -562,6 +563,24 @@ function initializeJobSheet(getContext) {
   const status = document.getElementById("jobSheetStatus");
   const accountKey = typeof accountId === "string" && accountId ? accountId : "offline";
   const storageKey = `${JOB_SHEET_STORAGE_KEY}.${encodeURIComponent(accountKey)}`;
+  const teamSelect = document.getElementById("productionTeamSelect");
+  const jobSelect = document.getElementById("productionJobSelect");
+  const teamRoleBadge = document.getElementById("productionTeamRole");
+  const loadSharedJobButton = document.getElementById("productionLoadJob");
+  const createSharedJobButton = document.getElementById("productionCreateJob");
+  const saveSharedJobButton = document.getElementById("productionSaveJob");
+  const artworkPanel = document.getElementById("jobSheetArtworkPanel");
+  const artworkFileInput = document.getElementById("productionArtworkFile");
+  const artworkUploadButton = document.getElementById("productionArtworkUpload");
+  const artworkStatus = document.getElementById("productionArtworkStatus");
+  const artworkList = document.getElementById("productionArtworkList");
+  let activeSharedJobId = null;
+  let activeSharedJobTeamId = null;
+  let activeProductionRole = null;
+  let sharedJobDirty = false;
+  let savedSharedJobData = null;
+  let availableTeams = [];
+  let lastSelectedTeamId = "";
   let context = getContext();
 
   const showStatus = (message, isError = false) => {
@@ -625,6 +644,14 @@ function initializeJobSheet(getContext) {
     refreshOutputs();
   };
   const saveDraft = () => {
+    if (activeSharedJobId) {
+      if (activeProductionRole === "PRODUCTION") {
+        sharedJobDirty = true;
+        updateEditorPermissions();
+        showStatus("Unsaved changes to this shared job. Save shared changes to sync with the team.");
+      }
+      return;
+    }
     try {
       localStorage.setItem(storageKey, JSON.stringify(collectData()));
       showStatus("Draft saved on this device.");
@@ -693,6 +720,243 @@ function initializeJobSheet(getContext) {
   if (!initialData.jobNo) initialData.jobNo = newJobNumber();
   writeData(initialData);
   let lastSheetUnit = initialData.unit === "in" ? "in" : "mm";
+  const requestJson = async (url, options = {}) => {
+    const response = await fetch(url, {
+      cache: "no-store",
+      ...options,
+      headers: {
+        ...(options.headers || {}),
+        ...(options.body ? { "Content-Type": "application/json" } : {}),
+      },
+    });
+    let responseBody = null;
+    try {
+      responseBody = await response.json();
+    } catch {
+      responseBody = null;
+    }
+    if (!response.ok) {
+      throw new Error(responseBody?.error || `Request failed (${response.status}).`);
+    }
+    return responseBody;
+  };
+  const selectedTeam = () => availableTeams.find((team) => team.id === teamSelect.value) || null;
+  const updateEditorPermissions = () => {
+    const readOnly = Boolean(activeSharedJobId) && activeProductionRole !== "PRODUCTION";
+    fields.forEach((field) => { field.disabled = readOnly; });
+    trackingRows.forEach((row) => row.querySelectorAll("[data-track-field]").forEach((field) => {
+      field.disabled = readOnly;
+    }));
+    document.getElementById("jobSheetUseStudio").disabled = readOnly;
+    const team = selectedTeam();
+    teamRoleBadge.textContent = activeSharedJobId
+      ? activeProductionRole === "DESIGNER" ? "Designer" : "Production"
+      : team?.role === "DESIGNER" ? "Designer" : team?.role === "PRODUCTION" ? "Production" : "";
+    teamSelect.disabled = availableTeams.length === 0;
+    jobSelect.disabled = availableTeams.length === 0 || jobSelect.options.length < 2;
+    loadSharedJobButton.disabled = !jobSelect.value;
+    createSharedJobButton.disabled = !team || team.role !== "PRODUCTION" || Boolean(activeSharedJobId);
+    saveSharedJobButton.hidden =
+      !activeSharedJobId ||
+      activeProductionRole !== "PRODUCTION" ||
+      jobSelect.value !== activeSharedJobId;
+    saveSharedJobButton.disabled = !sharedJobDirty;
+    artworkPanel.hidden = !activeSharedJobId;
+    const designerCanUpload = Boolean(activeSharedJobId) && activeProductionRole === "DESIGNER";
+    artworkFileInput.disabled = !designerCanUpload;
+    artworkUploadButton.disabled = !designerCanUpload;
+  };
+  const formatFileSize = (size) => size < 1024 * 1024
+    ? `${Math.max(1, Math.round(size / 1024))} KB`
+    : `${(size / (1024 * 1024)).toFixed(1)} MB`;
+  const renderAttachments = (attachments) => {
+    artworkList.replaceChildren();
+    (Array.isArray(attachments) ? attachments : []).forEach((attachment) => {
+      const item = document.createElement("li");
+      const link = document.createElement("a");
+      link.href = `/api/production/artwork/${encodeURIComponent(attachment.id)}`;
+      link.textContent = attachment.originalName;
+      link.download = attachment.originalName;
+      const size = document.createElement("small");
+      size.textContent = formatFileSize(attachment.size);
+      item.append(link, size);
+      artworkList.append(item);
+    });
+  };
+  const loadTeamJobs = async (teamId, selectedJobId = "") => {
+    jobSelect.replaceChildren();
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = teamId ? "Select a shared job" : "Select a team first";
+    jobSelect.append(placeholder);
+    if (!teamId) {
+      updateEditorPermissions();
+      return;
+    }
+    const result = await requestJson(`/api/production/teams/${encodeURIComponent(teamId)}/jobs`);
+    (result.jobs || []).forEach((job) => {
+      const option = document.createElement("option");
+      option.value = job.id;
+      option.textContent = [
+        job.jobNo || "Untitled job",
+        job.jobName,
+        job.customer,
+      ].filter(Boolean).join(" · ");
+      jobSelect.append(option);
+    });
+    if (selectedJobId) jobSelect.value = selectedJobId;
+    updateEditorPermissions();
+  };
+  const loadProductionTeams = async () => {
+    try {
+      const result = await requestJson("/api/production/teams");
+      availableTeams = Array.isArray(result.teams) ? result.teams : [];
+      teamSelect.replaceChildren();
+      if (!availableTeams.length) {
+        const option = document.createElement("option");
+        option.value = "";
+        option.textContent = "No team assigned";
+        teamSelect.append(option);
+        jobSelect.replaceChildren();
+        const jobOption = document.createElement("option");
+        jobOption.textContent = "Select a team first";
+        jobSelect.append(jobOption);
+        updateEditorPermissions();
+        showStatus("No production team is assigned to this account. Ask a system admin to add you; your local draft remains available.");
+        return;
+      }
+      availableTeams.forEach((team) => {
+        const option = document.createElement("option");
+        option.value = team.id;
+        option.textContent = team.name;
+        teamSelect.append(option);
+      });
+      teamSelect.value = availableTeams[0].id;
+      lastSelectedTeamId = teamSelect.value;
+      activeProductionRole = selectedTeam()?.role || null;
+      updateEditorPermissions();
+      await loadTeamJobs(teamSelect.value);
+      showStatus("Choose a shared job to open it. Local drafts remain on this device.");
+    } catch (error) {
+      console.error("Could not load production teams:", error);
+      showStatus(`Could not load production teams: ${error.message || error}`, true);
+    }
+  };
+  const loadJobAttachments = async (jobId) => {
+    const result = await requestJson(`/api/production/jobs/${encodeURIComponent(jobId)}/artwork`);
+    renderAttachments(result.attachments);
+  };
+  const loadSelectedSharedJob = async () => {
+    if (sharedJobDirty && !window.confirm("Discard unsaved changes to this shared job?")) return;
+    const jobId = jobSelect.value;
+    if (!jobId) return;
+    try {
+      const result = await requestJson(`/api/production/jobs/${encodeURIComponent(jobId)}`);
+      activeSharedJobId = result.job.id;
+      activeSharedJobTeamId = result.job.teamId;
+      activeProductionRole = result.role;
+      savedSharedJobData = result.job.data || {};
+      sharedJobDirty = false;
+      writeData(savedSharedJobData);
+      lastSheetUnit = result.job.data?.unit === "in" ? "in" : "mm";
+      updateEditorPermissions();
+      artworkStatus.textContent = activeProductionRole === "DESIGNER"
+        ? "Select an artwork file to attach it to this shared job."
+        : "Only Designer team members can upload artwork. Team members can download existing files.";
+      artworkStatus.dataset.error = "false";
+      await loadJobAttachments(activeSharedJobId);
+      showStatus(`Loaded shared job ${result.job.data?.jobNo || result.job.id}.`);
+    } catch (error) {
+      console.error("Could not load the shared production job:", error);
+      showStatus(`Could not load shared job: ${error.message || error}`, true);
+    }
+  };
+  const createSharedJob = async () => {
+    if (!validate()) return;
+    const team = selectedTeam();
+    if (!team || team.role !== "PRODUCTION") return;
+    try {
+      const result = await requestJson(
+        `/api/production/teams/${encodeURIComponent(team.id)}/jobs`,
+        { method: "POST", body: JSON.stringify({ data: collectData() }) },
+      );
+      activeSharedJobId = result.job.id;
+      activeSharedJobTeamId = result.job.teamId;
+      activeProductionRole = team.role;
+      savedSharedJobData = result.job.data || {};
+      sharedJobDirty = false;
+      await loadTeamJobs(team.id, result.job.id);
+      renderAttachments([]);
+      updateEditorPermissions();
+      artworkStatus.textContent = "Only Designer team members can upload artwork. Team members can download existing files.";
+      artworkStatus.dataset.error = "false";
+      showStatus(`Created shared job ${result.job.data?.jobNo || result.job.id}.`);
+    } catch (error) {
+      console.error("Could not create a shared production job:", error);
+      showStatus(`Could not create shared job: ${error.message || error}`, true);
+    }
+  };
+  const saveSharedJob = async () => {
+    if (!activeSharedJobId || activeProductionRole !== "PRODUCTION" || !validate()) return;
+    try {
+      const result = await requestJson(
+        `/api/production/jobs/${encodeURIComponent(activeSharedJobId)}`,
+        { method: "PATCH", body: JSON.stringify({ data: collectData() }) },
+      );
+      savedSharedJobData = result.job.data;
+      sharedJobDirty = false;
+      await loadTeamJobs(activeSharedJobTeamId, activeSharedJobId);
+      updateEditorPermissions();
+      showStatus(`Saved shared job ${result.job.data?.jobNo || result.job.id}.`);
+    } catch (error) {
+      console.error("Could not save the shared production job:", error);
+      showStatus(`Could not save shared job: ${error.message || error}`, true);
+    }
+  };
+  const uploadArtwork = async () => {
+    const file = artworkFileInput.files?.[0];
+    if (!activeSharedJobId || activeProductionRole !== "DESIGNER" || !file) {
+      artworkStatus.textContent = "Choose an artwork file before uploading.";
+      artworkStatus.dataset.error = "true";
+      return;
+    }
+    if (file.size > MAX_JOB_SHEET_ARTWORK_BYTES) {
+      artworkStatus.textContent = "Artwork files must be 5 MB or smaller.";
+      artworkStatus.dataset.error = "true";
+      return;
+    }
+    artworkUploadButton.disabled = true;
+    artworkStatus.textContent = "Preparing private artwork upload…";
+    artworkStatus.dataset.error = "false";
+    try {
+      const jobPath = `/api/production/jobs/${encodeURIComponent(activeSharedJobId)}/artwork`;
+      const upload = await requestJson(`${jobPath}/upload-url`, {
+        method: "POST",
+        body: JSON.stringify({ fileName: file.name, fileSize: file.size }),
+      });
+      const response = await fetch(upload.presignedUrl, {
+        method: "PUT",
+        headers: { "Content-Type": upload.contentType },
+        body: file,
+      });
+      if (!response.ok) {
+        throw new Error(`Blob upload failed (${response.status}).`);
+      }
+      await requestJson(jobPath, {
+        method: "POST",
+        body: JSON.stringify({ pathname: upload.pathname, fileName: file.name }),
+      });
+      await loadJobAttachments(activeSharedJobId);
+      artworkFileInput.value = "";
+      artworkStatus.textContent = "Artwork attached to the shared job.";
+    } catch (error) {
+      console.error("Could not attach artwork to the production job:", error);
+      artworkStatus.textContent = `Could not attach artwork: ${error.message || error}`;
+      artworkStatus.dataset.error = "true";
+    } finally {
+      updateEditorPermissions();
+    }
+  };
   if (!hasSavedDraft) fillFromStudio(true);
   saveDraft();
 
@@ -776,10 +1040,19 @@ function initializeJobSheet(getContext) {
     showStatus("Current keyline values copied into the job sheet.");
   });
   document.getElementById("jobSheetNew").addEventListener("click", () => {
+    if (sharedJobDirty && !window.confirm("Discard unsaved changes to this shared job?")) return;
+    activeSharedJobId = null;
+    activeSharedJobTeamId = null;
+    savedSharedJobData = null;
+    sharedJobDirty = false;
+    artworkStatus.textContent = "";
+    artworkStatus.dataset.error = "false";
+    renderAttachments([]);
     const fresh = defaultJobSheetData(getPrintableContext());
     fresh.jobNo = newJobNumber();
     writeData(fresh);
     fillFromStudio(true);
+    updateEditorPermissions();
     saveDraft();
     showStatus("New job sheet created.");
   });
@@ -824,6 +1097,36 @@ function initializeJobSheet(getContext) {
       showStatus(`Could not prepare the print view: ${error.message || error}`, true);
     }
   });
+  teamSelect.addEventListener("change", async () => {
+    if (sharedJobDirty && !window.confirm("Discard unsaved changes to this shared job?")) {
+      teamSelect.value = lastSelectedTeamId;
+      return;
+    }
+    if (sharedJobDirty && savedSharedJobData) writeData(savedSharedJobData);
+    activeSharedJobId = null;
+    activeSharedJobTeamId = null;
+    savedSharedJobData = null;
+    sharedJobDirty = false;
+    artworkStatus.textContent = "";
+    artworkStatus.dataset.error = "false";
+    renderAttachments([]);
+    lastSelectedTeamId = teamSelect.value;
+    activeProductionRole = selectedTeam()?.role || null;
+    updateEditorPermissions();
+    try {
+      await loadTeamJobs(teamSelect.value);
+    } catch (error) {
+      console.error("Could not load production team jobs:", error);
+      showStatus(`Could not load team jobs: ${error.message || error}`, true);
+    }
+  });
+  jobSelect.addEventListener("change", updateEditorPermissions);
+  loadSharedJobButton.addEventListener("click", loadSelectedSharedJob);
+  createSharedJobButton.addEventListener("click", createSharedJob);
+  saveSharedJobButton.addEventListener("click", saveSharedJob);
+  artworkUploadButton.addEventListener("click", uploadArtwork);
+  updateEditorPermissions();
+  void loadProductionTeams();
 }
 
 function buildJobSheetPrintHtml(data, model) {

@@ -8,6 +8,11 @@ datasource db {
   directUrl = env("POSTGRES_URL_NON_POOLING")
 }
 
+enum ProductionRole {
+  PRODUCTION
+  DESIGNER
+}
+
 model User {
   id                       String            @id @default(cuid())
   name                     String?
@@ -29,6 +34,9 @@ model User {
   billingPayments          BillingPayment[]
   keylineBookmarks         KeylineBookmark[]
   emailJobs                EmailJob[]
+  productionMemberships    ProductionMembership[]
+  createdProductionJobs   ProductionJob[]        @relation("ProductionJobCreator")
+  uploadedProductionFiles ProductionAttachment[] @relation("ProductionAttachmentUploader")
 }
 
 model EmailCampaign {
@@ -191,4 +199,55 @@ model EmailOtpRateLimit {
   requests        Int      @default(1)
 
   @@index([windowStartedAt])
+}
+
+model ProductionTeam {
+  id          String                 @id @default(cuid())
+  name        String                 @unique
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  memberships ProductionMembership[]
+  jobs        ProductionJob[]
+}
+
+model ProductionMembership {
+  teamId    String
+  userId    String
+  role      ProductionRole @default(PRODUCTION)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  team      ProductionTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([teamId, userId])
+  @@index([userId])
+}
+
+model ProductionJob {
+  id              String                 @id @default(cuid())
+  teamId          String
+  createdByUserId String?
+  data            Json                   @default("{}")
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+  team            ProductionTeam         @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  createdBy       User?                  @relation("ProductionJobCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  attachments     ProductionAttachment[]
+
+  @@index([teamId, updatedAt])
+}
+
+model ProductionAttachment {
+  id               String       @id @default(cuid())
+  jobId            String
+  uploadedByUserId String?
+  pathname         String       @unique
+  originalName     String
+  contentType      String
+  size             Int
+  createdAt        DateTime     @default(now())
+  job              ProductionJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  uploadedBy       User?        @relation("ProductionAttachmentUploader", fields: [uploadedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([jobId, createdAt])
 }

@@ -10,11 +10,13 @@
 <body class="min-h-screen font-sans antialiased">
   <header class="flex items-center gap-3 px-3 pt-5 md:px-6">
     <img src="/packstudio-icon.png" alt="" class="h-9 w-9" />
-    <h1 class="text-xl font-semibold tracking-tight">PackStudio</h1>
+    <h1 id="appTitle" class="text-xl font-semibold tracking-tight">PackStudio</h1>
     <button id="designerHelp" type="button" class="designer-help-button" aria-label="Open the Studio quick tour" aria-controls="designerTour" aria-expanded="false" title="Take a quick Studio tour">
       <span aria-hidden="true">?</span> Help
     </button>
     <p id="offlineStatus" role="status" aria-live="polite" class="ml-auto text-xs text-slate-500 dark:text-slate-400"></p>
+    <a id="productionDashboardLink" class="workspace-route-link" href="/production/admin" target="_top">Production dashboard</a>
+    <a id="studioDashboardLink" class="workspace-route-link" href="/app" target="_top" hidden>Back to Studio</a>
     <div id="appAccountControls" class="app-account-controls" hidden>
       <a id="appAccountPlan" class="app-account-plan" href="/account" target="_top">
         <span class="app-account-plan-indicator" aria-hidden="true"></span>
@@ -24,11 +26,10 @@
     </div>
   </header>
 
-  <main class="px-3 py-5 md:px-6">
+  <main id="studioWorkspaceMain" class="px-3 py-5 md:px-6">
     <nav id="workspaceTabs" class="workspace-tabs" role="tablist" aria-label="Studio workspace">
       <button id="designerTab" class="workspace-tab" type="button" role="tab" aria-selected="true" aria-controls="studioSidebar" tabindex="0">Studio</button>
       <button id="bulkTab" class="workspace-tab" type="button" role="tab" aria-selected="false" aria-controls="bulkWorkspace" tabindex="-1" data-tour="bulk-workspace-tab">Bulk generate</button>
-      <button id="jobSheetTab" class="workspace-tab" type="button" role="tab" aria-selected="false" aria-controls="jobSheetWorkspace" tabindex="-1" data-tour="job-sheet-tab">Production</button>
     </nav>
 
     <div id="workspaceLayout" class="grid items-start gap-5 lg:grid-cols-[340px_minmax(0,1fr)]">
@@ -270,20 +271,40 @@
 
   </main>
 
-  <section id="jobSheetWorkspace" class="job-sheet-workspace" role="tabpanel" aria-labelledby="jobSheetTab" hidden>
+  <section id="jobSheetWorkspace" class="job-sheet-workspace" aria-labelledby="jobSheetTitle" hidden>
     <header class="job-sheet-heading">
       <div>
         <p class="batch-eyebrow">PRODUCTION WORKFLOW</p>
-        <h2>Production job sheet</h2>
-        <p>Prepare a complete, print-ready production copy from the current keyline and job details.</p>
+        <h2 id="jobSheetTitle">Production job sheet</h2>
+        <p>Work with team-shared production jobs, attach artwork, and prepare print-ready production copies.</p>
       </div>
       <div class="job-sheet-actions">
-        <button id="jobSheetNew" type="button" class="btn btn-secondary">New sheet</button>
+        <button id="jobSheetNew" type="button" class="btn btn-secondary">New local draft</button>
         <button id="jobSheetPrint" type="button" class="btn btn-secondary">Print</button>
         <button id="jobSheetDownload" type="button" class="btn btn-primary">Download PDF</button>
       </div>
     </header>
     <p id="jobSheetStatus" class="job-sheet-status" role="status" aria-live="polite"></p>
+
+    <section class="card job-sheet-card production-shared-panel" aria-labelledby="productionSharedTitle">
+      <div class="production-shared-heading">
+        <div>
+          <h3 id="productionSharedTitle" class="card-title">Team production jobs</h3>
+          <p>Shared jobs are visible to verified members of their assigned team.</p>
+        </div>
+        <span id="productionTeamRole" class="production-role-badge"></span>
+      </div>
+      <div class="job-sheet-fields">
+        <label class="field">Production team<select id="productionTeamSelect" class="input"><option>Loading teams…</option></select></label>
+        <label class="field">Shared job<select id="productionJobSelect" class="input" disabled><option>Select a team first</option></select></label>
+      </div>
+      <div class="production-shared-actions">
+        <button id="productionLoadJob" type="button" class="btn btn-secondary" disabled>Open shared job</button>
+        <button id="productionCreateJob" type="button" class="btn btn-secondary" disabled>Create shared job from this sheet</button>
+        <button id="productionSaveJob" type="button" class="btn btn-primary" hidden disabled>Save shared changes</button>
+      </div>
+      <p class="production-shared-note">Local drafts remain on this device. Saving a shared job updates the team copy.</p>
+    </section>
 
     <div class="job-sheet-stages">
       <section class="job-sheet-stage" aria-labelledby="jobSheetOriginationTitle">
@@ -436,6 +457,19 @@
           <label class="field">Print position<input class="input" data-job-field="printPosition" maxlength="80" /></label>
         </div>
         <label class="field job-sheet-wide-field">Print instructions<textarea class="input job-sheet-textarea" data-job-field="printInstructions" rows="2" maxlength="300"></textarea></label>
+      </section>
+
+      <section id="jobSheetArtworkPanel" class="card job-sheet-card production-artwork-panel" aria-labelledby="productionArtworkTitle" hidden>
+        <div>
+          <h3 id="productionArtworkTitle" class="card-title">Artwork attachments</h3>
+          <p>Designers can attach artwork files up to 5 MB. Files are stored privately and downloaded only by team members.</p>
+        </div>
+        <div class="production-artwork-actions">
+          <label class="field">Artwork file<input id="productionArtworkFile" class="input" type="file" accept=".ai,.cdr,.eps,.indd,.jpeg,.jpg,.pdf,.png,.ps,.psd,.svg,.tif,.tiff" /></label>
+          <button id="productionArtworkUpload" type="button" class="btn btn-secondary" disabled>Attach artwork</button>
+        </div>
+        <p id="productionArtworkStatus" class="production-artwork-status" role="status" aria-live="polite"></p>
+        <ul id="productionArtworkList" class="production-artwork-list" aria-label="Attached artwork files"></ul>
       </section>
 
         </div>

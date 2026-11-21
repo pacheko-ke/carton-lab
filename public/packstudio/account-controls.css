@@ -57,6 +57,25 @@
   background: #102238;
 }
 
+.workspace-route-link {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  padding: 0 11px;
+  border: 1px solid rgba(102, 211, 232, 0.3);
+  border-radius: 7px;
+  color: #bdebf2;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.workspace-route-link:hover {
+  border-color: #66d3e8;
+  background: #102238;
+}
+
 @media (max-width: 640px) {
   body > header {
     flex-wrap: wrap;
@@ -81,6 +100,12 @@
   }
 
   .app-signout-button {
+    min-height: 32px;
+    padding: 0 8px;
+    font-size: 10px;
+  }
+
+  .workspace-route-link {
     min-height: 32px;
     padding: 0 8px;
     font-size: 10px;
