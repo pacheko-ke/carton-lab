@@ -1,6 +1,6 @@
 "use strict";
 
-const CACHE_NAME = "packstudio-studio-v9";
+const CACHE_NAME = "packstudio-studio-v10";
 const APP_ASSETS = [
   "/offline.html",
   "/packstudio-icon.png",

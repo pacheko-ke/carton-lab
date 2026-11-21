@@ -5,6 +5,7 @@ import {
   canEditProductionJobs,
   getArtworkContentType,
   MAX_ARTWORK_FILE_BYTES,
+  PRODUCTION_WORKFLOW_STAGES,
   sanitizeArtworkFileName,
   validateProductionJobData,
 } from "../src/lib/production-data.ts";
@@ -54,4 +55,10 @@ test("grants job editing and artwork upload to their intended team roles", () =>
   assert.equal(canEditProductionJobs("DESIGNER"), false);
   assert.equal(canAttachProductionArtwork("DESIGNER"), true);
   assert.equal(canAttachProductionArtwork("PRODUCTION"), false);
+});
+
+test("validates the explicit production workflow stage", () => {
+  assert.equal(PRODUCTION_WORKFLOW_STAGES.length, 5);
+  assert.equal(validateProductionJobData({ workflowStage: "Board Production" }), true);
+  assert.equal(validateProductionJobData({ workflowStage: "Complete" }), false);
 });

@@ -7,6 +7,8 @@ import { signOutOfPackStudio } from "../auth-actions";
 type AppFrameProps = {
   accountId: string;
   workspace?: "studio" | "production";
+  teamId?: string;
+  jobId?: string;
   profile: {
     createdBy: string;
     companyName: string;
@@ -20,12 +22,20 @@ type AppFrameProps = {
 export default function AppFrame({
   accountId,
   workspace = "studio",
+  teamId,
+  jobId,
   profile,
   profileQrCode,
 }: AppFrameProps) {
   const router = useRouter();
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const signOutFormRef = useRef<HTMLFormElement>(null);
+  const productionUrl = new URLSearchParams({ workspace: "production" });
+  if (teamId) productionUrl.set("team", teamId);
+  if (jobId) productionUrl.set("job", jobId);
+  const iframeSrc = workspace === "production"
+    ? `/packstudio/app.html?${productionUrl.toString()}`
+    : "/packstudio/app.html";
 
   useEffect(() => {
     function handleMessage(event: MessageEvent) {
@@ -37,7 +47,8 @@ export default function AppFrame({
         !("type" in event.data) ||
         (event.data.type !== "packstudio:sign-out" &&
           event.data.type !== "packstudio:upgrade" &&
-          event.data.type !== "packstudio:auth-required")
+          event.data.type !== "packstudio:auth-required" &&
+          event.data.type !== "packstudio:production-updated")
       ) {
         return;
       }
@@ -48,6 +59,8 @@ export default function AppFrame({
         window.location.replace("/login");
       } else if (event.data.type === "packstudio:upgrade") {
         router.push("/account");
+      } else if (event.data.type === "packstudio:production-updated") {
+        router.refresh();
       }
     }
 
@@ -61,7 +74,7 @@ export default function AppFrame({
       <iframe
         ref={iframeRef}
         className="h-full w-full border-0"
-        src={workspace === "production" ? "/packstudio/app.html?workspace=production" : "/packstudio/app.html"}
+        src={iframeSrc}
         title={workspace === "production" ? "Production dashboard" : "PackStudio"}
         onLoad={(event) =>
           event.currentTarget.contentWindow?.postMessage(

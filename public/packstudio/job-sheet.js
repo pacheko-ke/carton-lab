@@ -11,6 +11,13 @@ const JOB_SHEET_TRACKING_STAGES = [
   "Packing",
   "Dispatch",
 ];
+const JOB_SHEET_WORKFLOW_STAGES = [
+  "Origination",
+  "Paper Booking",
+  "Board Production",
+  "Printing",
+  "Dispatch",
+];
 const MAX_JOB_SHEET_ARTWORK_BYTES = 5 * 1024 * 1024;
 
 function jobSheetToday() {
@@ -474,6 +481,7 @@ function defaultJobSheetData(context = {}) {
   const params = context.params || {};
   return {
     jobNo: "",
+    workflowStage: "Origination",
     issueDate: today,
     documentType: "JOB",
     priority: "Normal",
@@ -660,6 +668,12 @@ function initializeJobSheet(getContext) {
       showStatus("Could not save this draft in browser storage.", true);
     }
   };
+  const notifyProductionUpdated = () => {
+    window.parent.postMessage(
+      { type: "packstudio:production-updated" },
+      window.location.origin,
+    );
+  };
   const refreshOutputs = () => {
     const data = collectData();
     const quantities = calculateJobSheetQuantities(data);
@@ -831,11 +845,18 @@ function initializeJobSheet(getContext) {
         option.textContent = team.name;
         teamSelect.append(option);
       });
-      teamSelect.value = availableTeams[0].id;
+      const requestedTeamId = new URLSearchParams(window.location.search).get("team");
+      const requestedJobId = new URLSearchParams(window.location.search).get("job");
+      teamSelect.value = availableTeams.some((team) => team.id === requestedTeamId)
+        ? requestedTeamId
+        : availableTeams[0].id;
       lastSelectedTeamId = teamSelect.value;
       activeProductionRole = selectedTeam()?.role || null;
       updateEditorPermissions();
-      await loadTeamJobs(teamSelect.value);
+      await loadTeamJobs(teamSelect.value, requestedJobId || "");
+      if (requestedJobId && jobSelect.value === requestedJobId) {
+        await loadSelectedSharedJob();
+      }
       showStatus("Choose a shared job to open it. Local drafts remain on this device.");
     } catch (error) {
       console.error("Could not load production teams:", error);
@@ -855,7 +876,13 @@ function initializeJobSheet(getContext) {
       activeSharedJobId = result.job.id;
       activeSharedJobTeamId = result.job.teamId;
       activeProductionRole = result.role;
-      savedSharedJobData = result.job.data || {};
+      const loadedData = result.job.data || {};
+      savedSharedJobData = {
+        ...loadedData,
+        workflowStage: JOB_SHEET_WORKFLOW_STAGES.includes(loadedData.workflowStage)
+          ? loadedData.workflowStage
+          : "Origination",
+      };
       sharedJobDirty = false;
       writeData(savedSharedJobData);
       lastSheetUnit = result.job.data?.unit === "in" ? "in" : "mm";
@@ -891,6 +918,7 @@ function initializeJobSheet(getContext) {
       artworkStatus.textContent = "Only Designer team members can upload artwork. Team members can download existing files.";
       artworkStatus.dataset.error = "false";
       showStatus(`Created shared job ${result.job.data?.jobNo || result.job.id}.`);
+      notifyProductionUpdated();
     } catch (error) {
       console.error("Could not create a shared production job:", error);
       showStatus(`Could not create shared job: ${error.message || error}`, true);
@@ -908,6 +936,7 @@ function initializeJobSheet(getContext) {
       await loadTeamJobs(activeSharedJobTeamId, activeSharedJobId);
       updateEditorPermissions();
       showStatus(`Saved shared job ${result.job.data?.jobNo || result.job.id}.`);
+      notifyProductionUpdated();
     } catch (error) {
       console.error("Could not save the shared production job:", error);
       showStatus(`Could not save shared job: ${error.message || error}`, true);

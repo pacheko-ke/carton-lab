@@ -1,7 +1,24 @@
 export const MAX_ARTWORK_FILE_BYTES = 5 * 1024 * 1024;
+export const PRODUCTION_WORKFLOW_STAGES = [
+  "Origination",
+  "Paper Booking",
+  "Board Production",
+  "Printing",
+  "Dispatch",
+] as const;
+
+export type ProductionWorkflowStage =
+  (typeof PRODUCTION_WORKFLOW_STAGES)[number];
+
+export function isProductionWorkflowStage(
+  value: unknown,
+): value is ProductionWorkflowStage {
+  return PRODUCTION_WORKFLOW_STAGES.some((stage) => stage === value);
+}
 
 const JOB_SHEET_FIELD_LIMITS: Record<string, number> = {
   jobNo: 40,
+  workflowStage: 30,
   issueDate: 10,
   documentType: 10,
   priority: 10,
@@ -116,6 +133,10 @@ export function validateProductionJobData(
   if (!isRecord(value) || JSON.stringify(value).length > 32_768) return false;
 
   for (const [key, fieldValue] of Object.entries(value)) {
+    if (key === "workflowStage" && !isProductionWorkflowStage(fieldValue)) {
+      return false;
+    }
+
     if (key === "tracking") {
       if (
         !Array.isArray(fieldValue) ||

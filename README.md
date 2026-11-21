@@ -171,8 +171,9 @@ scheduled cancellations retain access through the paid period end.
    before building the app. Configure only live Daraja credentials in Vercel
    Production (`DARAJA_ENV=production`); keep sandbox credentials local.
 
-The Production workspace is available at `/production/admin`. Jobs are shared
-with team members assigned by a system admin at `/admin/production`. Production
+The Production workspace is available at `/production/admin`, with team-filtered
+job KPIs, workflow queues, and delivery visualizations. Jobs are shared with
+team members assigned by a system admin at `/admin/production`. Production
 members create and update jobs; Designers can view team jobs and attach artwork
 files up to 5 MB. Artwork requires a **private**
 Vercel Blob store connected to the project in Development, Preview, and

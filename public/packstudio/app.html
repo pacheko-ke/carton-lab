@@ -306,6 +306,19 @@
       <p class="production-shared-note">Local drafts remain on this device. Saving a shared job updates the team copy.</p>
     </section>
 
+    <section class="card job-sheet-card production-stage-control" aria-labelledby="productionStageLabel">
+      <label id="productionStageLabel" class="field">Current workflow stage
+        <select class="input" data-job-field="workflowStage">
+          <option>Origination</option>
+          <option>Paper Booking</option>
+          <option>Board Production</option>
+          <option>Printing</option>
+          <option>Dispatch</option>
+        </select>
+      </label>
+      <p class="job-sheet-help">Update this stage as the shared job moves through production.</p>
+    </section>
+
     <div class="job-sheet-stages">
       <section class="job-sheet-stage" aria-labelledby="jobSheetOriginationTitle">
         <header class="job-sheet-stage-heading">
