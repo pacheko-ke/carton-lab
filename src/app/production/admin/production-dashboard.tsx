@@ -1,11 +1,23 @@
 "use client";
 
-import { useMemo, useRef, useState, useTransition, type ChangeEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+  type ChangeEvent,
+  type FormEvent,
+} from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AppFrame from "@/app/app/app-frame";
 import BrandLogo from "@/app/brand-logo";
-import { MAX_ARTWORK_FILE_BYTES, PRODUCTION_WORKFLOW_STAGES } from "@/lib/production-data";
+import {
+  MAX_ARTWORK_FILE_BYTES,
+  MAX_PRODUCTION_JOB_FLAG_REASON_LENGTH,
+  PRODUCTION_WORKFLOW_STAGES,
+} from "@/lib/production-data";
 import type { ProductionWorkflowStage } from "@/lib/production-data";
 
 export type ProductionDashboardOrganization = {
@@ -23,6 +35,7 @@ export type ProductionDashboardJob = {
   customer: string;
   cartonSpec: string;
   size: string;
+  flag: { reason: string } | null;
   deliveryDate: string;
   priority: string;
   orderQty: number | null;
@@ -102,6 +115,9 @@ function JobTable({
   emptyDescription = "Create a job sheet or choose another organization or stage.",
   showArtwork = false,
   canOpenJobSheet = true,
+  canFlagJobs = false,
+  canResolveJobFlag,
+  onFlagChanged,
 }: {
   jobs: ProductionDashboardJob[];
   onOpen: (job: ProductionDashboardJob) => void;
@@ -112,6 +128,9 @@ function JobTable({
   emptyDescription?: string;
   showArtwork?: boolean;
   onArtworkUploaded?: () => void;
+  canFlagJobs?: boolean;
+  canResolveJobFlag?: (job: ProductionDashboardJob) => boolean;
+  onFlagChanged?: () => void;
 }) {
   if (!jobs.length) {
     return (
@@ -139,6 +158,7 @@ function JobTable({
             <th scope="col">Size</th>
             <th scope="col">Customer</th>
             <th scope="col">Stage</th>
+            <th scope="col">Flag / reason</th>
             {showArtwork && <th scope="col">Artwork</th>}
             <th scope="col">Delivery</th>
             <th scope="col" className="production-number-cell">Order qty</th>
@@ -159,6 +179,14 @@ function JobTable({
               <td>{job.size || "—"}</td>
               <td>{job.customer || "—"}</td>
               <td><span className={stageClass(job.workflowStage)}>{job.workflowStage}</span></td>
+              <td>
+                <JobFlagControl
+                  canFlag={canFlagJobs && job.workflowStage === "Origination"}
+                  canResolve={canResolveJobFlag?.(job) ?? false}
+                  job={job}
+                  onChanged={onFlagChanged}
+                />
+              </td>
               {showArtwork && (
                 <td>{job.artworkCount} file{job.artworkCount === 1 ? "" : "s"}</td>
               )}
@@ -217,6 +245,184 @@ async function requestProductionJson(
     throw new Error("The server returned an invalid response.");
   }
   return result;
+}
+
+function JobFlagControl({
+  job,
+  canFlag,
+  canResolve,
+  onChanged,
+}: {
+  job: ProductionDashboardJob;
+  canFlag: boolean;
+  canResolve: boolean;
+  onChanged?: () => void;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [reason, setReason] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [status, setStatus] = useState("");
+  const [hasError, setHasError] = useState(false);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const reasonInputRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    if (isEditing && !dialog.open) {
+      dialog.showModal();
+      reasonInputRef.current?.focus();
+    } else if (!isEditing && dialog.open) {
+      dialog.close();
+    }
+  }, [isEditing]);
+
+  const openFlagDialog = () => {
+    setReason("");
+    setStatus("");
+    setHasError(false);
+    setIsEditing(true);
+  };
+
+  const closeFlagDialog = () => {
+    setIsEditing(false);
+    setStatus("");
+    setHasError(false);
+  };
+
+  const submitFlag = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsSaving(true);
+    setStatus("");
+    setHasError(false);
+    try {
+      await requestProductionJson(`/api/production/jobs/${encodeURIComponent(job.id)}/flag`, {
+        method: "POST",
+        body: JSON.stringify({ reason }),
+      });
+      setReason("");
+      setIsEditing(false);
+      setStatus("Job flagged.");
+      onChanged?.();
+    } catch (error) {
+      console.error("Could not flag the production job:", error);
+      setStatus(`Could not flag job: ${error instanceof Error ? error.message : String(error)}`);
+      setHasError(true);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const resolveFlag = async () => {
+    setIsSaving(true);
+    setStatus("");
+    setHasError(false);
+    try {
+      await requestProductionJson(`/api/production/jobs/${encodeURIComponent(job.id)}/flag`, {
+        method: "PATCH",
+      });
+      setStatus("Job flag cleared.");
+      onChanged?.();
+    } catch (error) {
+      console.error("Could not clear the production job flag:", error);
+      setStatus(`Could not clear flag: ${error instanceof Error ? error.message : String(error)}`);
+      setHasError(true);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="production-job-flag">
+      {job.flag ? (
+        <>
+          <strong>Flagged</strong>
+          <small>{job.flag.reason}</small>
+          {canResolve && (
+            <button
+              className="production-table-action"
+              disabled={isSaving}
+              onClick={resolveFlag}
+              type="button"
+            >
+              {isSaving ? "Clearing…" : "Clear flag"}
+            </button>
+          )}
+        </>
+      ) : canFlag ? (
+        <button
+          aria-controls={`flag-dialog-${job.id}`}
+          aria-haspopup="dialog"
+          aria-label={`Flag job ${job.jobNo || ""}`.trim()}
+          className="production-job-flag-trigger"
+          onClick={openFlagDialog}
+          title="Flag job"
+          type="button"
+        >
+          <svg aria-hidden="true" focusable="false" viewBox="0 0 16 16">
+            <path d="M3 14V2m1 1h8L10.5 6 12 9H4" />
+          </svg>
+        </button>
+      ) : (
+        "—"
+      )}
+      {canFlag && (
+        <dialog
+          aria-labelledby={`flag-dialog-title-${job.id}`}
+          className="production-flag-dialog"
+          id={`flag-dialog-${job.id}`}
+          onCancel={(event) => {
+            event.preventDefault();
+            closeFlagDialog();
+          }}
+          onClose={() => {
+            if (isEditing) closeFlagDialog();
+          }}
+          ref={dialogRef}
+        >
+          <form onSubmit={submitFlag}>
+            <div className="production-flag-dialog-heading">
+              <span className="production-panel-kicker">JOB FLAG</span>
+              <h2 id={`flag-dialog-title-${job.id}`}>Flag job</h2>
+              <p>{[job.jobNo, job.jobName].filter(Boolean).join(" · ")}</p>
+            </div>
+            <label htmlFor={`flag-reason-${job.id}`}>Reason</label>
+            <textarea
+              ref={reasonInputRef}
+              id={`flag-reason-${job.id}`}
+              maxLength={MAX_PRODUCTION_JOB_FLAG_REASON_LENGTH}
+              onChange={(event) => setReason(event.currentTarget.value)}
+              placeholder="Describe the issue with this job"
+              required
+              value={reason}
+            />
+            {status && (
+              <small aria-live="polite" role={hasError ? "alert" : "status"}>
+                {status}
+              </small>
+            )}
+            <div className="production-flag-dialog-actions">
+              <button className="production-primary-button" disabled={isSaving} type="submit">
+                {isSaving ? "Submitting…" : "Submit flag"}
+              </button>
+              <button
+                className="production-text-action"
+                disabled={isSaving}
+                onClick={closeFlagDialog}
+                type="button"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </dialog>
+      )}
+      {!isEditing && status && (
+        <small aria-live="polite" role={hasError ? "alert" : "status"}>{status}</small>
+      )}
+    </div>
+  );
 }
 
 function ArtworkUploadButton({
@@ -329,6 +535,13 @@ export default function ProductionDashboard({
   const designerOrganizationIds = useMemo(
     () => new Set(
       organizations.filter((organization) => organization.role === "DESIGNER")
+        .map((organization) => organization.id),
+    ),
+    [organizations],
+  );
+  const productionOrganizationIds = useMemo(
+    () => new Set(
+      organizations.filter((organization) => organization.role === "PRODUCTION")
         .map((organization) => organization.id),
     ),
     [organizations],
@@ -689,6 +902,8 @@ export default function ProductionDashboard({
                       onOpen={openJob}
                       onCreate={canManageJobs ? openNewJobSheet : undefined}
                       canOpenJobSheet={canManageJobs}
+                      canResolveJobFlag={(job) => productionOrganizationIds.has(job.organizationId)}
+                      onFlagChanged={() => router.refresh()}
                     />
                   </section>
                 </>
@@ -707,6 +922,9 @@ export default function ProductionDashboard({
                     jobs={originationJobs}
                     onOpen={openJob}
                     onArtworkUploaded={() => router.refresh()}
+                    onFlagChanged={() => router.refresh()}
+                    canFlagJobs
+                    canResolveJobFlag={(job) => productionOrganizationIds.has(job.organizationId)}
                     showArtwork
                   />
                 </section>
@@ -732,6 +950,8 @@ export default function ProductionDashboard({
                     onOpen={openJob}
                     onCreate={canManageJobs ? openNewJobSheet : undefined}
                     canOpenJobSheet={canManageJobs}
+                    canResolveJobFlag={(job) => productionOrganizationIds.has(job.organizationId)}
+                    onFlagChanged={() => router.refresh()}
                   />
                 </section>
               )}

@@ -14,29 +14,31 @@ enum ProductionRole {
 }
 
 model User {
-  id                       String            @id @default(cuid())
-  name                     String?
-  companyName              String?
-  role                     String?
-  contact                  String?
-  address                  String?
-  email                    String?           @unique
-  emailVerified            DateTime?
-  image                    String?
-  premiumAccessGranted     Boolean           @default(false)
-  trialEndsAt              DateTime?
-  marketingEmailsEnabled   Boolean           @default(true)
-  marketingEmailsUpdatedAt DateTime?
-  accounts                 Account[]
-  sessions                 Session[]
-  subscriptions            Subscription[]
-  billingCheckouts         BillingCheckout[]
-  billingPayments          BillingPayment[]
-  keylineBookmarks         KeylineBookmark[]
-  emailJobs                EmailJob[]
-  organizationMemberships  ProductionOrganizationMembership[]
-  createdProductionJobs   ProductionJob[]        @relation("ProductionJobCreator")
-  uploadedProductionFiles ProductionAttachment[] @relation("ProductionAttachmentUploader")
+  id                         String                             @id @default(cuid())
+  name                       String?
+  companyName                String?
+  role                       String?
+  contact                    String?
+  address                    String?
+  email                      String?                            @unique
+  emailVerified              DateTime?
+  image                      String?
+  premiumAccessGranted       Boolean                            @default(false)
+  trialEndsAt                DateTime?
+  marketingEmailsEnabled     Boolean                            @default(true)
+  marketingEmailsUpdatedAt   DateTime?
+  accounts                   Account[]
+  sessions                   Session[]
+  subscriptions              Subscription[]
+  billingCheckouts           BillingCheckout[]
+  billingPayments            BillingPayment[]
+  keylineBookmarks           KeylineBookmark[]
+  emailJobs                  EmailJob[]
+  organizationMemberships    ProductionOrganizationMembership[]
+  createdProductionJobs      ProductionJob[]                    @relation("ProductionJobCreator")
+  createdProductionJobFlags  ProductionJobFlag[]                @relation("ProductionJobFlagCreator")
+  resolvedProductionJobFlags ProductionJobFlag[]                @relation("ProductionJobFlagResolver")
+  uploadedProductionFiles    ProductionAttachment[]             @relation("ProductionAttachmentUploader")
 }
 
 model EmailCampaign {
@@ -235,21 +237,35 @@ model ProductionJob {
   organization    ProductionOrganization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   createdBy       User?                  @relation("ProductionJobCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
   attachments     ProductionAttachment[]
+  flag            ProductionJobFlag?
 
   @@index([organizationId, updatedAt])
 }
 
+model ProductionJobFlag {
+  id               String        @id @default(cuid())
+  jobId            String        @unique
+  createdByUserId  String?
+  reason           String
+  createdAt        DateTime      @default(now())
+  resolvedAt       DateTime?
+  resolvedByUserId String?
+  job              ProductionJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  createdBy        User?         @relation("ProductionJobFlagCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  resolvedBy       User?         @relation("ProductionJobFlagResolver", fields: [resolvedByUserId], references: [id], onDelete: SetNull)
+}
+
 model ProductionAttachment {
-  id               String       @id @default(cuid())
+  id               String        @id @default(cuid())
   jobId            String
   uploadedByUserId String?
-  pathname         String       @unique
+  pathname         String        @unique
   originalName     String
   contentType      String
   size             Int
-  createdAt        DateTime     @default(now())
+  createdAt        DateTime      @default(now())
   job              ProductionJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  uploadedBy       User?        @relation("ProductionAttachmentUploader", fields: [uploadedByUserId], references: [id], onDelete: SetNull)
+  uploadedBy       User?         @relation("ProductionAttachmentUploader", fields: [uploadedByUserId], references: [id], onDelete: SetNull)
 
   @@index([jobId, createdAt])
 }

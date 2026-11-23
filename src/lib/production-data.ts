@@ -1,4 +1,5 @@
 export const MAX_ARTWORK_FILE_BYTES = 5 * 1024 * 1024;
+export const MAX_PRODUCTION_JOB_FLAG_REASON_LENGTH = 1000;
 export const PRODUCTION_WORKFLOW_STAGES = [
   "Origination",
   "Paper Booking",
@@ -176,6 +177,20 @@ export function canEditProductionJobs(role: string): boolean {
 
 export function canAttachProductionArtwork(role: string): boolean {
   return role === "DESIGNER";
+}
+
+export function canFlagProductionJobs(role: string): boolean {
+  return role === "DESIGNER";
+}
+
+export function canResolveProductionJobFlags(role: string): boolean {
+  return role === "PRODUCTION";
+}
+
+export function validateProductionJobFlagReason(value: unknown): value is string {
+  return typeof value === "string" &&
+    value.length <= MAX_PRODUCTION_JOB_FLAG_REASON_LENGTH &&
+    value.trim().length > 0;
 }
 
 export function sanitizeArtworkFileName(value: unknown): string | null {

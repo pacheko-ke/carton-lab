@@ -80,6 +80,12 @@ async function AuthenticatedProductionAdminPage() {
           organizationId: true,
           data: true,
           updatedAt: true,
+          flag: {
+            select: {
+              reason: true,
+              resolvedAt: true,
+            },
+          },
           _count: { select: { attachments: true } },
         },
       })
@@ -95,6 +101,7 @@ async function AuthenticatedProductionAdminPage() {
       customer: textValue(job.data, "customer"),
       cartonSpec: cartonSpecValue(job.data),
       size: sizeValue(job.data),
+      flag: job.flag && !job.flag.resolvedAt ? { reason: job.flag.reason } : null,
       deliveryDate: textValue(job.data, "deliveryDate"),
       priority: textValue(job.data, "priority"),
       orderQty: quantityValue(job.data),

@@ -3302,6 +3302,124 @@ input {
   white-space: nowrap;
 }
 
+.production-job-flag {
+  min-width: 180px;
+  max-width: 280px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.production-job-flag strong,
+.production-job-flag small {
+  display: block;
+}
+
+.production-job-flag strong {
+  color: #f0b968;
+}
+
+.production-job-flag small {
+  margin-top: 4px;
+  color: #9eb0c1;
+  white-space: normal;
+}
+
+.production-job-flag-trigger {
+  display: inline-grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid rgba(165, 190, 214, 0.2);
+  border-radius: 6px;
+  background: #101923;
+  color: #f0b968;
+  cursor: pointer;
+}
+
+.production-job-flag-trigger:hover {
+  border-color: #f0b968;
+  background: rgba(240, 185, 104, 0.1);
+}
+
+.production-job-flag-trigger:focus-visible {
+  outline: 2px solid #66d3e8;
+  outline-offset: 2px;
+}
+
+.production-job-flag-trigger svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.5;
+}
+
+.production-flag-dialog {
+  width: min(440px, calc(100vw - 32px));
+  max-width: 100%;
+  padding: 0;
+  border: 1px solid rgba(165, 190, 214, 0.2);
+  border-radius: 12px;
+  background: #111b26;
+  color: #e7f0f8;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
+}
+
+.production-flag-dialog::backdrop {
+  background: rgba(3, 8, 14, 0.72);
+  backdrop-filter: blur(3px);
+}
+
+.production-flag-dialog form {
+  display: grid;
+  gap: 12px;
+  padding: 22px;
+}
+
+.production-flag-dialog-heading h2 {
+  margin: 0;
+  color: #e7f0f8;
+  font-size: 18px;
+}
+
+.production-flag-dialog-heading p {
+  margin: 6px 0 0;
+  color: #9eb0c1;
+  font-size: 12px;
+}
+
+.production-flag-dialog label {
+  color: #c3d0dc;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.production-flag-dialog textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 10px 12px;
+  border: 1px solid rgba(165, 190, 214, 0.2);
+  border-radius: 7px;
+  background: #0c141d;
+  color: #e7f0f8;
+  font: inherit;
+  resize: vertical;
+}
+
+.production-flag-dialog textarea:focus-visible {
+  outline: 2px solid #66d3e8;
+  outline-offset: 2px;
+}
+
+.production-flag-dialog-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
 .production-jobs-table tbody tr:last-child td {
   border-bottom: 0;
 }

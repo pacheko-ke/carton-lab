@@ -3,10 +3,14 @@ import test from "node:test";
 import {
   canAttachProductionArtwork,
   canEditProductionJobs,
+  canFlagProductionJobs,
+  canResolveProductionJobFlags,
   getArtworkContentType,
   MAX_ARTWORK_FILE_BYTES,
+  MAX_PRODUCTION_JOB_FLAG_REASON_LENGTH,
   PRODUCTION_WORKFLOW_STAGES,
   sanitizeArtworkFileName,
+  validateProductionJobFlagReason,
   validateProductionJobData,
 } from "../src/lib/production-data.ts";
 
@@ -55,6 +59,22 @@ test("grants job editing and artwork upload to their intended organization roles
   assert.equal(canEditProductionJobs("DESIGNER"), false);
   assert.equal(canAttachProductionArtwork("DESIGNER"), true);
   assert.equal(canAttachProductionArtwork("PRODUCTION"), false);
+});
+
+test("limits flag creation and resolution to the intended organization roles", () => {
+  assert.equal(canFlagProductionJobs("DESIGNER"), true);
+  assert.equal(canFlagProductionJobs("PRODUCTION"), false);
+  assert.equal(canResolveProductionJobFlags("PRODUCTION"), true);
+  assert.equal(canResolveProductionJobFlags("DESIGNER"), false);
+});
+
+test("validates a non-empty job flag reason within the allowed length", () => {
+  assert.equal(validateProductionJobFlagReason("Artwork mismatch"), true);
+  assert.equal(validateProductionJobFlagReason("   "), false);
+  assert.equal(validateProductionJobFlagReason("x".repeat(MAX_PRODUCTION_JOB_FLAG_REASON_LENGTH)), true);
+  assert.equal(validateProductionJobFlagReason("x".repeat(MAX_PRODUCTION_JOB_FLAG_REASON_LENGTH + 1)), false);
+  assert.equal(validateProductionJobFlagReason(" ".repeat(MAX_PRODUCTION_JOB_FLAG_REASON_LENGTH + 1)), false);
+  assert.equal(validateProductionJobFlagReason(null), false);
 });
 
 test("validates the explicit production workflow stage", () => {
