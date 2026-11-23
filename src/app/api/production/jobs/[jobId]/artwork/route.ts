@@ -88,7 +88,7 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   const fileName = sanitizeArtworkFileName(body.fileName);
   const contentType = fileName ? getArtworkContentType(fileName) : null;
-  const expectedPrefix = `production/${access.job.teamId}/${jobId}/`;
+  const expectedPrefix = `production/${access.job.organizationId}/${jobId}/`;
   if (
     !fileName ||
     !contentType ||

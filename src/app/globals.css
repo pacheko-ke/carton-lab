@@ -2890,7 +2890,7 @@ input {
   gap: 10px;
 }
 
-.production-team-filter {
+.production-organization-filter {
   display: flex;
   min-height: 38px;
   align-items: center;
@@ -2903,7 +2903,7 @@ input {
   font-size: 11px;
 }
 
-.production-team-filter select {
+.production-organization-filter select {
   max-width: 190px;
   border: 0;
   outline: 0;
@@ -2913,7 +2913,7 @@ input {
   font-weight: 600;
 }
 
-.production-team-filter option {
+.production-organization-filter option {
   background: #102238;
   color: #e8f0f8;
 }
@@ -3521,17 +3521,17 @@ input {
     gap: 6px;
   }
 
-  .production-team-filter {
+  .production-organization-filter {
     min-height: 34px;
     gap: 5px;
     padding: 0 7px;
   }
 
-  .production-team-filter > span {
+  .production-organization-filter > span {
     display: none;
   }
 
-  .production-team-filter select {
+  .production-organization-filter select {
     max-width: 120px;
     font-size: 10px;
   }
@@ -3595,11 +3595,11 @@ input {
     justify-content: space-between;
   }
 
-  .production-team-filter {
+  .production-organization-filter {
     flex: 1;
   }
 
-  .production-team-filter select {
+  .production-organization-filter select {
     max-width: none;
     width: 100%;
   }

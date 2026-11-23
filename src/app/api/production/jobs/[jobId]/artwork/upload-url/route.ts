@@ -62,7 +62,7 @@ export async function POST(request: Request, { params }: RouteContext) {
       { status: 400 },
     );
   }
-  const pathname = `production/${access.job.teamId}/${jobId}/${randomUUID()}.${extension}`;
+  const pathname = `production/${access.job.organizationId}/${jobId}/${randomUUID()}.${extension}`;
   const validUntil = Date.now() + 5 * 60 * 1000;
   const token = await issueSignedToken({
     pathname,

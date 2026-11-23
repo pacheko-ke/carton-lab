@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { connection } from "next/server";
 import QRCode from "qrcode";
 import { isAdminEmail } from "@/lib/admin";
 import { requireVerifiedUser } from "@/lib/account";
@@ -6,7 +7,7 @@ import { isProductionWorkflowStage, isRecord } from "@/lib/production-data";
 import { prisma } from "@/lib/prisma";
 import ProductionDashboard, {
   type ProductionDashboardJob,
-  type ProductionDashboardTeam,
+  type ProductionDashboardOrganization,
 } from "./production-dashboard";
 
 function textValue(data: unknown, key: string): string {
@@ -21,6 +22,20 @@ function quantityValue(data: unknown): number | null {
   return Number.isFinite(quantity) && quantity >= 0
     ? Math.floor(quantity)
     : null;
+}
+
+function cartonSpecValue(data: unknown): string {
+  return ["topLiner", "medium", "bottomLiner"]
+    .map((key) => textValue(data, key).trim())
+    .filter(Boolean)
+    .join("/");
+}
+
+function sizeValue(data: unknown): string {
+  const dimensions = ["length", "width", "height"].map((key) => textValue(data, key).trim());
+  if (dimensions.every((dimension) => !dimension)) return "";
+  const unit = textValue(data, "unit") === "in" ? "in" : "mm";
+  return `${dimensions.map((dimension) => dimension || "—").join(" × ")} ${unit}`;
 }
 
 export default function ProductionAdminPage() {
@@ -38,41 +53,55 @@ export default function ProductionAdminPage() {
 }
 
 async function AuthenticatedProductionAdminPage() {
+  await connection();
   const user = await requireVerifiedUser();
-  const memberships = await prisma.productionMembership.findMany({
+  const memberships = await prisma.productionOrganizationMembership.findMany({
     where: { userId: user.id },
     select: {
       role: true,
-      team: { select: { id: true, name: true } },
+      organization: { select: { id: true, name: true } },
     },
   });
-  const teams: ProductionDashboardTeam[] = memberships.map(({ role, team }) => ({
-    ...team,
+  const organizations: ProductionDashboardOrganization[] = memberships.map(({ role, organization }) => ({
+    ...organization,
     role: role === "DESIGNER" ? "DESIGNER" : "PRODUCTION",
   }));
-  const teamNames = new Map(teams.map((team) => [team.id, team.name]));
-  const jobs = teams.length
+  const organizationNames = new Map(
+    organizations.map((organization) => [organization.id, organization.name]),
+  );
+  const jobs = organizations.length
     ? await prisma.productionJob.findMany({
-        where: { teamId: { in: teams.map((team) => team.id) } },
+        where: {
+          organizationId: { in: organizations.map((organization) => organization.id) },
+        },
         orderBy: { updatedAt: "desc" },
-        select: { id: true, teamId: true, data: true, updatedAt: true },
+        select: {
+          id: true,
+          organizationId: true,
+          data: true,
+          updatedAt: true,
+          _count: { select: { attachments: true } },
+        },
       })
     : [];
   const dashboardJobs: ProductionDashboardJob[] = jobs.map((job) => {
     const rawStage = textValue(job.data, "workflowStage");
     return {
       id: job.id,
-      teamId: job.teamId,
-      teamName: teamNames.get(job.teamId) ?? "Production team",
+      organizationId: job.organizationId,
+      organizationName: organizationNames.get(job.organizationId) ?? "Production organization",
       jobNo: textValue(job.data, "jobNo"),
       jobName: textValue(job.data, "jobName"),
       customer: textValue(job.data, "customer"),
+      cartonSpec: cartonSpecValue(job.data),
+      size: sizeValue(job.data),
       deliveryDate: textValue(job.data, "deliveryDate"),
       priority: textValue(job.data, "priority"),
       orderQty: quantityValue(job.data),
       workflowStage: isProductionWorkflowStage(rawStage)
         ? rawStage
         : "Origination",
+      artworkCount: job._count.attachments,
       updatedAt: job.updatedAt.toISOString(),
     };
   });
@@ -94,9 +123,9 @@ async function AuthenticatedProductionAdminPage() {
       accountName={user.name || user.companyName || user.email || "Production user"}
       profile={profile}
       profileQrCode={profileQrCode}
-      teams={teams}
+      organizations={organizations}
       jobs={dashboardJobs}
-      canManageTeams={isAdminEmail(user.email)}
+      canManageOrganizations={isAdminEmail(user.email)}
     />
   );
 }

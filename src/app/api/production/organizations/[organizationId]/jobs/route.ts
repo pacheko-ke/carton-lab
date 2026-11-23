@@ -1,10 +1,10 @@
 import { canEditProductionJobs, isRecord, validateProductionJobData } from "@/lib/production-data";
-import { getProductionMembership, getVerifiedProductionUser } from "@/lib/production-access";
+import { getProductionOrganizationMembership, getVerifiedProductionUser } from "@/lib/production-access";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
-type RouteContext = { params: Promise<{ teamId: string }> };
+type RouteContext = { params: Promise<{ organizationId: string }> };
 
 function summaryValue(data: Prisma.JsonValue, key: string): string {
   if (isRecord(data) && typeof data[key] === "string") {
@@ -22,14 +22,14 @@ export async function GET(_request: Request, { params }: RouteContext) {
     );
   }
 
-  const { teamId } = await params;
-  const membership = await getProductionMembership(user.id, teamId);
+  const { organizationId } = await params;
+  const membership = await getProductionOrganizationMembership(user.id, organizationId);
   if (!membership) {
-    return NextResponse.json({ error: "Team access denied" }, { status: 403 });
+    return NextResponse.json({ error: "Organization access denied" }, { status: 403 });
   }
 
   const jobs = await prisma.productionJob.findMany({
-    where: { teamId },
+    where: { organizationId },
     orderBy: { updatedAt: "desc" },
     select: { id: true, data: true, updatedAt: true },
   });
@@ -57,10 +57,10 @@ export async function POST(request: Request, { params }: RouteContext) {
     );
   }
 
-  const { teamId } = await params;
-  const membership = await getProductionMembership(user.id, teamId);
+  const { organizationId } = await params;
+  const membership = await getProductionOrganizationMembership(user.id, organizationId);
   if (!membership) {
-    return NextResponse.json({ error: "Team access denied" }, { status: 403 });
+    return NextResponse.json({ error: "Organization access denied" }, { status: 403 });
   }
   if (!canEditProductionJobs(membership.role)) {
     return NextResponse.json(
@@ -84,11 +84,11 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   const job = await prisma.productionJob.create({
     data: {
-      teamId,
+      organizationId,
       createdByUserId: user.id,
       data: body.data as Prisma.InputJsonObject,
     },
-    select: { id: true, teamId: true, data: true, createdAt: true, updatedAt: true },
+    select: { id: true, organizationId: true, data: true, createdAt: true, updatedAt: true },
   });
 
   return NextResponse.json({ job }, { status: 201 });

@@ -5,9 +5,9 @@ import { requireAdminUser } from "@/lib/admin";
 import { prisma } from "@/lib/prisma";
 import BrandLogo from "../../brand-logo";
 import {
-  createProductionTeam,
-  removeProductionMembership,
-  saveProductionMembership,
+  createProductionOrganization,
+  removeProductionOrganizationMembership,
+  saveProductionOrganizationMembership,
 } from "./actions";
 
 type ProductionAdminPageProps = {
@@ -15,15 +15,14 @@ type ProductionAdminPageProps = {
 };
 
 const notices: Record<string, string> = {
-  "team-created": "Production team created.",
-  "membership-saved": "Team membership saved.",
-  "membership-removed": "Team member removed.",
+  "organization-created": "Production organization created.",
+  "organization-membership-saved": "Organization membership saved.",
+  "organization-membership-removed": "Organization member removed.",
 };
 
 const errors: Record<string, string> = {
-  "duplicate-team": "A team with that name already exists.",
   "invalid-email": "Enter a valid email address.",
-  "team-not-found": "The selected team was not found.",
+  "organization-not-found": "The selected organization was not found.",
   "verified-user-required": "That email must belong to a registered, verified account.",
 };
 
@@ -46,8 +45,8 @@ async function ProductionAdminDashboard({
 }: ProductionAdminPageProps) {
   await requireAdminUser();
   const params = await searchParams;
-  const [teams, notice, error] = await Promise.all([
-    prisma.productionTeam.findMany({
+  const [organizations, notice, error] = await Promise.all([
+    prisma.productionOrganization.findMany({
       orderBy: { name: "asc" },
       include: {
         memberships: {
@@ -78,10 +77,10 @@ async function ProductionAdminDashboard({
       <section className="admin-content">
         <div className="account-intro">
           <span className="eyebrow"><span /> PRODUCTION ACCESS</span>
-          <h1>Teams and roles</h1>
+          <h1>Organizations and roles</h1>
           <p>
-            Create production teams and assign verified accounts. Production
-            members manage shared jobs; Designers can view team jobs and attach
+            Create production organizations and assign verified accounts. Production
+            members manage shared jobs; Designers can view organization jobs and attach
             artwork.
           </p>
         </div>
@@ -89,44 +88,44 @@ async function ProductionAdminDashboard({
         {notice && <p className="account-notice" role="status">{notice}</p>}
         {error && <p className="account-billing-unavailable" role="alert">{error}</p>}
 
-        <section className="admin-panel" aria-labelledby="create-team-heading">
+        <section className="admin-panel" aria-labelledby="create-organization-heading">
           <div className="admin-panel-heading">
             <div>
-              <span className="account-plan-kicker">TEAMS</span>
-              <h2 id="create-team-heading">Create a production team</h2>
+              <span className="account-plan-kicker">ORGANIZATIONS</span>
+              <h2 id="create-organization-heading">Create a production organization</h2>
             </div>
           </div>
-          <form action={createProductionTeam} className="admin-production-form">
+          <form action={createProductionOrganization} className="admin-production-form">
             <label className="admin-production-field">
-              <span>Team name</span>
+              <span>Organization name</span>
               <input name="name" maxLength={100} required />
             </label>
-            <button className="button button-large" type="submit">Create team</button>
+            <button className="button button-large" type="submit">Create organization</button>
           </form>
         </section>
 
-        {teams.map((team) => (
-          <section className="admin-panel" aria-labelledby={`team-${team.id}`} key={team.id}>
+        {organizations.map((organization) => (
+          <section className="admin-panel" aria-labelledby={`organization-${organization.id}`} key={organization.id}>
             <div className="admin-panel-heading">
               <div>
-                <span className="account-plan-kicker">PRODUCTION TEAM</span>
-                <h2 id={`team-${team.id}`}>{team.name}</h2>
+                <span className="account-plan-kicker">PRODUCTION ORGANIZATION</span>
+                <h2 id={`organization-${organization.id}`}>{organization.name}</h2>
               </div>
               <span>
-                {team.memberships.length} member{team.memberships.length === 1 ? "" : "s"}
+                {organization.memberships.length} member{organization.memberships.length === 1 ? "" : "s"}
                 {" · "}
-                {team._count.jobs} shared job{team._count.jobs === 1 ? "" : "s"}
+                {organization._count.jobs} shared job{organization._count.jobs === 1 ? "" : "s"}
               </span>
             </div>
 
-            <form action={saveProductionMembership} className="admin-production-form">
-              <input type="hidden" name="teamId" value={team.id} />
+            <form action={saveProductionOrganizationMembership} className="admin-production-form">
+              <input type="hidden" name="organizationId" value={organization.id} />
               <label className="admin-production-field">
                 <span>Verified account email</span>
                 <input name="email" type="email" maxLength={254} required />
               </label>
               <label className="admin-production-field">
-                <span>Production role</span>
+                <span>Organization role</span>
                 <select name="role" defaultValue={ProductionRole.PRODUCTION}>
                   <option value={ProductionRole.PRODUCTION}>Production</option>
                   <option value={ProductionRole.DESIGNER}>Designer</option>
@@ -148,7 +147,7 @@ async function ProductionAdminDashboard({
                   </tr>
                 </thead>
                 <tbody>
-                  {team.memberships.map((membership) => (
+                  {organization.memberships.map((membership) => (
                     <tr key={membership.userId}>
                       <td>
                         {membership.user.name || membership.user.email || "Account"}
@@ -158,13 +157,13 @@ async function ProductionAdminDashboard({
                       </td>
                       <td>{membership.role === ProductionRole.DESIGNER ? "Designer" : "Production"}</td>
                       <td>
-                        <form action={saveProductionMembership} className="admin-production-inline-form">
-                          <input type="hidden" name="teamId" value={team.id} />
+                        <form action={saveProductionOrganizationMembership} className="admin-production-inline-form">
+                          <input type="hidden" name="organizationId" value={organization.id} />
                           <input type="hidden" name="email" value={membership.user.email ?? ""} />
                           <select
                             name="role"
                             defaultValue={membership.role}
-                            aria-label={`Role for ${membership.user.email ?? "team member"}`}
+                            aria-label={`Role for ${membership.user.email ?? "organization member"}`}
                           >
                             <option value={ProductionRole.PRODUCTION}>Production</option>
                             <option value={ProductionRole.DESIGNER}>Designer</option>
@@ -173,8 +172,8 @@ async function ProductionAdminDashboard({
                         </form>
                       </td>
                       <td>
-                        <form action={removeProductionMembership}>
-                          <input type="hidden" name="teamId" value={team.id} />
+                        <form action={removeProductionOrganizationMembership}>
+                          <input type="hidden" name="organizationId" value={organization.id} />
                           <input type="hidden" name="userId" value={membership.userId} />
                           <button className="admin-production-remove" type="submit">
                             Remove
@@ -183,7 +182,7 @@ async function ProductionAdminDashboard({
                       </td>
                     </tr>
                   ))}
-                  {team.memberships.length === 0 && (
+                  {organization.memberships.length === 0 && (
                     <tr><td colSpan={4}>No members assigned yet.</td></tr>
                   )}
                 </tbody>
@@ -191,8 +190,8 @@ async function ProductionAdminDashboard({
             </div>
           </section>
         ))}
-        {teams.length === 0 && (
-          <p className="admin-panel-note">No production teams have been created.</p>
+        {organizations.length === 0 && (
+          <p className="admin-panel-note">No production organizations have been created.</p>
         )}
       </section>
     </main>

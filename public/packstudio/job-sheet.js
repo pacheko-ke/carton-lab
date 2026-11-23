@@ -571,9 +571,9 @@ function initializeJobSheet(getContext) {
   const status = document.getElementById("jobSheetStatus");
   const accountKey = typeof accountId === "string" && accountId ? accountId : "offline";
   const storageKey = `${JOB_SHEET_STORAGE_KEY}.${encodeURIComponent(accountKey)}`;
-  const teamSelect = document.getElementById("productionTeamSelect");
+  const organizationSelect = document.getElementById("productionOrganizationSelect");
   const jobSelect = document.getElementById("productionJobSelect");
-  const teamRoleBadge = document.getElementById("productionTeamRole");
+  const organizationRoleBadge = document.getElementById("productionOrganizationRole");
   const loadSharedJobButton = document.getElementById("productionLoadJob");
   const createSharedJobButton = document.getElementById("productionCreateJob");
   const saveSharedJobButton = document.getElementById("productionSaveJob");
@@ -583,12 +583,12 @@ function initializeJobSheet(getContext) {
   const artworkStatus = document.getElementById("productionArtworkStatus");
   const artworkList = document.getElementById("productionArtworkList");
   let activeSharedJobId = null;
-  let activeSharedJobTeamId = null;
+  let activeSharedJobOrganizationId = null;
   let activeProductionRole = null;
   let sharedJobDirty = false;
   let savedSharedJobData = null;
-  let availableTeams = [];
-  let lastSelectedTeamId = "";
+  let availableOrganizations = [];
+  let lastSelectedOrganizationId = "";
   let context = getContext();
 
   const showStatus = (message, isError = false) => {
@@ -656,7 +656,7 @@ function initializeJobSheet(getContext) {
       if (activeProductionRole === "PRODUCTION") {
         sharedJobDirty = true;
         updateEditorPermissions();
-        showStatus("Unsaved changes to this shared job. Save shared changes to sync with the team.");
+        showStatus("Unsaved changes to this shared job. Save shared changes to sync with the organization.");
       }
       return;
     }
@@ -754,7 +754,8 @@ function initializeJobSheet(getContext) {
     }
     return responseBody;
   };
-  const selectedTeam = () => availableTeams.find((team) => team.id === teamSelect.value) || null;
+  const selectedOrganization = () =>
+    availableOrganizations.find((organization) => organization.id === organizationSelect.value) || null;
   const updateEditorPermissions = () => {
     const readOnly = Boolean(activeSharedJobId) && activeProductionRole !== "PRODUCTION";
     fields.forEach((field) => { field.disabled = readOnly; });
@@ -762,14 +763,15 @@ function initializeJobSheet(getContext) {
       field.disabled = readOnly;
     }));
     document.getElementById("jobSheetUseStudio").disabled = readOnly;
-    const team = selectedTeam();
-    teamRoleBadge.textContent = activeSharedJobId
+    const organization = selectedOrganization();
+    organizationRoleBadge.textContent = activeSharedJobId
       ? activeProductionRole === "DESIGNER" ? "Designer" : "Production"
-      : team?.role === "DESIGNER" ? "Designer" : team?.role === "PRODUCTION" ? "Production" : "";
-    teamSelect.disabled = availableTeams.length === 0;
-    jobSelect.disabled = availableTeams.length === 0 || jobSelect.options.length < 2;
+      : organization?.role === "DESIGNER" ? "Designer" : organization?.role === "PRODUCTION" ? "Production" : "";
+    organizationSelect.disabled = availableOrganizations.length === 0;
+    jobSelect.disabled = availableOrganizations.length === 0 || jobSelect.options.length < 2;
     loadSharedJobButton.disabled = !jobSelect.value;
-    createSharedJobButton.disabled = !team || team.role !== "PRODUCTION" || Boolean(activeSharedJobId);
+    createSharedJobButton.disabled =
+      !organization || organization.role !== "PRODUCTION" || Boolean(activeSharedJobId);
     saveSharedJobButton.hidden =
       !activeSharedJobId ||
       activeProductionRole !== "PRODUCTION" ||
@@ -797,17 +799,19 @@ function initializeJobSheet(getContext) {
       artworkList.append(item);
     });
   };
-  const loadTeamJobs = async (teamId, selectedJobId = "") => {
+  const loadOrganizationJobs = async (organizationId, selectedJobId = "") => {
     jobSelect.replaceChildren();
     const placeholder = document.createElement("option");
     placeholder.value = "";
-    placeholder.textContent = teamId ? "Select a shared job" : "Select a team first";
+    placeholder.textContent = organizationId ? "Select a shared job" : "Select an organization first";
     jobSelect.append(placeholder);
-    if (!teamId) {
+    if (!organizationId) {
       updateEditorPermissions();
       return;
     }
-    const result = await requestJson(`/api/production/teams/${encodeURIComponent(teamId)}/jobs`);
+    const result = await requestJson(
+      `/api/production/organizations/${encodeURIComponent(organizationId)}/jobs`,
+    );
     (result.jobs || []).forEach((job) => {
       const option = document.createElement("option");
       option.value = job.id;
@@ -821,46 +825,49 @@ function initializeJobSheet(getContext) {
     if (selectedJobId) jobSelect.value = selectedJobId;
     updateEditorPermissions();
   };
-  const loadProductionTeams = async () => {
+  const loadProductionOrganizations = async () => {
     try {
-      const result = await requestJson("/api/production/teams");
-      availableTeams = Array.isArray(result.teams) ? result.teams : [];
-      teamSelect.replaceChildren();
-      if (!availableTeams.length) {
+      const result = await requestJson("/api/production/organizations");
+      availableOrganizations = Array.isArray(result.organizations) ? result.organizations : [];
+      organizationSelect.replaceChildren();
+      if (!availableOrganizations.length) {
         const option = document.createElement("option");
         option.value = "";
-        option.textContent = "No team assigned";
-        teamSelect.append(option);
+        option.textContent = "No organization assigned";
+        organizationSelect.append(option);
         jobSelect.replaceChildren();
         const jobOption = document.createElement("option");
-        jobOption.textContent = "Select a team first";
+        jobOption.textContent = "Select an organization first";
         jobSelect.append(jobOption);
         updateEditorPermissions();
-        showStatus("No production team is assigned to this account. Ask a system admin to add you; your local draft remains available.");
+        showStatus("No production organization is assigned to this account. Ask a system admin to add you; your local draft remains available.");
         return;
       }
-      availableTeams.forEach((team) => {
+      availableOrganizations.forEach((organization) => {
         const option = document.createElement("option");
-        option.value = team.id;
-        option.textContent = team.name;
-        teamSelect.append(option);
+        option.value = organization.id;
+        option.textContent = organization.name;
+        organizationSelect.append(option);
       });
-      const requestedTeamId = new URLSearchParams(window.location.search).get("team");
+      const requestedOrganizationId =
+        new URLSearchParams(window.location.search).get("organization");
       const requestedJobId = new URLSearchParams(window.location.search).get("job");
-      teamSelect.value = availableTeams.some((team) => team.id === requestedTeamId)
-        ? requestedTeamId
-        : availableTeams[0].id;
-      lastSelectedTeamId = teamSelect.value;
-      activeProductionRole = selectedTeam()?.role || null;
+      organizationSelect.value = availableOrganizations.some(
+        (organization) => organization.id === requestedOrganizationId,
+      )
+        ? requestedOrganizationId
+        : availableOrganizations[0].id;
+      lastSelectedOrganizationId = organizationSelect.value;
+      activeProductionRole = selectedOrganization()?.role || null;
       updateEditorPermissions();
-      await loadTeamJobs(teamSelect.value, requestedJobId || "");
+      await loadOrganizationJobs(organizationSelect.value, requestedJobId || "");
       if (requestedJobId && jobSelect.value === requestedJobId) {
         await loadSelectedSharedJob();
       }
       showStatus("Choose a shared job to open it. Local drafts remain on this device.");
     } catch (error) {
-      console.error("Could not load production teams:", error);
-      showStatus(`Could not load production teams: ${error.message || error}`, true);
+      console.error("Could not load production organizations:", error);
+      showStatus(`Could not load production organizations: ${error.message || error}`, true);
     }
   };
   const loadJobAttachments = async (jobId) => {
@@ -874,7 +881,7 @@ function initializeJobSheet(getContext) {
     try {
       const result = await requestJson(`/api/production/jobs/${encodeURIComponent(jobId)}`);
       activeSharedJobId = result.job.id;
-      activeSharedJobTeamId = result.job.teamId;
+      activeSharedJobOrganizationId = result.job.organizationId;
       activeProductionRole = result.role;
       const loadedData = result.job.data || {};
       savedSharedJobData = {
@@ -889,7 +896,7 @@ function initializeJobSheet(getContext) {
       updateEditorPermissions();
       artworkStatus.textContent = activeProductionRole === "DESIGNER"
         ? "Select an artwork file to attach it to this shared job."
-        : "Only Designer team members can upload artwork. Team members can download existing files.";
+        : "Only Designers can upload artwork. Organization members can download existing files.";
       artworkStatus.dataset.error = "false";
       await loadJobAttachments(activeSharedJobId);
       showStatus(`Loaded shared job ${result.job.data?.jobNo || result.job.id}.`);
@@ -900,22 +907,22 @@ function initializeJobSheet(getContext) {
   };
   const createSharedJob = async () => {
     if (!validate()) return;
-    const team = selectedTeam();
-    if (!team || team.role !== "PRODUCTION") return;
+    const organization = selectedOrganization();
+    if (!organization || organization.role !== "PRODUCTION") return;
     try {
       const result = await requestJson(
-        `/api/production/teams/${encodeURIComponent(team.id)}/jobs`,
+        `/api/production/organizations/${encodeURIComponent(organization.id)}/jobs`,
         { method: "POST", body: JSON.stringify({ data: collectData() }) },
       );
       activeSharedJobId = result.job.id;
-      activeSharedJobTeamId = result.job.teamId;
-      activeProductionRole = team.role;
+      activeSharedJobOrganizationId = result.job.organizationId;
+      activeProductionRole = organization.role;
       savedSharedJobData = result.job.data || {};
       sharedJobDirty = false;
-      await loadTeamJobs(team.id, result.job.id);
+      await loadOrganizationJobs(organization.id, result.job.id);
       renderAttachments([]);
       updateEditorPermissions();
-      artworkStatus.textContent = "Only Designer team members can upload artwork. Team members can download existing files.";
+      artworkStatus.textContent = "Only Designers can upload artwork. Organization members can download existing files.";
       artworkStatus.dataset.error = "false";
       showStatus(`Created shared job ${result.job.data?.jobNo || result.job.id}.`);
       notifyProductionUpdated();
@@ -933,7 +940,7 @@ function initializeJobSheet(getContext) {
       );
       savedSharedJobData = result.job.data;
       sharedJobDirty = false;
-      await loadTeamJobs(activeSharedJobTeamId, activeSharedJobId);
+      await loadOrganizationJobs(activeSharedJobOrganizationId, activeSharedJobId);
       updateEditorPermissions();
       showStatus(`Saved shared job ${result.job.data?.jobNo || result.job.id}.`);
       notifyProductionUpdated();
@@ -1071,7 +1078,7 @@ function initializeJobSheet(getContext) {
   document.getElementById("jobSheetNew").addEventListener("click", () => {
     if (sharedJobDirty && !window.confirm("Discard unsaved changes to this shared job?")) return;
     activeSharedJobId = null;
-    activeSharedJobTeamId = null;
+    activeSharedJobOrganizationId = null;
     savedSharedJobData = null;
     sharedJobDirty = false;
     artworkStatus.textContent = "";
@@ -1126,27 +1133,27 @@ function initializeJobSheet(getContext) {
       showStatus(`Could not prepare the print view: ${error.message || error}`, true);
     }
   });
-  teamSelect.addEventListener("change", async () => {
+  organizationSelect.addEventListener("change", async () => {
     if (sharedJobDirty && !window.confirm("Discard unsaved changes to this shared job?")) {
-      teamSelect.value = lastSelectedTeamId;
+      organizationSelect.value = lastSelectedOrganizationId;
       return;
     }
     if (sharedJobDirty && savedSharedJobData) writeData(savedSharedJobData);
     activeSharedJobId = null;
-    activeSharedJobTeamId = null;
+    activeSharedJobOrganizationId = null;
     savedSharedJobData = null;
     sharedJobDirty = false;
     artworkStatus.textContent = "";
     artworkStatus.dataset.error = "false";
     renderAttachments([]);
-    lastSelectedTeamId = teamSelect.value;
-    activeProductionRole = selectedTeam()?.role || null;
+    lastSelectedOrganizationId = organizationSelect.value;
+    activeProductionRole = selectedOrganization()?.role || null;
     updateEditorPermissions();
     try {
-      await loadTeamJobs(teamSelect.value);
+      await loadOrganizationJobs(organizationSelect.value);
     } catch (error) {
-      console.error("Could not load production team jobs:", error);
-      showStatus(`Could not load team jobs: ${error.message || error}`, true);
+      console.error("Could not load production organization jobs:", error);
+      showStatus(`Could not load organization jobs: ${error.message || error}`, true);
     }
   });
   jobSelect.addEventListener("change", updateEditorPermissions);
@@ -1155,7 +1162,7 @@ function initializeJobSheet(getContext) {
   saveSharedJobButton.addEventListener("click", saveSharedJob);
   artworkUploadButton.addEventListener("click", uploadArtwork);
   updateEditorPermissions();
-  void loadProductionTeams();
+  void loadProductionOrganizations();
 }
 
 function buildJobSheetPrintHtml(data, model) {

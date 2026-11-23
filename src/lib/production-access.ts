@@ -13,10 +13,13 @@ export async function getVerifiedProductionUser() {
   return user?.emailVerified ? user : null;
 }
 
-export async function getProductionMembership(userId: string, teamId: string) {
-  return prisma.productionMembership.findUnique({
-    where: { teamId_userId: { teamId, userId } },
-    select: { teamId: true, role: true },
+export async function getProductionOrganizationMembership(
+  userId: string,
+  organizationId: string,
+) {
+  return prisma.productionOrganizationMembership.findUnique({
+    where: { organizationId_userId: { organizationId, userId } },
+    select: { organizationId: true, role: true },
   });
 }
 
@@ -26,10 +29,10 @@ export async function getAuthorizedProductionJob(
 ) {
   const job = await prisma.productionJob.findUnique({
     where: { id: jobId },
-    select: { id: true, teamId: true },
+    select: { id: true, organizationId: true },
   });
   if (!job) return null;
 
-  const membership = await getProductionMembership(userId, job.teamId);
+  const membership = await getProductionOrganizationMembership(userId, job.organizationId);
   return membership ? { job, membership } : null;
 }

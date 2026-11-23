@@ -34,7 +34,7 @@ model User {
   billingPayments          BillingPayment[]
   keylineBookmarks         KeylineBookmark[]
   emailJobs                EmailJob[]
-  productionMemberships    ProductionMembership[]
+  organizationMemberships  ProductionOrganizationMembership[]
   createdProductionJobs   ProductionJob[]        @relation("ProductionJobCreator")
   uploadedProductionFiles ProductionAttachment[] @relation("ProductionAttachmentUploader")
 }
@@ -201,40 +201,42 @@ model EmailOtpRateLimit {
   @@index([windowStartedAt])
 }
 
-model ProductionTeam {
-  id          String                 @id @default(cuid())
-  name        String                 @unique
-  createdAt   DateTime               @default(now())
-  updatedAt   DateTime               @updatedAt
-  memberships ProductionMembership[]
+model ProductionOrganization {
+  id          String                             @id @default(cuid())
+  name        String
+  createdAt   DateTime                           @default(now())
+  updatedAt   DateTime                           @updatedAt
+  memberships ProductionOrganizationMembership[]
   jobs        ProductionJob[]
+
+  @@index([name])
 }
 
-model ProductionMembership {
-  teamId    String
-  userId    String
-  role      ProductionRole @default(PRODUCTION)
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
-  team      ProductionTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+model ProductionOrganizationMembership {
+  organizationId String
+  userId         String
+  role           ProductionRole         @default(PRODUCTION)
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  organization   ProductionOrganization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@id([teamId, userId])
+  @@id([organizationId, userId])
   @@index([userId])
 }
 
 model ProductionJob {
   id              String                 @id @default(cuid())
-  teamId          String
+  organizationId  String
   createdByUserId String?
   data            Json                   @default("{}")
   createdAt       DateTime               @default(now())
   updatedAt       DateTime               @updatedAt
-  team            ProductionTeam         @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  organization    ProductionOrganization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   createdBy       User?                  @relation("ProductionJobCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
   attachments     ProductionAttachment[]
 
-  @@index([teamId, updatedAt])
+  @@index([organizationId, updatedAt])
 }
 
 model ProductionAttachment {

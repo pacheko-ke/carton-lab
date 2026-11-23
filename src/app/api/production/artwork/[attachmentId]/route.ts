@@ -1,5 +1,5 @@
 import { get } from "@vercel/blob";
-import { getProductionMembership, getVerifiedProductionUser } from "@/lib/production-access";
+import { getProductionOrganizationMembership, getVerifiedProductionUser } from "@/lib/production-access";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
@@ -21,14 +21,17 @@ export async function GET(_request: Request, { params }: RouteContext) {
       pathname: true,
       originalName: true,
       size: true,
-      job: { select: { teamId: true } },
+      job: { select: { organizationId: true } },
     },
   });
   if (!attachment) {
     return NextResponse.json({ error: "Artwork not found" }, { status: 404 });
   }
 
-  const membership = await getProductionMembership(user.id, attachment.job.teamId);
+  const membership = await getProductionOrganizationMembership(
+    user.id,
+    attachment.job.organizationId,
+  );
   if (!membership) {
     return NextResponse.json({ error: "Artwork not found" }, { status: 404 });
   }

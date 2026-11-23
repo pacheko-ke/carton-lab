@@ -1,14 +1,14 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition, type ChangeEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AppFrame from "@/app/app/app-frame";
 import BrandLogo from "@/app/brand-logo";
-import { PRODUCTION_WORKFLOW_STAGES } from "@/lib/production-data";
+import { MAX_ARTWORK_FILE_BYTES, PRODUCTION_WORKFLOW_STAGES } from "@/lib/production-data";
 import type { ProductionWorkflowStage } from "@/lib/production-data";
 
-export type ProductionDashboardTeam = {
+export type ProductionDashboardOrganization = {
   id: string;
   name: string;
   role: "PRODUCTION" | "DESIGNER";
@@ -16,15 +16,18 @@ export type ProductionDashboardTeam = {
 
 export type ProductionDashboardJob = {
   id: string;
-  teamId: string;
-  teamName: string;
+  organizationId: string;
+  organizationName: string;
   jobNo: string;
   jobName: string;
   customer: string;
+  cartonSpec: string;
+  size: string;
   deliveryDate: string;
   priority: string;
   orderQty: number | null;
   workflowStage: ProductionWorkflowStage;
+  artworkCount: number;
   updatedAt: string;
 };
 
@@ -39,12 +42,12 @@ type Props = {
     address: string;
   };
   profileQrCode: boolean[][];
-  teams: ProductionDashboardTeam[];
+  organizations: ProductionDashboardOrganization[];
   jobs: ProductionDashboardJob[];
-  canManageTeams: boolean;
+  canManageOrganizations: boolean;
 };
 
-type DashboardView = "overview" | "jobs" | "job-sheet" | ProductionWorkflowStage;
+type DashboardView = "overview" | "jobs" | "origination" | "job-sheet" | ProductionWorkflowStage;
 
 const STAGE_DETAILS: Record<ProductionWorkflowStage, string> = {
   Origination: "Job details, customer requirements and carton specification",
@@ -55,12 +58,13 @@ const STAGE_DETAILS: Record<ProductionWorkflowStage, string> = {
 };
 
 const WORKSPACE_ITEMS: Array<{
-  id: "overview" | "jobs" | "job-sheet";
+  id: "overview" | "jobs" | "origination" | "job-sheet";
   label: string;
   icon: string;
 }> = [
   { id: "overview", label: "Overview", icon: "O" },
   { id: "jobs", label: "All jobs", icon: "J" },
+  { id: "origination", label: "Origination", icon: "A" },
   { id: "job-sheet", label: "Job sheet", icon: "+" },
 ];
 
@@ -91,21 +95,35 @@ function stageClass(stage: ProductionWorkflowStage) {
 function JobTable({
   jobs,
   onOpen,
+  onArtworkUploaded,
   onCreate,
+  actionLabel = "Open",
+  emptyHeading = "No shared jobs here yet",
+  emptyDescription = "Create a job sheet or choose another organization or stage.",
+  showArtwork = false,
+  canOpenJobSheet = true,
 }: {
   jobs: ProductionDashboardJob[];
   onOpen: (job: ProductionDashboardJob) => void;
-  onCreate: () => void;
+  onCreate?: () => void;
+  canOpenJobSheet?: boolean;
+  actionLabel?: string;
+  emptyHeading?: string;
+  emptyDescription?: string;
+  showArtwork?: boolean;
+  onArtworkUploaded?: () => void;
 }) {
   if (!jobs.length) {
     return (
       <div className="production-empty-state">
         <span className="production-empty-mark" aria-hidden="true">J</span>
-        <h3>No shared jobs here yet</h3>
-        <p>Create a job sheet or choose another team or stage.</p>
-        <button className="production-primary-button" onClick={onCreate} type="button">
-          Open job sheet
-        </button>
+        <h3>{emptyHeading}</h3>
+        <p>{emptyDescription}</p>
+        {onCreate && (
+          <button className="production-primary-button" onClick={onCreate} type="button">
+            Open job sheet
+          </button>
+        )}
       </div>
     );
   }
@@ -116,12 +134,19 @@ function JobTable({
         <thead>
           <tr>
             <th scope="col">Job</th>
+            <th scope="col">Carton spec</th>
+            <th scope="col">Size</th>
             <th scope="col">Customer</th>
             <th scope="col">Stage</th>
+            {showArtwork && <th scope="col">Artwork</th>}
             <th scope="col">Delivery</th>
             <th scope="col" className="production-number-cell">Order qty</th>
-            <th scope="col">Team</th>
-            <th scope="col"><span className="sr-only">Action</span></th>
+            <th scope="col">Organization</th>
+            {(showArtwork || canOpenJobSheet) && (
+              <th scope="col">
+                {showArtwork ? "Attach artwork" : <span className="sr-only">Action</span>}
+              </th>
+            )}
           </tr>
         </thead>
         <tbody>
@@ -131,26 +156,153 @@ function JobTable({
                 <strong>{job.jobNo || "Untitled job"}</strong>
                 {job.jobName && <small>{job.jobName}</small>}
               </td>
+              <td>{job.cartonSpec || "—"}</td>
+              <td>{job.size || "—"}</td>
               <td>{job.customer || "—"}</td>
               <td><span className={stageClass(job.workflowStage)}>{job.workflowStage}</span></td>
+              {showArtwork && (
+                <td>{job.artworkCount} file{job.artworkCount === 1 ? "" : "s"}</td>
+              )}
               <td>{formatDate(job.deliveryDate)}</td>
               <td className="production-number-cell">
                 {job.orderQty === null ? "—" : job.orderQty.toLocaleString("en-KE")}
               </td>
-              <td>{job.teamName}</td>
-              <td>
-                <button
-                  className="production-table-action"
-                  onClick={() => onOpen(job)}
-                  type="button"
-                >
-                  Open
-                </button>
-              </td>
+              <td>{job.organizationName}</td>
+              {(showArtwork || canOpenJobSheet) && (
+                <td>
+                  {showArtwork ? (
+                    <ArtworkUploadButton job={job} onUploaded={onArtworkUploaded} />
+                  ) : (
+                    <button
+                      className="production-table-action"
+                      onClick={() => onOpen(job)}
+                      type="button"
+                    >
+                      {actionLabel}
+                    </button>
+                  )}
+                </td>
+              )}
             </tr>
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+async function requestProductionJson(
+  url: string,
+  options: RequestInit,
+): Promise<Record<string, unknown>> {
+  const response = await fetch(url, {
+    cache: "no-store",
+    ...options,
+    headers: {
+      ...(options.headers || {}),
+      ...(options.body ? { "Content-Type": "application/json" } : {}),
+    },
+  });
+  const result: unknown = await response.json().catch(() => null);
+  if (!response.ok) {
+    const message = isRecord(result) && typeof result.error === "string"
+      ? result.error
+      : `Request failed (${response.status}).`;
+    throw new Error(message);
+  }
+  if (!isRecord(result)) {
+    throw new Error("The server returned an invalid response.");
+  }
+  return result;
+}
+
+function ArtworkUploadButton({
+  job,
+  onUploaded,
+}: {
+  job: ProductionDashboardJob;
+  onUploaded?: () => void;
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [status, setStatus] = useState("");
+  const [hasError, setHasError] = useState(false);
+
+  const uploadArtwork = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.currentTarget.files?.[0];
+    if (!file) return;
+    event.currentTarget.value = "";
+    if (file.size > MAX_ARTWORK_FILE_BYTES) {
+      setStatus("Artwork files must be 5 MB or smaller.");
+      setHasError(true);
+      return;
+    }
+
+    setIsUploading(true);
+    setStatus("Uploading artwork…");
+    setHasError(false);
+    try {
+      const jobPath = `/api/production/jobs/${encodeURIComponent(job.id)}/artwork`;
+      const upload = await requestProductionJson(`${jobPath}/upload-url`, {
+        method: "POST",
+        body: JSON.stringify({ fileName: file.name, fileSize: file.size }),
+      });
+      if (
+        typeof upload.pathname !== "string" ||
+        typeof upload.presignedUrl !== "string" ||
+        typeof upload.contentType !== "string"
+      ) {
+        throw new Error("The server returned an invalid artwork upload URL.");
+      }
+
+      const response = await fetch(upload.presignedUrl, {
+        method: "PUT",
+        headers: { "Content-Type": upload.contentType },
+        body: file,
+      });
+      if (!response.ok) {
+        throw new Error(`Artwork upload failed (${response.status}).`);
+      }
+
+      await requestProductionJson(jobPath, {
+        method: "POST",
+        body: JSON.stringify({ pathname: upload.pathname, fileName: file.name }),
+      });
+      setStatus("Artwork attached.");
+      onUploaded?.();
+    } catch (error) {
+      console.error("Could not attach artwork to the production job:", error);
+      setStatus(`Could not attach artwork: ${error instanceof Error ? error.message : String(error)}`);
+      setHasError(true);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  return (
+    <div className="production-artwork-upload">
+      <input
+        ref={fileInputRef}
+        accept=".ai,.cdr,.eps,.indd,.jpeg,.jpg,.pdf,.png,.ps,.psd,.svg,.tif,.tiff"
+        aria-label={`Artwork file for ${job.jobNo || "untitled job"}`}
+        className="sr-only"
+        disabled={isUploading}
+        onChange={uploadArtwork}
+        type="file"
+      />
+      <button
+        className="production-table-action"
+        disabled={isUploading}
+        onClick={() => fileInputRef.current?.click()}
+        type="button"
+      >
+        {isUploading ? "Uploading…" : "Attach artwork"}
+      </button>
+      {status && <small aria-live="polite" role={hasError ? "alert" : "status"}>{status}</small>}
     </div>
   );
 }
@@ -160,19 +312,43 @@ export default function ProductionDashboard({
   accountName,
   profile,
   profileQrCode,
-  teams,
+  organizations,
   jobs,
-  canManageTeams,
+  canManageOrganizations,
 }: Props) {
   const router = useRouter();
   const [view, setView] = useState<DashboardView>("overview");
-  const [teamFilter, setTeamFilter] = useState("all");
+  const [organizationFilter, setOrganizationFilter] = useState("all");
   const [selectedJob, setSelectedJob] = useState<ProductionDashboardJob | null>(null);
   const [isRefreshing, startRefresh] = useTransition();
   const visibleJobs = useMemo(
-    () => teamFilter === "all" ? jobs : jobs.filter((job) => job.teamId === teamFilter),
-    [jobs, teamFilter],
+    () => organizationFilter === "all"
+      ? jobs
+      : jobs.filter((job) => job.organizationId === organizationFilter),
+    [jobs, organizationFilter],
   );
+  const designerOrganizationIds = useMemo(
+    () => new Set(
+      organizations.filter((organization) => organization.role === "DESIGNER")
+        .map((organization) => organization.id),
+    ),
+    [organizations],
+  );
+  const originationJobs = useMemo(
+    () => visibleJobs.filter(
+      (job) => job.workflowStage === "Origination" &&
+        designerOrganizationIds.has(job.organizationId),
+    ),
+    [visibleJobs, designerOrganizationIds],
+  );
+  const canManageJobs = organizations.some(
+    (organization) => organization.role === "PRODUCTION" &&
+      (organizationFilter === "all" || organization.id === organizationFilter),
+  );
+  const sheetOrganizationId = selectedJob?.organizationId ??
+    (organizationFilter === "all"
+      ? organizations.find((organization) => organization.role === "PRODUCTION")?.id
+      : organizationFilter);
   const stageCounts = PRODUCTION_WORKFLOW_STAGES.map((stage) => ({
     stage,
     count: visibleJobs.filter((job) => job.workflowStage === stage).length,
@@ -217,13 +393,15 @@ export default function ProductionDashboard({
   const pageTitle =
     view === "overview" ? "Production overview"
       : view === "jobs" ? "All production jobs"
-        : view === "job-sheet" ? "Production job sheet"
-          : view;
+        : view === "origination" ? "Origination"
+          : view === "job-sheet" ? "Production job sheet"
+            : view;
   const pageDescription =
     view === "overview" ? "Live snapshot of your shared production work."
-      : view === "jobs" ? "Track and open jobs across your production teams."
-        : view === "job-sheet" ? "Create a local draft or work on a team-shared job."
-          : STAGE_DETAILS[view];
+      : view === "jobs" ? "Track and open jobs across your production organizations."
+        : view === "origination" ? "Review planned jobs for your designer organizations and attach their artwork."
+          : view === "job-sheet" ? "Create a local draft or work on an organization-shared job."
+            : STAGE_DETAILS[view];
 
   const openJob = (job: ProductionDashboardJob) => {
     setSelectedJob(job);
@@ -246,27 +424,38 @@ export default function ProductionDashboard({
 
         <nav className="production-side-nav" aria-label="Production navigation">
           <p className="production-nav-label">WORKSPACE</p>
-          {WORKSPACE_ITEMS.map((item) => (
-            <button
-              aria-current={view === item.id ? "page" : undefined}
-              className={`production-nav-item${view === item.id ? " is-active" : ""}`}
-              key={item.id}
-              onClick={() => setView(item.id)}
-              type="button"
-            >
-              <span className="production-nav-icon" aria-hidden="true">{item.icon}</span>
-              {item.label}
-              {item.id === "jobs" && <span className="production-nav-count">{visibleJobs.length}</span>}
-            </button>
-          ))}
+          {WORKSPACE_ITEMS
+            .filter((item) => item.id !== "origination" || designerOrganizationIds.size > 0)
+            .filter((item) => item.id !== "job-sheet" || canManageJobs)
+            .map((item) => (
+              <button
+                aria-current={view === item.id ? "page" : undefined}
+                className={`production-nav-item${view === item.id ? " is-active" : ""}`}
+                key={item.id}
+                onClick={() => setView(item.id)}
+                type="button"
+              >
+                <span className="production-nav-icon" aria-hidden="true">{item.icon}</span>
+                {item.label}
+                {item.id === "jobs" && <span className="production-nav-count">{visibleJobs.length}</span>}
+                {item.id === "origination" && (
+                  <span className="production-nav-count">{originationJobs.length}</span>
+                )}
+              </button>
+            ))}
 
           <p className="production-nav-label production-nav-workflow-label">WORKFLOW</p>
-          {PRODUCTION_WORKFLOW_STAGES.map((stage, index) => (
+          {PRODUCTION_WORKFLOW_STAGES.map((stage, index) =>
+            stage === "Origination" && designerOrganizationIds.size > 0 ? null : (
             <button
               aria-current={view === stage ? "page" : undefined}
               className={`production-nav-item${view === stage ? " is-active" : ""}`}
               key={stage}
-              onClick={() => setView(stage)}
+              onClick={() => setView(
+                stage === "Origination" && designerOrganizationIds.size > 0
+                  ? "origination"
+                  : stage,
+              )}
               type="button"
             >
               <span className={`production-nav-stage stage-number-${index + 1}`} aria-hidden="true">
@@ -281,10 +470,10 @@ export default function ProductionDashboard({
         </nav>
 
         <div className="production-sidebar-footer">
-          {canManageTeams && (
+          {canManageOrganizations && (
             <Link className="production-footer-link" href="/admin/production">
-              <span className="production-nav-icon" aria-hidden="true">T</span>
-              Team access
+              <span className="production-nav-icon" aria-hidden="true">O</span>
+              Organization access
             </Link>
           )}
           <Link className="production-footer-link" href="/app">
@@ -297,7 +486,11 @@ export default function ProductionDashboard({
             </span>
             <span>
               <strong>{accountName}</strong>
-              <small>{teams.length ? `${teams.length} production team${teams.length === 1 ? "" : "s"}` : "No team access"}</small>
+              <small>
+                {organizations.length
+                  ? `${organizations.length} organization${organizations.length === 1 ? "" : "s"}`
+                  : "No organization access"}
+              </small>
             </span>
           </div>
         </div>
@@ -310,18 +503,20 @@ export default function ProductionDashboard({
             <h1>{pageTitle}</h1>
           </div>
           <div className="production-topbar-actions">
-            <label className="production-team-filter">
-              <span>Team</span>
+            <label className="production-organization-filter">
+              <span>Organization</span>
               <select
-                aria-label="Filter dashboard by production team"
+                aria-label="Filter dashboard by organization"
                 onChange={(event) => {
-                  setTeamFilter(event.target.value);
+                  setOrganizationFilter(event.target.value);
                   setSelectedJob(null);
                 }}
-                value={teamFilter}
+                value={organizationFilter}
               >
-                <option value="all">All teams</option>
-                {teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
+                <option value="all">All organizations</option>
+                {organizations.map((organization) => (
+                  <option key={organization.id} value={organization.id}>{organization.name}</option>
+                ))}
               </select>
             </label>
             <button
@@ -341,12 +536,12 @@ export default function ProductionDashboard({
           {view === "job-sheet" ? (
             <div className="production-iframe-shell">
               <AppFrame
-                key={`${selectedJob?.teamId ?? teamFilter}:${selectedJob?.id ?? "new"}`}
+                key={`${sheetOrganizationId ?? organizationFilter}:${selectedJob?.id ?? "new"}`}
                 accountId={accountId}
                 profile={profile}
                 profileQrCode={profileQrCode}
                 workspace="production"
-                teamId={selectedJob?.teamId ?? (teamFilter === "all" ? undefined : teamFilter)}
+                organizationId={sheetOrganizationId}
                 jobId={selectedJob?.id}
               />
             </div>
@@ -354,7 +549,7 @@ export default function ProductionDashboard({
             <div className="production-page-content">
               <div className="production-page-intro">
                 <p>{pageDescription}</p>
-                {view !== "overview" && (
+                {canManageJobs && view !== "overview" && view !== "origination" && (
                   <button className="production-primary-button" onClick={openNewJobSheet} type="button">
                     + New job sheet
                   </button>
@@ -368,7 +563,7 @@ export default function ProductionDashboard({
                       <span className="production-kpi-icon kpi-blue" aria-hidden="true">J</span>
                       <p>Jobs in register</p>
                       <strong>{visibleJobs.length}</strong>
-                      <small>Across selected teams</small>
+                      <small>Across selected organizations</small>
                     </article>
                     <article className="production-kpi-card">
                       <span className="production-kpi-icon kpi-amber" aria-hidden="true">D</span>
@@ -419,7 +614,7 @@ export default function ProductionDashboard({
                         ))}
                       </div>
                       {!visibleJobs.length && (
-                        <p className="production-chart-empty">Shared jobs will appear here as teams create them.</p>
+                        <p className="production-chart-empty">Shared jobs will appear here as organizations create them.</p>
                       )}
                     </article>
 
@@ -490,9 +685,32 @@ export default function ProductionDashboard({
                         View all jobs
                       </button>
                     </div>
-                    <JobTable jobs={visibleJobs.slice(0, 5)} onOpen={openJob} onCreate={openNewJobSheet} />
+                    <JobTable
+                      jobs={visibleJobs.slice(0, 5)}
+                      onOpen={openJob}
+                      onCreate={canManageJobs ? openNewJobSheet : undefined}
+                      canOpenJobSheet={canManageJobs}
+                    />
                   </section>
                 </>
+              ) : view === "origination" ? (
+                <section className="production-panel production-list-panel">
+                  <div className="production-panel-heading">
+                    <div>
+                      <span className="production-panel-kicker">ARTWORK QUEUE</span>
+                      <h2>Planned jobs</h2>
+                    </div>
+                    <span className="production-panel-total">{originationJobs.length} jobs</span>
+                  </div>
+                  <JobTable
+                    emptyDescription="Planned jobs for your designer organizations will appear here."
+                    emptyHeading="No planned jobs"
+                    jobs={originationJobs}
+                    onOpen={openJob}
+                    onArtworkUploaded={() => router.refresh()}
+                    showArtwork
+                  />
+                </section>
               ) : (
                 <section className="production-panel production-list-panel">
                   <div className="production-panel-heading">
@@ -513,7 +731,8 @@ export default function ProductionDashboard({
                       ? visibleJobs
                       : visibleJobs.filter((job) => job.workflowStage === view)}
                     onOpen={openJob}
-                    onCreate={openNewJobSheet}
+                    onCreate={canManageJobs ? openNewJobSheet : undefined}
+                    canOpenJobSheet={canManageJobs}
                   />
                 </section>
               )}

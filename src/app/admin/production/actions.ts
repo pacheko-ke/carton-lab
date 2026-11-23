@@ -1,6 +1,6 @@
 "use server";
 
-import { ProductionRole, Prisma } from "@prisma/client";
+import { ProductionRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdminUser } from "@/lib/admin";
@@ -26,29 +26,19 @@ function readRole(formData: FormData) {
   return role;
 }
 
-export async function createProductionTeam(formData: FormData) {
+export async function createProductionOrganization(formData: FormData) {
   await requireAdminUser();
   const name = readString(formData, "name", 100);
 
-  try {
-    await prisma.productionTeam.create({ data: { name } });
-  } catch (error) {
-    if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === "P2002"
-    ) {
-      redirect("/admin/production?error=duplicate-team");
-    }
-    throw error;
-  }
+  await prisma.productionOrganization.create({ data: { name } });
 
   revalidatePath("/admin/production");
-  redirect("/admin/production?notice=team-created");
+  redirect("/admin/production?notice=organization-created");
 }
 
-export async function saveProductionMembership(formData: FormData) {
+export async function saveProductionOrganizationMembership(formData: FormData) {
   await requireAdminUser();
-  const teamId = readString(formData, "teamId", 100);
+  const organizationId = readString(formData, "organizationId", 100);
   const email = readString(formData, "email", 254).toLowerCase();
   const role = readRole(formData);
 
@@ -56,12 +46,12 @@ export async function saveProductionMembership(formData: FormData) {
     redirect("/admin/production?error=invalid-email");
   }
 
-  const team = await prisma.productionTeam.findUnique({
-    where: { id: teamId },
+  const organization = await prisma.productionOrganization.findUnique({
+    where: { id: organizationId },
     select: { id: true },
   });
-  if (!team) {
-    redirect("/admin/production?error=team-not-found");
+  if (!organization) {
+    redirect("/admin/production?error=organization-not-found");
   }
 
   const user = await prisma.user.findFirst({
@@ -75,25 +65,25 @@ export async function saveProductionMembership(formData: FormData) {
     redirect("/admin/production?error=verified-user-required");
   }
 
-  await prisma.productionMembership.upsert({
-    where: { teamId_userId: { teamId, userId: user.id } },
-    create: { teamId, userId: user.id, role },
+  await prisma.productionOrganizationMembership.upsert({
+    where: { organizationId_userId: { organizationId, userId: user.id } },
+    create: { organizationId, userId: user.id, role },
     update: { role },
   });
 
   revalidatePath("/admin/production");
-  redirect("/admin/production?notice=membership-saved");
+  redirect("/admin/production?notice=organization-membership-saved");
 }
 
-export async function removeProductionMembership(formData: FormData) {
+export async function removeProductionOrganizationMembership(formData: FormData) {
   await requireAdminUser();
-  const teamId = readString(formData, "teamId", 100);
+  const organizationId = readString(formData, "organizationId", 100);
   const userId = readString(formData, "userId", 100);
 
-  await prisma.productionMembership.deleteMany({
-    where: { teamId, userId },
+  await prisma.productionOrganizationMembership.deleteMany({
+    where: { organizationId, userId },
   });
 
   revalidatePath("/admin/production");
-  redirect("/admin/production?notice=membership-removed");
+  redirect("/admin/production?notice=organization-membership-removed");
 }

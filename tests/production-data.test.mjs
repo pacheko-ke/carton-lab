@@ -50,7 +50,7 @@ test("limits artwork files to 5 MiB and accepts supported artwork formats", () =
   assert.equal(sanitizeArtworkFileName(".."), null);
 });
 
-test("grants job editing and artwork upload to their intended team roles", () => {
+test("grants job editing and artwork upload to their intended organization roles", () => {
   assert.equal(canEditProductionJobs("PRODUCTION"), true);
   assert.equal(canEditProductionJobs("DESIGNER"), false);
   assert.equal(canAttachProductionArtwork("DESIGNER"), true);

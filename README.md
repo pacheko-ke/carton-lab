@@ -171,15 +171,22 @@ scheduled cancellations retain access through the paid period end.
    before building the app. Configure only live Daraja credentials in Vercel
    Production (`DARAJA_ENV=production`); keep sandbox credentials local.
 
-The Production workspace is available at `/production/admin`, with team-filtered
-job KPIs, workflow queues, and delivery visualizations. Jobs are shared with
-team members assigned by a system admin at `/admin/production`. Production
-members create and update jobs; Designers can view team jobs and attach artwork
-files up to 5 MB. Artwork requires a **private**
+The Production workspace is available at `/production/admin`, with
+organization-filtered job KPIs, workflow queues, and delivery visualizations.
+Jobs are shared with explicitly assigned organization members managed by a
+system admin at `/admin/production`. Production members create and update jobs;
+Designers can view planned jobs in Origination and attach artwork files up to
+5 MB without editing their job sheets. Artwork requires a **private**
 Vercel Blob store connected to the project in Development, Preview, and
 Production. Vercel supplies `BLOB_STORE_ID` and OIDC credentials; for local
 development, connect the Development store and refresh the environment with
 `vercel env pull`. Do not use a public Blob store for production artwork.
+
+For local Origination demos, set `PACKSTUDIO_ALLOW_LOCAL_DEMO_SEED=true` and
+`DEMO_USER_EMAIL` for a verified local account in `.env.local`, then run
+`npm run seed:production-demo`. This creates an isolated demo organization,
+adds that account as a Designer, and seeds two planned job sheets. The script
+is opt-in and refuses to run in production.
 
 Email-code sign-in additionally requires `EMAIL_OTP_ENABLED=true`,
 `RESEND_API_KEY`, and `RESEND_FROM_EMAIL`; Google sign-in requires the Google

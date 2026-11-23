@@ -11,20 +11,20 @@ export async function GET() {
     );
   }
 
-  const memberships = await prisma.productionMembership.findMany({
+  const memberships = await prisma.productionOrganizationMembership.findMany({
     where: { userId: user.id },
     select: {
       role: true,
-      team: { select: { id: true, name: true } },
+      organization: { select: { id: true, name: true } },
     },
   });
 
-  const teams = memberships
-    .map(({ role, team }) => ({ ...team, role }))
+  const organizations = memberships
+    .map(({ role, organization }) => ({ ...organization, role }))
     .sort((left, right) => left.name.localeCompare(right.name));
 
   return NextResponse.json(
-    { teams },
+    { organizations },
     { headers: { "Cache-Control": "private, no-store" } },
   );
 }
