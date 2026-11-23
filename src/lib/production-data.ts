@@ -1,6 +1,7 @@
 export const MAX_ARTWORK_FILE_BYTES = 5 * 1024 * 1024;
 export const MAX_PRODUCTION_JOB_FLAG_REASON_LENGTH = 1000;
 export const PRODUCTION_WORKFLOW_STAGES = [
+  "Order Booking",
   "Origination",
   "Paper Booking",
   "Board Production",
@@ -15,6 +16,86 @@ export function isProductionWorkflowStage(
   value: unknown,
 ): value is ProductionWorkflowStage {
   return PRODUCTION_WORKFLOW_STAGES.some((stage) => stage === value);
+}
+
+export type ProductionOrderBookingInput = {
+  itemId: string;
+  customer: string;
+  customerPO: string;
+  orderQty: string;
+  orderDate: string;
+  deliveryDate: string;
+};
+
+function isValidProductionDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
+
+export function validateProductionOrderBooking(
+  value: unknown,
+): value is ProductionOrderBookingInput {
+  if (!isRecord(value)) return false;
+  const { customer, customerPO, orderQty, orderDate, deliveryDate } = value;
+  if (
+    typeof value.itemId !== "string" ||
+    !value.itemId.trim() ||
+    value.itemId.length > 100 ||
+    typeof customer !== "string" ||
+    !customer.trim() ||
+    customer.length > 120 ||
+    typeof customerPO !== "string" ||
+    customerPO.length > 60 ||
+    typeof orderQty !== "string" ||
+    !/^[1-9]\d*$/.test(orderQty) ||
+    !Number.isSafeInteger(Number(orderQty)) ||
+    typeof orderDate !== "string" ||
+    !isValidProductionDate(orderDate) ||
+    typeof deliveryDate !== "string" ||
+    !isValidProductionDate(deliveryDate) ||
+    deliveryDate < orderDate
+  ) {
+    return false;
+  }
+  return true;
+}
+
+export type ProductionItemInput = {
+  name: string;
+  boxType: string;
+  topLiner: string;
+  medium: string;
+  bottomLiner: string;
+  length: string;
+  width: string;
+  height: string;
+  unit: "mm" | "in";
+};
+
+function isNonEmptyString(value: unknown, maxLength: number): value is string {
+  return typeof value === "string" && Boolean(value.trim()) && value.length <= maxLength;
+}
+
+function isPositiveDimension(value: unknown): value is string {
+  if (typeof value !== "string" || value.length > 40) return false;
+  const dimension = Number(value);
+  return Number.isFinite(dimension) && dimension > 0;
+}
+
+export function validateProductionItem(value: unknown): value is ProductionItemInput {
+  if (!isRecord(value)) return false;
+  return (
+    isNonEmptyString(value.name, 100) &&
+    isNonEmptyString(value.boxType, 80) &&
+    isNonEmptyString(value.topLiner, 60) &&
+    isNonEmptyString(value.medium, 60) &&
+    isNonEmptyString(value.bottomLiner, 60) &&
+    isPositiveDimension(value.length) &&
+    isPositiveDimension(value.width) &&
+    isPositiveDimension(value.height) &&
+    (value.unit === "mm" || value.unit === "in")
+  );
 }
 
 const JOB_SHEET_FIELD_LIMITS: Record<string, number> = {
@@ -185,6 +266,10 @@ export function canFlagProductionJobs(role: string): boolean {
 
 export function canResolveProductionJobFlags(role: string): boolean {
   return role === "PRODUCTION";
+}
+
+export function canBookProductionOrders(role: string): boolean {
+  return role === "ORDER_BOOKER";
 }
 
 export function validateProductionJobFlagReason(value: unknown): value is string {

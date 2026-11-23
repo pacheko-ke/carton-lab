@@ -12,6 +12,7 @@ const JOB_SHEET_TRACKING_STAGES = [
   "Dispatch",
 ];
 const JOB_SHEET_WORKFLOW_STAGES = [
+  "Order Booking",
   "Origination",
   "Paper Booking",
   "Board Production",

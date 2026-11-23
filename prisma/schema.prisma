@@ -11,6 +11,7 @@ datasource db {
 enum ProductionRole {
   PRODUCTION
   DESIGNER
+  ORDER_BOOKER
 }
 
 model User {
@@ -36,6 +37,7 @@ model User {
   emailJobs                  EmailJob[]
   organizationMemberships    ProductionOrganizationMembership[]
   createdProductionJobs      ProductionJob[]                    @relation("ProductionJobCreator")
+  createdProductionItems     ProductionItem[]                   @relation("ProductionItemCreator")
   createdProductionJobFlags  ProductionJobFlag[]                @relation("ProductionJobFlagCreator")
   resolvedProductionJobFlags ProductionJobFlag[]                @relation("ProductionJobFlagResolver")
   uploadedProductionFiles    ProductionAttachment[]             @relation("ProductionAttachmentUploader")
@@ -210,6 +212,7 @@ model ProductionOrganization {
   updatedAt   DateTime                           @updatedAt
   memberships ProductionOrganizationMembership[]
   jobs        ProductionJob[]
+  items       ProductionItem[]
 
   @@index([name])
 }
@@ -240,6 +243,29 @@ model ProductionJob {
   flag            ProductionJobFlag?
 
   @@index([organizationId, updatedAt])
+}
+
+model ProductionItem {
+  id              String                 @id @default(cuid())
+  organizationId  String
+  createdByUserId String?
+  itemCode        String
+  name            String
+  boxType         String
+  topLiner        String
+  medium          String
+  bottomLiner     String
+  length          String
+  width           String
+  height          String
+  unit            String                 @default("mm")
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+  organization    ProductionOrganization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy       User?                  @relation("ProductionItemCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, itemCode])
+  @@index([organizationId, name])
 }
 
 model ProductionJobFlag {

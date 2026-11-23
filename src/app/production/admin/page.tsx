@@ -64,7 +64,11 @@ async function AuthenticatedProductionAdminPage() {
   });
   const organizations: ProductionDashboardOrganization[] = memberships.map(({ role, organization }) => ({
     ...organization,
-    role: role === "DESIGNER" ? "DESIGNER" : "PRODUCTION",
+    role: role === "DESIGNER"
+      ? "DESIGNER"
+      : role === "ORDER_BOOKER"
+        ? "ORDER_BOOKER"
+        : "PRODUCTION",
   }));
   const organizationNames = new Map(
     organizations.map((organization) => [organization.id, organization.name]),

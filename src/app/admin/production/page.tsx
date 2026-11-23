@@ -80,8 +80,8 @@ async function ProductionAdminDashboard({
           <h1>Organizations and roles</h1>
           <p>
             Create production organizations and assign verified accounts. Production
-            members manage shared jobs; Designers can view organization jobs and attach
-            artwork.
+            members manage shared jobs; Order Bookers create orders, and Designers can
+            view planned jobs and attach artwork.
           </p>
         </div>
 
@@ -129,6 +129,7 @@ async function ProductionAdminDashboard({
                 <select name="role" defaultValue={ProductionRole.PRODUCTION}>
                   <option value={ProductionRole.PRODUCTION}>Production</option>
                   <option value={ProductionRole.DESIGNER}>Designer</option>
+                  <option value={ProductionRole.ORDER_BOOKER}>Order Booker</option>
                 </select>
               </label>
               <button className="button button-large" type="submit">
@@ -155,7 +156,13 @@ async function ProductionAdminDashboard({
                           <small>{membership.user.email}</small>
                         )}
                       </td>
-                      <td>{membership.role === ProductionRole.DESIGNER ? "Designer" : "Production"}</td>
+                      <td>
+                        {membership.role === ProductionRole.DESIGNER
+                          ? "Designer"
+                          : membership.role === ProductionRole.ORDER_BOOKER
+                            ? "Order Booker"
+                            : "Production"}
+                      </td>
                       <td>
                         <form action={saveProductionOrganizationMembership} className="admin-production-inline-form">
                           <input type="hidden" name="organizationId" value={organization.id} />
@@ -167,6 +174,7 @@ async function ProductionAdminDashboard({
                           >
                             <option value={ProductionRole.PRODUCTION}>Production</option>
                             <option value={ProductionRole.DESIGNER}>Designer</option>
+                            <option value={ProductionRole.ORDER_BOOKER}>Order Booker</option>
                           </select>
                           <button className="button button-small" type="submit">Save</button>
                         </form>

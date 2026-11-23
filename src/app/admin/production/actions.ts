@@ -20,7 +20,11 @@ function readString(formData: FormData, name: string, maxLength: number) {
 
 function readRole(formData: FormData) {
   const role = formData.get("role");
-  if (role !== ProductionRole.DESIGNER && role !== ProductionRole.PRODUCTION) {
+  if (
+    role !== ProductionRole.DESIGNER &&
+    role !== ProductionRole.PRODUCTION &&
+    role !== ProductionRole.ORDER_BOOKER
+  ) {
     throw new Error("Choose a valid production role.");
   }
   return role;

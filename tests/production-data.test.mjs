@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   canAttachProductionArtwork,
+  canBookProductionOrders,
   canEditProductionJobs,
   canFlagProductionJobs,
   canResolveProductionJobFlags,
@@ -10,6 +11,8 @@ import {
   MAX_PRODUCTION_JOB_FLAG_REASON_LENGTH,
   PRODUCTION_WORKFLOW_STAGES,
   sanitizeArtworkFileName,
+  validateProductionItem,
+  validateProductionOrderBooking,
   validateProductionJobFlagReason,
   validateProductionJobData,
 } from "../src/lib/production-data.ts";
@@ -77,8 +80,51 @@ test("validates a non-empty job flag reason within the allowed length", () => {
   assert.equal(validateProductionJobFlagReason(null), false);
 });
 
+test("allows order booking only for Order Bookers", () => {
+  assert.equal(canBookProductionOrders("ORDER_BOOKER"), true);
+  assert.equal(canBookProductionOrders("PRODUCTION"), false);
+  assert.equal(canBookProductionOrders("DESIGNER"), false);
+});
+
+test("validates basic order booking fields and date order", () => {
+  const order = {
+    itemId: "item-123",
+    customer: "Carton customer",
+    customerPO: "PO-123",
+    orderQty: "1200",
+    orderDate: "2026-11-23",
+    deliveryDate: "2026-12-01",
+  };
+  assert.equal(validateProductionOrderBooking(order), true);
+  assert.equal(validateProductionOrderBooking({ ...order, orderQty: "0" }), false);
+  assert.equal(validateProductionOrderBooking({ ...order, orderDate: "2026-02-30" }), false);
+  assert.equal(validateProductionOrderBooking({ ...order, deliveryDate: "2026-11-22" }), false);
+  assert.equal(validateProductionOrderBooking({ ...order, customer: " " }), false);
+  assert.equal(validateProductionOrderBooking({ ...order, itemId: "" }), false);
+});
+
+test("validates organization catalog item fields and dimensions", () => {
+  const item = {
+    name: "Mailer carton",
+    boxType: "RSC 0201",
+    topLiner: "150k",
+    medium: "150b",
+    bottomLiner: "150c",
+    length: "300",
+    width: "220",
+    height: "160",
+    unit: "mm",
+  };
+  assert.equal(validateProductionItem(item), true);
+  assert.equal(validateProductionItem({ ...item, name: " " }), false);
+  assert.equal(validateProductionItem({ ...item, width: "0" }), false);
+  assert.equal(validateProductionItem({ ...item, unit: "cm" }), false);
+});
+
 test("validates the explicit production workflow stage", () => {
-  assert.equal(PRODUCTION_WORKFLOW_STAGES.length, 5);
+  assert.equal(PRODUCTION_WORKFLOW_STAGES.length, 6);
+  assert.equal(PRODUCTION_WORKFLOW_STAGES[0], "Order Booking");
+  assert.equal(validateProductionJobData({ workflowStage: "Order Booking" }), true);
   assert.equal(validateProductionJobData({ workflowStage: "Board Production" }), true);
   assert.equal(validateProductionJobData({ workflowStage: "Complete" }), false);
 });

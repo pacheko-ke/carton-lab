@@ -1,0 +1,1 @@
+ALTER TYPE "ProductionRole" ADD VALUE 'ORDER_BOOKER';

@@ -3420,6 +3420,162 @@ input {
   gap: 10px;
 }
 
+.production-order-booking-dialog {
+  width: min(560px, calc(100vw - 32px));
+  max-width: 100%;
+  padding: 0;
+  border: 1px solid rgba(165, 190, 214, 0.2);
+  border-radius: 12px;
+  background: #111b26;
+  color: #e7f0f8;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
+}
+
+.production-order-booking-dialog::backdrop {
+  background: rgba(3, 8, 14, 0.72);
+  backdrop-filter: blur(3px);
+}
+
+.production-order-booking-content {
+  display: grid;
+  gap: 13px;
+  padding: 22px;
+}
+
+.production-order-booking-dialog form {
+  display: grid;
+  gap: 13px;
+}
+
+.production-order-booking-form,
+.production-item-create-form {
+  padding: 0;
+}
+
+.production-order-booking-heading h2 {
+  margin: 0;
+  color: #e7f0f8;
+  font-size: 18px;
+}
+
+.production-order-booking-heading p {
+  margin: 6px 0 0;
+  color: #9eb0c1;
+  font-size: 12px;
+}
+
+.production-order-booking-field {
+  display: grid;
+  gap: 6px;
+  color: #c3d0dc;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.production-order-booking-field input,
+.production-order-booking-field select {
+  width: 100%;
+  min-width: 0;
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 1px solid rgba(165, 190, 214, 0.2);
+  border-radius: 7px;
+  background: #0c141d;
+  color: #e7f0f8;
+  font: inherit;
+}
+
+.production-order-booking-field input:focus-visible,
+.production-order-booking-field select:focus-visible {
+  outline: 2px solid #66d3e8;
+  outline-offset: 2px;
+}
+
+.production-order-booking-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.production-order-item-picker {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 10px;
+}
+
+.production-order-item-picker .production-text-action {
+  min-height: 38px;
+}
+
+.production-order-item-summary {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  border: 1px solid rgba(165, 190, 214, 0.16);
+  border-radius: 8px;
+  background: rgba(12, 20, 29, 0.65);
+  color: #9eb0c1;
+  font-size: 12px;
+}
+
+.production-order-item-summary strong {
+  color: #e7f0f8;
+}
+
+.production-item-create-form h3 {
+  margin: 0;
+  color: #e7f0f8;
+  font-size: 15px;
+}
+
+.production-item-paper-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.production-item-size-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.production-order-booking-status,
+.production-order-booking-error {
+  margin: 0;
+  font-size: 12px;
+}
+
+.production-order-booking-status {
+  color: #83d2ad;
+}
+
+.production-order-booking-error {
+  color: #ff9a9a;
+}
+
+.production-order-booking-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+@media (max-width: 560px) {
+  .production-order-item-picker {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .production-item-paper-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .production-item-size-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .production-jobs-table tbody tr:last-child td {
   border-bottom: 0;
 }
