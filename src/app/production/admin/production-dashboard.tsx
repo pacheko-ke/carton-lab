@@ -133,6 +133,7 @@ function JobTable({
       <table className="production-jobs-table">
         <thead>
           <tr>
+            <th scope="col">Job sheet no.</th>
             <th scope="col">Job</th>
             <th scope="col">Carton spec</th>
             <th scope="col">Size</th>
@@ -152,10 +153,8 @@ function JobTable({
         <tbody>
           {jobs.map((job) => (
             <tr key={job.id}>
-              <td>
-                <strong>{job.jobNo || "Untitled job"}</strong>
-                {job.jobName && <small>{job.jobName}</small>}
-              </td>
+              <td><strong>{job.jobNo || "—"}</strong></td>
+              <td>{job.jobName || "—"}</td>
               <td>{job.cartonSpec || "—"}</td>
               <td>{job.size || "—"}</td>
               <td>{job.customer || "—"}</td>
