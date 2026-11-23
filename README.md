@@ -177,11 +177,11 @@ Jobs are shared with explicitly assigned organization members managed by a
 system admin at `/admin/production`. Production members create and update jobs;
 Order Bookers can enter basic customer orders into the Order Booking workflow
 without editing job sheets. They can create organization-specific catalog items
-with automatically generated item codes, carton type, paper combination, and
-dimensions; selecting an item fills those job details when booking an order.
-Designers can view planned jobs in
-Origination and attach artwork files up to 5 MB without editing their job
-sheets. Designers can also flag a job with a reason; Production members can
+with automatically generated item codes, a selectable carton type from the
+available keyline catalog, paper combination, and dimensions; selecting an
+item fills those job details when booking an order. Designers can view planned
+jobs in Origination and attach artwork files up to 5 MB without editing their
+job sheets. Designers can also flag a job with a reason; Production members can
 review and clear active flags. Artwork requires a **private** Vercel Blob store
 connected to the project in Development, Preview, and Production. Vercel
 supplies `BLOB_STORE_ID` and OIDC credentials; for local development, connect

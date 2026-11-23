@@ -3,6 +3,8 @@ import { connection } from "next/server";
 import QRCode from "qrcode";
 import { isAdminEmail } from "@/lib/admin";
 import { requireVerifiedUser } from "@/lib/account";
+import { hasPremiumAccess } from "@/lib/billing";
+import { createKeylineCatalog } from "@/lib/keyline-catalog";
 import { isProductionWorkflowStage, isRecord } from "@/lib/production-data";
 import { prisma } from "@/lib/prisma";
 import ProductionDashboard, {
@@ -116,6 +118,16 @@ async function AuthenticatedProductionAdminPage() {
       updatedAt: job.updatedAt.toISOString(),
     };
   });
+  const cartonTypes = Array.from(new Set([
+    "RSC 0201",
+    ...createKeylineCatalog(
+      hasPremiumAccess(
+        user.subscriptions,
+        user.premiumAccessGranted,
+        user.trialEndsAt,
+      ),
+    ).definitions.map(({ name }) => name),
+  ])).sort((left, right) => left.localeCompare(right));
   const profile = {
     createdBy: (user.name ?? "").slice(0, 100),
     companyName: (user.companyName ?? "").slice(0, 100),
@@ -134,6 +146,7 @@ async function AuthenticatedProductionAdminPage() {
       accountName={user.name || user.companyName || user.email || "Production user"}
       profile={profile}
       profileQrCode={profileQrCode}
+      cartonTypes={cartonTypes}
       organizations={organizations}
       jobs={dashboardJobs}
       canManageOrganizations={isAdminEmail(user.email)}

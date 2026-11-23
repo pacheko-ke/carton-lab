@@ -69,6 +69,7 @@ type Props = {
     address: string;
   };
   profileQrCode: boolean[][];
+  cartonTypes: string[];
   organizations: ProductionDashboardOrganization[];
   jobs: ProductionDashboardJob[];
   canManageOrganizations: boolean;
@@ -464,11 +465,13 @@ function JobFlagControl({
 
 function CreateProductionItemForm({
   organizationId,
+  cartonTypes,
   title = "Create an item",
   onCreated,
   onCancel,
 }: {
   organizationId: string;
+  cartonTypes: string[];
   title?: string;
   onCreated: (item: ProductionDashboardItem) => void;
   onCancel: () => void;
@@ -533,12 +536,16 @@ function CreateProductionItemForm({
       </label>
       <label className="production-order-booking-field">
         Carton type
-        <input
-          maxLength={80}
+        <select
           onChange={(event) => setBoxType(event.currentTarget.value)}
           required
           value={boxType}
-        />
+        >
+          <option value="">Select a carton type</option>
+          {cartonTypes.map((cartonType) => (
+            <option key={cartonType} value={cartonType}>{cartonType}</option>
+          ))}
+        </select>
       </label>
       <div className="production-item-paper-row">
         <label className="production-order-booking-field">
@@ -636,12 +643,14 @@ function CreateProductionItemForm({
 function CreateProductionItemDialog({
   open,
   organizations,
+  cartonTypes,
   defaultOrganizationId,
   onClose,
   onCreated,
 }: {
   open: boolean;
   organizations: ProductionDashboardOrganization[];
+  cartonTypes: string[];
   defaultOrganizationId: string;
   onClose: () => void;
   onCreated: (item: ProductionDashboardItem) => void;
@@ -697,6 +706,7 @@ function CreateProductionItemDialog({
           </label>
         )}
         <CreateProductionItemForm
+          cartonTypes={cartonTypes}
           key={organizationId}
           onCancel={onClose}
           onCreated={onCreated}
@@ -711,12 +721,14 @@ function CreateProductionItemDialog({
 function OrderBookingDialog({
   open,
   organizations,
+  cartonTypes,
   defaultOrganizationId,
   onClose,
   onBooked,
 }: {
   open: boolean;
   organizations: ProductionDashboardOrganization[];
+  cartonTypes: string[];
   defaultOrganizationId: string;
   onClose: () => void;
   onBooked: () => void;
@@ -874,6 +886,7 @@ function OrderBookingDialog({
         )}
         {isCreatingItem ? (
           <CreateProductionItemForm
+            cartonTypes={cartonTypes}
             onCancel={() => setIsCreatingItem(false)}
             onCreated={(item) => {
               setItems((current) =>
@@ -1103,6 +1116,7 @@ export default function ProductionDashboard({
   accountName,
   profile,
   profileQrCode,
+  cartonTypes,
   organizations,
   jobs,
   canManageOrganizations,
@@ -1590,6 +1604,7 @@ export default function ProductionDashboard({
         </main>
       </div>
       <OrderBookingDialog
+        cartonTypes={cartonTypes}
         defaultOrganizationId={defaultOrderBookingOrganizationId}
         onBooked={() => router.refresh()}
         onClose={() => setIsBookingOrder(false)}
@@ -1597,6 +1612,7 @@ export default function ProductionDashboard({
         organizations={orderBookingOrganizations}
       />
       <CreateProductionItemDialog
+        cartonTypes={cartonTypes}
         defaultOrganizationId={defaultOrderBookingOrganizationId}
         onClose={() => setIsCreatingProduct(false)}
         onCreated={(item) => {
