@@ -2655,6 +2655,10 @@ input {
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
   }
+
+  .production-refresh-spinner {
+    animation: none !important;
+  }
 }
 
 .production-dashboard-shell {
@@ -2793,6 +2797,13 @@ input {
   color: #9aacc0;
   font-size: 10px;
   font-weight: 750;
+}
+
+.production-nav-icon svg,
+.production-nav-stage svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 1.7;
 }
 
 .production-nav-item.is-active .production-nav-icon,
@@ -2949,8 +2960,19 @@ input {
   opacity: 0.65;
 }
 
-.production-refresh-button > span {
-  font-size: 15px;
+.production-refresh-button > svg {
+  width: 14px;
+  height: 14px;
+}
+
+.production-refresh-spinner {
+  animation: production-icon-spin 900ms linear infinite;
+}
+
+@keyframes production-icon-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .production-dashboard-content {
@@ -3025,6 +3047,12 @@ input {
   border-radius: 9px;
   font-size: 12px;
   font-weight: 750;
+}
+
+.production-kpi-icon svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 1.8;
 }
 
 .kpi-blue {
@@ -3274,6 +3302,17 @@ input {
   white-space: nowrap;
 }
 
+.production-text-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.production-text-action svg {
+  width: 12px;
+  height: 12px;
+}
+
 .production-text-action:hover,
 .production-table-action:hover {
   color: #b7eff7;
@@ -3307,6 +3346,145 @@ input {
   padding: 11px 9px;
   border-bottom: 1px solid rgba(165, 190, 214, 0.07);
   white-space: nowrap;
+}
+
+.production-planning-form {
+  display: grid;
+  gap: 13px;
+  padding: 16px;
+  border: 1px solid rgba(165, 190, 214, 0.12);
+  border-radius: 9px;
+  background: rgba(12, 20, 29, 0.5);
+}
+
+.production-supply-setup-grid,
+.production-supply-register-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.production-supply-details {
+  min-width: 0;
+  border: 1px solid rgba(165, 190, 214, 0.12);
+  border-radius: 9px;
+  background: rgba(12, 20, 29, 0.5);
+}
+
+.production-supply-details > summary {
+  padding: 13px 15px;
+  color: #b7eff7;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.production-supply-form {
+  display: grid;
+  gap: 12px;
+  padding: 0 15px 15px;
+}
+
+.production-supply-register-grid h3 {
+  margin: 0 0 9px;
+  color: #c9d7e3;
+  font-size: 12px;
+}
+
+.production-supply-compact-list {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.production-supply-compact-list li {
+  display: grid;
+  gap: 3px;
+  padding: 9px 10px;
+  border: 1px solid rgba(165, 190, 214, 0.1);
+  border-radius: 7px;
+  color: #aebdcb;
+  font-size: 11px;
+}
+
+.production-supply-compact-list strong {
+  color: #e0ebf4;
+}
+
+.production-supply-compact-list small {
+  color: #71879c;
+}
+
+.production-supply-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.production-supply-receipt {
+  display: grid;
+  gap: 12px;
+  min-width: 420px;
+  padding: 12px;
+  border: 1px solid rgba(165, 190, 214, 0.12);
+  border-radius: 8px;
+  background: rgba(12, 20, 29, 0.55);
+}
+
+.production-supply-receipt > strong {
+  color: #dce8f2;
+  font-size: 11px;
+}
+
+.production-supply-receipt-lines {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.production-schedule-job-name {
+  max-width: 220px;
+  overflow: hidden;
+  margin-top: 3px;
+  color: #71879c;
+  text-overflow: ellipsis;
+}
+
+.production-jobs-table td.production-schedule-notes {
+  max-width: 220px;
+  white-space: normal;
+}
+
+.production-schedule-status {
+  display: inline-flex;
+  padding: 4px 7px;
+  border: 1px solid rgba(165, 190, 214, 0.16);
+  border-radius: 999px;
+  color: #bdc9d6;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.production-schedule-status.status-in_progress {
+  border-color: rgba(102, 211, 232, 0.25);
+  background: rgba(33, 125, 151, 0.15);
+  color: #9be4f1;
+}
+
+.production-schedule-status.status-on_hold {
+  border-color: rgba(240, 185, 104, 0.25);
+  background: rgba(153, 101, 34, 0.13);
+  color: #f0c987;
+}
+
+.production-schedule-status.status-completed {
+  border-color: rgba(131, 210, 173, 0.25);
+  background: rgba(49, 121, 88, 0.15);
+  color: #83d2ad;
 }
 
 .production-job-flag {
@@ -3580,6 +3758,12 @@ input {
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .production-supply-setup-grid,
+  .production-supply-register-grid,
+  .production-supply-receipt-lines {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .production-item-paper-row {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -3680,6 +3864,12 @@ input {
   color: #8dd4f5;
   font-size: 14px;
   font-weight: 700;
+}
+
+.production-empty-mark svg {
+  width: 19px;
+  height: 19px;
+  stroke-width: 1.7;
 }
 
 .production-empty-state h3 {

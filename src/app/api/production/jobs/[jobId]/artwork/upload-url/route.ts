@@ -1,6 +1,10 @@
 import { issueSignedToken, presignUrl } from "@vercel/blob";
 import { getArtworkContentType, MAX_ARTWORK_FILE_BYTES, sanitizeArtworkFileName, canAttachProductionArtwork } from "@/lib/production-data";
-import { getAuthorizedProductionJob, getVerifiedProductionUser } from "@/lib/production-access";
+import {
+  getAuthorizedProductionJob,
+  getVerifiedProductionUser,
+  isProductionAdmin,
+} from "@/lib/production-access";
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 
@@ -16,11 +20,12 @@ export async function POST(request: Request, { params }: RouteContext) {
   }
 
   const { jobId } = await params;
-  const access = await getAuthorizedProductionJob(user.id, jobId);
+  const isAdmin = isProductionAdmin(user);
+  const access = await getAuthorizedProductionJob(user.id, jobId, isAdmin);
   if (!access) {
     return NextResponse.json({ error: "Production job not found" }, { status: 404 });
   }
-  if (!canAttachProductionArtwork(access.membership.role)) {
+  if (!isAdmin && !canAttachProductionArtwork(access.membership.role)) {
     return NextResponse.json(
       { error: "Designer role required to attach artwork" },
       { status: 403 },

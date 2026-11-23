@@ -9,6 +9,7 @@ import {
   getArtworkContentType,
   MAX_ARTWORK_FILE_BYTES,
   MAX_PRODUCTION_JOB_FLAG_REASON_LENGTH,
+  PRODUCTION_OPERATIONS,
   PRODUCTION_WORKFLOW_STAGES,
   sanitizeArtworkFileName,
   validateProductionItem,
@@ -16,6 +17,7 @@ import {
   validateProductionOrderBooking,
   validateProductionJobFlagReason,
   validateProductionJobData,
+  validateProductionOperationSchedule,
 } from "../src/lib/production-data.ts";
 
 test("validates shared production job data and tracking rows", () => {
@@ -154,4 +156,25 @@ test("validates the explicit production workflow stage", () => {
   assert.equal(validateProductionJobData({ workflowStage: "Order Booking" }), true);
   assert.equal(validateProductionJobData({ workflowStage: "Board Production" }), true);
   assert.equal(validateProductionJobData({ workflowStage: "Complete" }), false);
+});
+
+test("validates operation schedules and rejects invalid quantities and time ranges", () => {
+  const schedule = {
+    jobId: "job-123",
+    operation: PRODUCTION_OPERATIONS[0],
+    workCenter: "Corrugator 1",
+    scheduledStartAt: "2026-11-23T08:00:00.000Z",
+    scheduledEndAt: "2026-11-23T09:00:00.000Z",
+    plannedQty: "1200",
+    status: "PLANNED",
+    notes: "",
+  };
+  assert.equal(validateProductionOperationSchedule(schedule), true);
+  assert.equal(
+    validateProductionOperationSchedule({ ...schedule, scheduledEndAt: schedule.scheduledStartAt }),
+    false,
+  );
+  assert.equal(validateProductionOperationSchedule({ ...schedule, plannedQty: "1.5" }), false);
+  assert.equal(validateProductionOperationSchedule({ ...schedule, operation: "Unknown" }), false);
+  assert.equal(validateProductionOperationSchedule({ ...schedule, scheduledStartAt: "2026-11-23T08:00:00Z" }), false);
 });

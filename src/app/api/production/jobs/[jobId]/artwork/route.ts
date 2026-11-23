@@ -1,6 +1,10 @@
 import { get } from "@vercel/blob";
 import { canAttachProductionArtwork, getArtworkContentType, MAX_ARTWORK_FILE_BYTES, sanitizeArtworkFileName } from "@/lib/production-data";
-import { getAuthorizedProductionJob, getVerifiedProductionUser } from "@/lib/production-access";
+import {
+  getAuthorizedProductionJob,
+  getVerifiedProductionUser,
+  isProductionAdmin,
+} from "@/lib/production-access";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
@@ -16,7 +20,8 @@ export async function GET(_request: Request, { params }: RouteContext) {
   }
 
   const { jobId } = await params;
-  const access = await getAuthorizedProductionJob(user.id, jobId);
+  const isAdmin = isProductionAdmin(user);
+  const access = await getAuthorizedProductionJob(user.id, jobId, isAdmin);
   if (!access) {
     return NextResponse.json({ error: "Production job not found" }, { status: 404 });
   }
@@ -49,11 +54,12 @@ export async function POST(request: Request, { params }: RouteContext) {
   }
 
   const { jobId } = await params;
-  const access = await getAuthorizedProductionJob(user.id, jobId);
+  const isAdmin = isProductionAdmin(user);
+  const access = await getAuthorizedProductionJob(user.id, jobId, isAdmin);
   if (!access) {
     return NextResponse.json({ error: "Production job not found" }, { status: 404 });
   }
-  if (!canAttachProductionArtwork(access.membership.role)) {
+  if (!isAdmin && !canAttachProductionArtwork(access.membership.role)) {
     return NextResponse.json(
       { error: "Designer role required to attach artwork" },
       { status: 403 },

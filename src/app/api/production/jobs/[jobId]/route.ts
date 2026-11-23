@@ -1,5 +1,9 @@
 import { canEditProductionJobs, isRecord, validateProductionJobData } from "@/lib/production-data";
-import { getAuthorizedProductionJob, getVerifiedProductionUser } from "@/lib/production-access";
+import {
+  getAuthorizedProductionJob,
+  getVerifiedProductionUser,
+  isProductionAdmin,
+} from "@/lib/production-access";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
@@ -16,7 +20,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
   }
 
   const { jobId } = await params;
-  const access = await getAuthorizedProductionJob(user.id, jobId);
+  const access = await getAuthorizedProductionJob(user.id, jobId, isProductionAdmin(user));
   if (!access) {
     return NextResponse.json({ error: "Production job not found" }, { status: 404 });
   }
@@ -45,11 +49,12 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   }
 
   const { jobId } = await params;
-  const access = await getAuthorizedProductionJob(user.id, jobId);
+  const isAdmin = isProductionAdmin(user);
+  const access = await getAuthorizedProductionJob(user.id, jobId, isAdmin);
   if (!access) {
     return NextResponse.json({ error: "Production job not found" }, { status: 404 });
   }
-  if (!canEditProductionJobs(access.membership.role)) {
+  if (!isAdmin && !canEditProductionJobs(access.membership.role)) {
     return NextResponse.json(
       { error: "Production role required to update jobs" },
       { status: 403 },

@@ -5,11 +5,22 @@ import { isAdminEmail } from "@/lib/admin";
 import { requireVerifiedUser } from "@/lib/account";
 import { hasPremiumAccess } from "@/lib/billing";
 import { createKeylineCatalog } from "@/lib/keyline-catalog";
-import { isProductionWorkflowStage, isRecord } from "@/lib/production-data";
+import { isProductionAdmin } from "@/lib/production-access";
+import {
+  isProductionOperation,
+  isProductionOperationStatus,
+  isProductionWorkflowStage,
+  isRecord,
+} from "@/lib/production-data";
 import { prisma } from "@/lib/prisma";
 import ProductionDashboard, {
   type ProductionDashboardJob,
   type ProductionDashboardOrganization,
+  type ProductionDashboardMaterial,
+  type ProductionDashboardPurchaseOrder,
+  type ProductionDashboardSchedule,
+  type ProductionDashboardStockMovement,
+  type ProductionDashboardSupplier,
 } from "./production-dashboard";
 
 function textValue(data: unknown, key: string): string {
@@ -57,21 +68,26 @@ export default function ProductionAdminPage() {
 async function AuthenticatedProductionAdminPage() {
   await connection();
   const user = await requireVerifiedUser();
-  const memberships = await prisma.productionOrganizationMembership.findMany({
-    where: { userId: user.id },
-    select: {
-      role: true,
-      organization: { select: { id: true, name: true } },
-    },
-  });
-  const organizations: ProductionDashboardOrganization[] = memberships.map(({ role, organization }) => ({
-    ...organization,
-    role: role === "DESIGNER"
-      ? "DESIGNER"
-      : role === "ORDER_BOOKER"
-        ? "ORDER_BOOKER"
-        : "PRODUCTION",
-  }));
+  const isAdmin = isProductionAdmin(user);
+  const organizations: ProductionDashboardOrganization[] = isAdmin
+    ? (await prisma.productionOrganization.findMany({
+        orderBy: { name: "asc" },
+        select: { id: true, name: true },
+      })).map((organization) => ({ ...organization, role: "PRODUCTION" }))
+    : (await prisma.productionOrganizationMembership.findMany({
+        where: { userId: user.id },
+        select: {
+          role: true,
+          organization: { select: { id: true, name: true } },
+        },
+      })).map(({ role, organization }) => ({
+        ...organization,
+        role: role === "DESIGNER"
+          ? "DESIGNER"
+          : role === "ORDER_BOOKER"
+            ? "ORDER_BOOKER"
+            : "PRODUCTION",
+      }));
   const organizationNames = new Map(
     organizations.map((organization) => [organization.id, organization.name]),
   );
@@ -118,6 +134,154 @@ async function AuthenticatedProductionAdminPage() {
       updatedAt: job.updatedAt.toISOString(),
     };
   });
+  const productionOrganizationIds = organizations
+    .filter((organization) => organization.role === "PRODUCTION")
+    .map((organization) => organization.id);
+  const operationSchedules = productionOrganizationIds.length
+    ? await prisma.productionOperationSchedule.findMany({
+        where: { organizationId: { in: productionOrganizationIds } },
+        orderBy: { scheduledStartAt: "asc" },
+        select: {
+          id: true,
+          organizationId: true,
+          jobId: true,
+          operation: true,
+          workCenter: true,
+          scheduledStartAt: true,
+          scheduledEndAt: true,
+          plannedQty: true,
+          status: true,
+          notes: true,
+        },
+      })
+    : [];
+  const jobsById = new Map(dashboardJobs.map((job) => [job.id, job]));
+  const dashboardSchedules: ProductionDashboardSchedule[] = operationSchedules.map((schedule) => {
+    const job = jobsById.get(schedule.jobId);
+    if (!job) {
+      throw new Error(`Production operation schedule ${schedule.id} references an unavailable job.`);
+    }
+    if (!isProductionOperation(schedule.operation) || !isProductionOperationStatus(schedule.status)) {
+      throw new Error(`Production operation schedule ${schedule.id} has invalid operation data.`);
+    }
+    return {
+      ...schedule,
+      organizationName: organizationNames.get(schedule.organizationId) ?? "Production organization",
+      jobNo: job.jobNo,
+      jobName: job.jobName,
+      customer: job.customer,
+      scheduledStartAt: schedule.scheduledStartAt.toISOString(),
+      scheduledEndAt: schedule.scheduledEndAt.toISOString(),
+      operation: schedule.operation,
+      status: schedule.status,
+    };
+  });
+  const [materialRows, supplierRows, purchaseOrderRows, stockMovementRows, stockBalances] =
+    await Promise.all([
+      prisma.productionMaterial.findMany({
+        where: { organizationId: { in: productionOrganizationIds } },
+        orderBy: [{ active: "desc" }, { name: "asc" }],
+        select: {
+          id: true,
+          organizationId: true,
+          code: true,
+          name: true,
+          category: true,
+          unit: true,
+          reorderPoint: true,
+          active: true,
+        },
+      }),
+      prisma.productionSupplier.findMany({
+        where: { organizationId: { in: productionOrganizationIds } },
+        orderBy: [{ active: "desc" }, { name: "asc" }],
+        select: {
+          id: true,
+          organizationId: true,
+          code: true,
+          name: true,
+          contactPerson: true,
+          phone: true,
+          email: true,
+          address: true,
+          active: true,
+        },
+      }),
+      prisma.productionPurchaseOrder.findMany({
+        where: { organizationId: { in: productionOrganizationIds } },
+        orderBy: { createdAt: "desc" },
+        take: 200,
+        select: {
+          id: true,
+          organizationId: true,
+          orderNo: true,
+          status: true,
+          expectedAt: true,
+          notes: true,
+          createdAt: true,
+          supplier: { select: { id: true, code: true, name: true } },
+          lines: {
+            orderBy: { material: { name: "asc" } },
+            select: {
+              id: true,
+              orderedQty: true,
+              receivedQty: true,
+              material: { select: { id: true, code: true, name: true, unit: true } },
+            },
+          },
+        },
+      }),
+      prisma.productionStockMovement.findMany({
+        where: { organizationId: { in: productionOrganizationIds } },
+        orderBy: { createdAt: "desc" },
+        take: 250,
+        select: {
+          id: true,
+          organizationId: true,
+          type: true,
+          quantity: true,
+          reference: true,
+          notes: true,
+          createdAt: true,
+          material: { select: { id: true, code: true, name: true, unit: true } },
+          jobId: true,
+          job: { select: { data: true } },
+        },
+      }),
+      prisma.productionStockMovement.groupBy({
+        by: ["organizationId", "materialId"],
+        where: { organizationId: { in: productionOrganizationIds } },
+        _sum: { quantity: true },
+      }),
+    ]);
+  const balanceByMaterial = new Map(
+    stockBalances.map((balance) => [
+      `${balance.organizationId}:${balance.materialId}`,
+      balance._sum.quantity?.toString() ?? "0",
+    ]),
+  );
+  const dashboardMaterials: ProductionDashboardMaterial[] = materialRows.map((material) => ({
+    ...material,
+    reorderPoint: material.reorderPoint.toString(),
+    onHand: balanceByMaterial.get(`${material.organizationId}:${material.id}`) ?? "0",
+  }));
+  const dashboardSuppliers: ProductionDashboardSupplier[] = supplierRows;
+  const dashboardPurchaseOrders: ProductionDashboardPurchaseOrder[] = purchaseOrderRows.map((order) => ({
+    ...order,
+    expectedAt: order.expectedAt?.toISOString() ?? null,
+    createdAt: order.createdAt.toISOString(),
+    lines: order.lines.map((line) => ({
+      ...line,
+      orderedQty: line.orderedQty.toString(),
+      receivedQty: line.receivedQty.toString(),
+    })),
+  }));
+  const dashboardStockMovements: ProductionDashboardStockMovement[] = stockMovementRows.map((movement) => ({
+    ...movement,
+    quantity: movement.quantity.toString(),
+    createdAt: movement.createdAt.toISOString(),
+    jobNo: movement.job ? textValue(movement.job.data, "jobNo") : "",
+  }));
   const cartonTypes = Array.from(new Set([
     "RSC 0201",
     ...createKeylineCatalog(
@@ -149,6 +313,12 @@ async function AuthenticatedProductionAdminPage() {
       cartonTypes={cartonTypes}
       organizations={organizations}
       jobs={dashboardJobs}
+      schedules={dashboardSchedules}
+      materials={dashboardMaterials}
+      suppliers={dashboardSuppliers}
+      purchaseOrders={dashboardPurchaseOrders}
+      stockMovements={dashboardStockMovements}
+      isAdmin={isAdmin}
       canManageOrganizations={isAdminEmail(user.email)}
     />
   );

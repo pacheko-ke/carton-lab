@@ -18,6 +18,38 @@ export function isProductionWorkflowStage(
   return PRODUCTION_WORKFLOW_STAGES.some((stage) => stage === value);
 }
 
+export const PRODUCTION_OPERATIONS = [
+  "Corrugating",
+  "Printing",
+  "Die Cutting",
+  "Folder Gluing",
+  "Stitching",
+  "Quality Control",
+  "Packing",
+] as const;
+
+export type ProductionOperation = (typeof PRODUCTION_OPERATIONS)[number];
+
+export const PRODUCTION_OPERATION_STATUSES = [
+  "PLANNED",
+  "IN_PROGRESS",
+  "ON_HOLD",
+  "COMPLETED",
+] as const;
+
+export type ProductionOperationStatus =
+  (typeof PRODUCTION_OPERATION_STATUSES)[number];
+
+export function isProductionOperation(value: unknown): value is ProductionOperation {
+  return PRODUCTION_OPERATIONS.some((operation) => operation === value);
+}
+
+export function isProductionOperationStatus(
+  value: unknown,
+): value is ProductionOperationStatus {
+  return PRODUCTION_OPERATION_STATUSES.some((status) => status === value);
+}
+
 export type ProductionOrderBookingInput = {
   itemId: string;
   customerId: string;
@@ -59,6 +91,43 @@ export function validateProductionOrderBooking(
     return false;
   }
   return true;
+}
+
+export type ProductionOperationScheduleInput = {
+  jobId: string;
+  operation: ProductionOperation;
+  workCenter: string;
+  scheduledStartAt: string;
+  scheduledEndAt: string;
+  plannedQty: string;
+  status: ProductionOperationStatus;
+  notes: string;
+};
+
+function isValidIsoDateTime(value: unknown): value is string {
+  if (typeof value !== "string" || value.length > 40) return false;
+  const date = new Date(value);
+  return !Number.isNaN(date.getTime()) && date.toISOString() === value;
+}
+
+export function validateProductionOperationSchedule(
+  value: unknown,
+): value is ProductionOperationScheduleInput {
+  if (!isRecord(value)) return false;
+  return (
+    isNonEmptyString(value.jobId, 100) &&
+    isProductionOperation(value.operation) &&
+    isNonEmptyString(value.workCenter, 80) &&
+    isValidIsoDateTime(value.scheduledStartAt) &&
+    isValidIsoDateTime(value.scheduledEndAt) &&
+    new Date(value.scheduledEndAt).getTime() > new Date(value.scheduledStartAt).getTime() &&
+    typeof value.plannedQty === "string" &&
+    /^[1-9]\d*$/.test(value.plannedQty) &&
+    Number.isSafeInteger(Number(value.plannedQty)) &&
+    isProductionOperationStatus(value.status) &&
+    typeof value.notes === "string" &&
+    value.notes.length <= 500
+  );
 }
 
 export type ProductionCustomerInput = {

@@ -1,5 +1,9 @@
 import { canEditProductionJobs, isRecord, validateProductionJobData } from "@/lib/production-data";
-import { getProductionOrganizationMembership, getVerifiedProductionUser } from "@/lib/production-access";
+import {
+  getProductionOrganizationMembership,
+  getVerifiedProductionUser,
+  isProductionAdmin,
+} from "@/lib/production-access";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
@@ -23,7 +27,11 @@ export async function GET(_request: Request, { params }: RouteContext) {
   }
 
   const { organizationId } = await params;
-  const membership = await getProductionOrganizationMembership(user.id, organizationId);
+  const membership = await getProductionOrganizationMembership(
+    user.id,
+    organizationId,
+    isProductionAdmin(user),
+  );
   if (!membership) {
     return NextResponse.json({ error: "Organization access denied" }, { status: 403 });
   }
@@ -58,7 +66,11 @@ export async function POST(request: Request, { params }: RouteContext) {
   }
 
   const { organizationId } = await params;
-  const membership = await getProductionOrganizationMembership(user.id, organizationId);
+  const membership = await getProductionOrganizationMembership(
+    user.id,
+    organizationId,
+    isProductionAdmin(user),
+  );
   if (!membership) {
     return NextResponse.json({ error: "Organization access denied" }, { status: 403 });
   }

@@ -5,6 +5,7 @@ import {
 import {
   getProductionOrganizationMembership,
   getVerifiedProductionUser,
+  isProductionAdmin,
 } from "@/lib/production-access";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
@@ -26,11 +27,12 @@ async function getOrderBooker(organizationId: string) {
     return { response: NextResponse.json({ error: "Verified account required" }, { status: 401 }) };
   }
 
-  const membership = await getProductionOrganizationMembership(user.id, organizationId);
+  const isAdmin = isProductionAdmin(user);
+  const membership = await getProductionOrganizationMembership(user.id, organizationId, isAdmin);
   if (!membership) {
     return { response: NextResponse.json({ error: "Organization access denied" }, { status: 403 }) };
   }
-  if (!canBookProductionOrders(membership.role)) {
+  if (!isAdmin && !canBookProductionOrders(membership.role)) {
     return { response: NextResponse.json({ error: "Order Booker role required" }, { status: 403 }) };
   }
 

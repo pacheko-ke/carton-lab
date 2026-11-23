@@ -1,6 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { canBookProductionOrders, validateProductionOrderBooking } from "@/lib/production-data";
-import { getProductionOrganizationMembership, getVerifiedProductionUser } from "@/lib/production-access";
+import {
+  getProductionOrganizationMembership,
+  getVerifiedProductionUser,
+  isProductionAdmin,
+} from "@/lib/production-access";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
@@ -19,11 +23,12 @@ export async function POST(request: Request, { params }: RouteContext) {
   }
 
   const { organizationId } = await params;
-  const membership = await getProductionOrganizationMembership(user.id, organizationId);
+  const isAdmin = isProductionAdmin(user);
+  const membership = await getProductionOrganizationMembership(user.id, organizationId, isAdmin);
   if (!membership) {
     return NextResponse.json({ error: "Organization access denied" }, { status: 403 });
   }
-  if (!canBookProductionOrders(membership.role)) {
+  if (!isAdmin && !canBookProductionOrders(membership.role)) {
     return NextResponse.json({ error: "Order Booker role required" }, { status: 403 });
   }
 

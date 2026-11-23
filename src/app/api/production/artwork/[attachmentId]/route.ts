@@ -1,5 +1,9 @@
 import { get } from "@vercel/blob";
-import { getProductionOrganizationMembership, getVerifiedProductionUser } from "@/lib/production-access";
+import {
+  getProductionOrganizationMembership,
+  getVerifiedProductionUser,
+  isProductionAdmin,
+} from "@/lib/production-access";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
@@ -31,6 +35,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
   const membership = await getProductionOrganizationMembership(
     user.id,
     attachment.job.organizationId,
+    isProductionAdmin(user),
   );
   if (!membership) {
     return NextResponse.json({ error: "Artwork not found" }, { status: 404 });

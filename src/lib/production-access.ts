@@ -1,5 +1,10 @@
 import { auth } from "@/auth";
+import { isAdminEmail } from "@/lib/admin";
 import { prisma } from "@/lib/prisma";
+
+export function isProductionAdmin(user: { email?: string | null }) {
+  return isAdminEmail(user.email);
+}
 
 export async function getVerifiedProductionUser() {
   const session = await auth();
@@ -16,7 +21,18 @@ export async function getVerifiedProductionUser() {
 export async function getProductionOrganizationMembership(
   userId: string,
   organizationId: string,
+  isAdmin = false,
 ) {
+  if (isAdmin) {
+    const organization = await prisma.productionOrganization.findUnique({
+      where: { id: organizationId },
+      select: { id: true },
+    });
+    return organization
+      ? { organizationId: organization.id, role: "PRODUCTION" }
+      : null;
+  }
+
   return prisma.productionOrganizationMembership.findUnique({
     where: { organizationId_userId: { organizationId, userId } },
     select: { organizationId: true, role: true },
@@ -26,6 +42,7 @@ export async function getProductionOrganizationMembership(
 export async function getAuthorizedProductionJob(
   userId: string,
   jobId: string,
+  isAdmin = false,
 ) {
   const job = await prisma.productionJob.findUnique({
     where: { id: jobId },
@@ -33,6 +50,10 @@ export async function getAuthorizedProductionJob(
   });
   if (!job) return null;
 
-  const membership = await getProductionOrganizationMembership(userId, job.organizationId);
+  const membership = await getProductionOrganizationMembership(
+    userId,
+    job.organizationId,
+    isAdmin,
+  );
   return membership ? { job, membership } : null;
 }

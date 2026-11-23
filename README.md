@@ -174,7 +174,9 @@ scheduled cancellations retain access through the paid period end.
 The Production workspace is available at `/production/admin`, with
 organization-filtered job KPIs, workflow queues, and delivery visualizations.
 Jobs are shared with explicitly assigned organization members managed by a
-system admin at `/admin/production`. Production members create and update jobs;
+system admin at `/admin/production`. Verified system admins listed in
+`ADMIN_EMAILS` can access every organization and production module regardless
+of membership role. Production members create and update jobs;
 Order Bookers can enter basic customer orders into the Order Booking workflow
 without editing job sheets. The dashboard provides quick actions to create
 products and shared customer records. They can create organization-specific
@@ -186,11 +188,20 @@ across organizations and store the customer name plus optional contact person,
 phone, email, and address. Designers can view planned
 jobs in Origination and attach artwork files up to 5 MB without editing their
 job sheets. Designers can also flag a job with a reason; Production members can
-review and clear active flags. Artwork requires a **private** Vercel Blob store
-connected to the project in Development, Preview, and Production. Vercel
+review and clear active flags. Production members can schedule job operations
+by work center, planned quantity, time range, and status; overlapping active
+schedules for the same work center are rejected. Artwork requires a **private**
+Vercel Blob store connected to the project in Development, Preview, and
+Production. Vercel
 supplies `BLOB_STORE_ID` and OIDC credentials; for local development, connect
 the Development store and refresh the environment with `vercel env pull`. Do not
 use a public Blob store for production artwork.
+
+The Procurement workspace tracks organization-specific materials and suppliers,
+purchase orders, and partial goods receipts. Receipts create auditable stock
+movements. Inventory shows ledger-derived on-hand quantities and reorder points;
+job-linked material issues track raw-material consumption into WIP, and stock
+issues are rejected when they would make inventory negative.
 
 For local Origination demos, set `PACKSTUDIO_ALLOW_LOCAL_DEMO_SEED=true` and
 `DEMO_USER_EMAIL` for a verified local account in `.env.local`, then run

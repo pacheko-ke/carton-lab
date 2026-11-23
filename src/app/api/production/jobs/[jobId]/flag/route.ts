@@ -6,7 +6,11 @@ import {
   isProductionWorkflowStage,
   validateProductionJobFlagReason,
 } from "@/lib/production-data";
-import { getAuthorizedProductionJob, getVerifiedProductionUser } from "@/lib/production-access";
+import {
+  getAuthorizedProductionJob,
+  getVerifiedProductionUser,
+  isProductionAdmin,
+} from "@/lib/production-access";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
@@ -19,11 +23,12 @@ export async function POST(request: Request, { params }: RouteContext) {
   }
 
   const { jobId } = await params;
-  const access = await getAuthorizedProductionJob(user.id, jobId);
+  const isAdmin = isProductionAdmin(user);
+  const access = await getAuthorizedProductionJob(user.id, jobId, isAdmin);
   if (!access) {
     return NextResponse.json({ error: "Production job not found" }, { status: 404 });
   }
-  if (!canFlagProductionJobs(access.membership.role)) {
+  if (!isAdmin && !canFlagProductionJobs(access.membership.role)) {
     return NextResponse.json({ error: "Designer role required to flag jobs" }, { status: 403 });
   }
 
@@ -107,11 +112,12 @@ export async function PATCH(_request: Request, { params }: RouteContext) {
   }
 
   const { jobId } = await params;
-  const access = await getAuthorizedProductionJob(user.id, jobId);
+  const isAdmin = isProductionAdmin(user);
+  const access = await getAuthorizedProductionJob(user.id, jobId, isAdmin);
   if (!access) {
     return NextResponse.json({ error: "Production job not found" }, { status: 404 });
   }
-  if (!canResolveProductionJobFlags(access.membership.role)) {
+  if (!isAdmin && !canResolveProductionJobFlags(access.membership.role)) {
     return NextResponse.json({ error: "Production role required to clear job flags" }, { status: 403 });
   }
 
