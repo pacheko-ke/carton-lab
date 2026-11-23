@@ -12,6 +12,7 @@ import {
   PRODUCTION_WORKFLOW_STAGES,
   sanitizeArtworkFileName,
   validateProductionItem,
+  validateProductionCustomer,
   validateProductionOrderBooking,
   validateProductionJobFlagReason,
   validateProductionJobData,
@@ -89,7 +90,7 @@ test("allows order booking only for Order Bookers", () => {
 test("validates basic order booking fields and date order", () => {
   const order = {
     itemId: "item-123",
-    customer: "Carton customer",
+    customerId: "customer-123",
     customerPO: "PO-123",
     orderQty: "1200",
     orderDate: "2026-11-23",
@@ -99,12 +100,37 @@ test("validates basic order booking fields and date order", () => {
   assert.equal(validateProductionOrderBooking({ ...order, orderQty: "0" }), false);
   assert.equal(validateProductionOrderBooking({ ...order, orderDate: "2026-02-30" }), false);
   assert.equal(validateProductionOrderBooking({ ...order, deliveryDate: "2026-11-22" }), false);
-  assert.equal(validateProductionOrderBooking({ ...order, customer: " " }), false);
+  assert.equal(validateProductionOrderBooking({ ...order, customerId: " " }), false);
   assert.equal(validateProductionOrderBooking({ ...order, itemId: "" }), false);
+});
+
+test("validates shared customer details and optional contact information", () => {
+  const customer = {
+    name: "Carton customer",
+    contactPerson: "Jane Doe",
+    phone: "+254700000000",
+    email: "jane@example.com",
+    address: "Nairobi",
+  };
+  assert.equal(validateProductionCustomer(customer), true);
+  assert.equal(validateProductionCustomer({ ...customer, name: " " }), false);
+  assert.equal(validateProductionCustomer({ ...customer, email: "not-an-email" }), false);
+  assert.equal(validateProductionCustomer({ ...customer, phone: "x".repeat(41) }), false);
+  assert.equal(
+    validateProductionCustomer({
+      ...customer,
+      contactPerson: "",
+      phone: "",
+      email: "",
+      address: "",
+    }),
+    true,
+  );
 });
 
 test("validates organization catalog item fields and dimensions", () => {
   const item = {
+    customerId: "customer-123",
     name: "Mailer carton",
     boxType: "RSC 0201",
     topLiner: "150k",
@@ -116,6 +142,7 @@ test("validates organization catalog item fields and dimensions", () => {
     unit: "mm",
   };
   assert.equal(validateProductionItem(item), true);
+  assert.equal(validateProductionItem({ ...item, customerId: "" }), false);
   assert.equal(validateProductionItem({ ...item, name: " " }), false);
   assert.equal(validateProductionItem({ ...item, width: "0" }), false);
   assert.equal(validateProductionItem({ ...item, unit: "cm" }), false);

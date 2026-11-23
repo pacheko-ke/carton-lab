@@ -14,6 +14,7 @@ function createProductionItemCode(): string {
 const itemSelection = {
   id: true,
   itemCode: true,
+  customerId: true,
   name: true,
   boxType: true,
   topLiner: true,
@@ -76,11 +77,20 @@ export async function POST(request: Request, { params }: RouteContext) {
     return NextResponse.json({ error: "Invalid item details" }, { status: 400 });
   }
 
+  const customer = await prisma.productionCustomer.findUnique({
+    where: { id: body.customerId },
+    select: { id: true },
+  });
+  if (!customer) {
+    return NextResponse.json({ error: "Select a customer from the shared catalog" }, { status: 404 });
+  }
+
   try {
     const item = await prisma.productionItem.create({
       data: {
         organizationId,
         createdByUserId: user.id,
+        customerId: customer.id,
         itemCode: createProductionItemCode(),
         name: body.name.trim(),
         boxType: body.boxType.trim(),

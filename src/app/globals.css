@@ -2981,6 +2981,13 @@ input {
   gap: 16px;
 }
 
+.production-dashboard-creation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
 .production-page-intro p {
   margin: 0;
   color: #9aacc0;
@@ -3532,6 +3539,12 @@ input {
 .production-item-paper-row {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.production-customer-details-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
 

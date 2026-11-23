@@ -47,6 +47,7 @@ export type ProductionDashboardJob = {
 type ProductionDashboardItem = {
   id: string;
   itemCode: string;
+  customerId: string | null;
   name: string;
   boxType: string;
   topLiner: string;
@@ -56,6 +57,15 @@ type ProductionDashboardItem = {
   width: string;
   height: string;
   unit: "mm" | "in";
+};
+
+type ProductionDashboardCustomer = {
+  id: string;
+  name: string;
+  contactPerson: string | null;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
 };
 
 type Props = {
@@ -249,6 +259,7 @@ function isProductionDashboardItem(value: unknown): value is ProductionDashboard
   return isRecord(value) &&
     typeof value.id === "string" &&
     typeof value.itemCode === "string" &&
+    (value.customerId === null || typeof value.customerId === "string") &&
     typeof value.name === "string" &&
     typeof value.boxType === "string" &&
     typeof value.topLiner === "string" &&
@@ -258,6 +269,16 @@ function isProductionDashboardItem(value: unknown): value is ProductionDashboard
     typeof value.width === "string" &&
     typeof value.height === "string" &&
     (value.unit === "mm" || value.unit === "in");
+}
+
+function isProductionDashboardCustomer(value: unknown): value is ProductionDashboardCustomer {
+  return isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.name === "string" &&
+    (value.contactPerson === null || typeof value.contactPerson === "string") &&
+    (value.phone === null || typeof value.phone === "string") &&
+    (value.email === null || typeof value.email === "string") &&
+    (value.address === null || typeof value.address === "string");
 }
 
 async function requestProductionJson(
@@ -468,16 +489,20 @@ function CreateProductionItemForm({
   cartonTypes,
   title = "Create an item",
   onCreated,
+  onCustomerCreated,
   onCancel,
 }: {
   organizationId: string;
   cartonTypes: string[];
   title?: string;
   onCreated: (item: ProductionDashboardItem) => void;
+  onCustomerCreated?: (customer: ProductionDashboardCustomer) => void;
   onCancel: () => void;
 }) {
   const [name, setName] = useState("");
   const [boxType, setBoxType] = useState("");
+  const [customers, setCustomers] = useState<ProductionDashboardCustomer[]>([]);
+  const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const [topLiner, setTopLiner] = useState("");
   const [medium, setMedium] = useState("");
   const [bottomLiner, setBottomLiner] = useState("");
@@ -485,19 +510,51 @@ function CreateProductionItemForm({
   const [width, setWidth] = useState("");
   const [height, setHeight] = useState("");
   const [unit, setUnit] = useState<"mm" | "in">("mm");
+  const [isLoadingCustomers, setIsLoadingCustomers] = useState(true);
+  const [isCreatingCustomer, setIsCreatingCustomer] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [status, setStatus] = useState("");
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    requestProductionJson(
+      `/api/production/organizations/${encodeURIComponent(organizationId)}/customers`,
+      { method: "GET" },
+    )
+      .then((result) => {
+        if (!Array.isArray(result.customers) || !result.customers.every(isProductionDashboardCustomer)) {
+          throw new Error("The server returned invalid customer details.");
+        }
+        if (active) setCustomers(result.customers);
+      })
+      .catch((error) => {
+        if (!active) return;
+        console.error("Could not load customers for the product:", error);
+        setStatus(`Could not load customers: ${error instanceof Error ? error.message : String(error)}`);
+        setHasError(true);
+      })
+      .finally(() => {
+        if (active) setIsLoadingCustomers(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [organizationId]);
 
   const submitItem = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsSaving(true);
     setStatus("");
+    setHasError(false);
     try {
       const result = await requestProductionJson(
         `/api/production/organizations/${encodeURIComponent(organizationId)}/items`,
         {
           method: "POST",
           body: JSON.stringify({
+            customerId: selectedCustomerId,
             name,
             boxType,
             topLiner,
@@ -517,14 +574,70 @@ function CreateProductionItemForm({
     } catch (error) {
       console.error("Could not create the production item:", error);
       setStatus(error instanceof Error ? error.message : String(error));
+      setHasError(true);
     } finally {
       setIsSaving(false);
     }
   };
 
+  if (isCreatingCustomer) {
+    return (
+      <CreateProductionCustomerForm
+        onCancel={() => setIsCreatingCustomer(false)}
+        onCreated={(customer) => {
+          setCustomers((current) =>
+            [...current, customer].sort((left, right) => left.name.localeCompare(right.name)),
+          );
+          setSelectedCustomerId(customer.id);
+          onCustomerCreated?.(customer);
+          setIsCreatingCustomer(false);
+          setStatus(`Customer ${customer.name} added and selected.`);
+          setHasError(false);
+        }}
+        organizationId={organizationId}
+      />
+    );
+  }
+
   return (
     <form className="production-item-create-form" onSubmit={submitItem}>
       <h3>{title}</h3>
+      <div className="production-order-item-picker">
+        <label className="production-order-booking-field" htmlFor="production-item-customer">
+          Customer
+          <select
+            disabled={isLoadingCustomers}
+            id="production-item-customer"
+            onChange={(event) => setSelectedCustomerId(event.currentTarget.value)}
+            required
+            value={selectedCustomerId}
+          >
+            <option value="">
+              {isLoadingCustomers
+                ? "Loading customers…"
+                : customers.length
+                  ? "Select a customer"
+                  : "No customers yet"}
+            </option>
+            {customers.map((customer) => (
+              <option key={customer.id} value={customer.id}>
+                {customer.name}{customer.contactPerson ? ` — ${customer.contactPerson}` : ""}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button
+          className="production-text-action"
+          disabled={isLoadingCustomers || isSaving}
+          onClick={() => {
+            setStatus("");
+            setIsCreatingCustomer(true);
+          }}
+          type="button"
+        >
+          + Add customer
+        </button>
+      </div>
       <label className="production-order-booking-field">
         Item name
         <input
@@ -627,9 +740,20 @@ function CreateProductionItemForm({
           </select>
         </label>
       </div>
-      {status && <p className="production-order-booking-error" role="alert">{status}</p>}
+      {status && (
+        <p
+          className={hasError ? "production-order-booking-error" : "production-order-booking-status"}
+          role={hasError ? "alert" : "status"}
+        >
+          {status}
+        </p>
+      )}
       <div className="production-order-booking-actions">
-        <button className="production-primary-button" disabled={isSaving} type="submit">
+        <button
+          className="production-primary-button"
+          disabled={isSaving || isLoadingCustomers}
+          type="submit"
+        >
           {isSaving ? "Saving…" : "Save item"}
         </button>
         <button className="production-text-action" disabled={isSaving} onClick={onCancel} type="button">
@@ -718,6 +842,182 @@ function CreateProductionItemDialog({
   );
 }
 
+function CreateProductionCustomerForm({
+  organizationId,
+  onCreated,
+  onCancel,
+}: {
+  organizationId: string;
+  onCreated: (customer: ProductionDashboardCustomer) => void;
+  onCancel: () => void;
+}) {
+  const [name, setName] = useState("");
+  const [contactPerson, setContactPerson] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [address, setAddress] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [status, setStatus] = useState("");
+
+  const submitCustomer = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsSaving(true);
+    setStatus("");
+    try {
+      const result = await requestProductionJson(
+        `/api/production/organizations/${encodeURIComponent(organizationId)}/customers`,
+        {
+          method: "POST",
+          body: JSON.stringify({ name, contactPerson, phone, email, address }),
+        },
+      );
+      if (!isProductionDashboardCustomer(result.customer)) {
+        throw new Error("The server returned invalid customer details.");
+      }
+      onCreated(result.customer);
+    } catch (error) {
+      console.error("Could not create the production customer:", error);
+      setStatus(error instanceof Error ? error.message : String(error));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <form className="production-item-create-form" onSubmit={submitCustomer}>
+      <h3>Add a customer</h3>
+      <label className="production-order-booking-field">
+        Customer name
+        <input
+          maxLength={120}
+          onChange={(event) => setName(event.currentTarget.value)}
+          required
+          value={name}
+        />
+      </label>
+      <label className="production-order-booking-field">
+        Contact person (optional)
+        <input
+          maxLength={120}
+          onChange={(event) => setContactPerson(event.currentTarget.value)}
+          value={contactPerson}
+        />
+      </label>
+      <div className="production-customer-details-row">
+        <label className="production-order-booking-field">
+          Phone (optional)
+          <input
+            maxLength={40}
+            onChange={(event) => setPhone(event.currentTarget.value)}
+            type="tel"
+            value={phone}
+          />
+        </label>
+        <label className="production-order-booking-field">
+          Email (optional)
+          <input
+            maxLength={254}
+            onChange={(event) => setEmail(event.currentTarget.value)}
+            type="email"
+            value={email}
+          />
+        </label>
+      </div>
+      <label className="production-order-booking-field">
+        Address (optional)
+        <input
+          maxLength={300}
+          onChange={(event) => setAddress(event.currentTarget.value)}
+          value={address}
+        />
+      </label>
+      {status && <p className="production-order-booking-error" role="alert">{status}</p>}
+      <div className="production-order-booking-actions">
+        <button className="production-primary-button" disabled={isSaving} type="submit">
+          {isSaving ? "Saving…" : "Save customer"}
+        </button>
+        <button className="production-text-action" disabled={isSaving} onClick={onCancel} type="button">
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function CreateProductionCustomerDialog({
+  open,
+  organizations,
+  defaultOrganizationId,
+  onClose,
+  onCreated,
+}: {
+  open: boolean;
+  organizations: ProductionDashboardOrganization[];
+  defaultOrganizationId: string;
+  onClose: () => void;
+  onCreated: (customer: ProductionDashboardCustomer) => void;
+}) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const [organizationId, setOrganizationId] = useState(defaultOrganizationId);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    if (open && !dialog.open) {
+      setOrganizationId(defaultOrganizationId);
+      dialog.showModal();
+    } else if (!open && dialog.open) {
+      dialog.close();
+    }
+  }, [defaultOrganizationId, open]);
+
+  return (
+    <dialog
+      aria-labelledby="production-create-customer-title"
+      className="production-order-booking-dialog"
+      onCancel={(event) => {
+        event.preventDefault();
+        onClose();
+      }}
+      onClose={() => {
+        if (open) onClose();
+      }}
+      ref={dialogRef}
+    >
+      <div className="production-order-booking-content">
+        <div className="production-order-booking-heading">
+          <span className="production-panel-kicker">CUSTOMER CATALOG</span>
+          <h2 id="production-create-customer-title">Create a customer</h2>
+          <p>Customer details are shared across organizations.</p>
+        </div>
+        {organizations.length > 1 && (
+          <label className="production-order-booking-field">
+            Organization
+            <select
+              onChange={(event) => setOrganizationId(event.currentTarget.value)}
+              required
+              value={organizationId}
+            >
+              {organizations.map((organization) => (
+                <option key={organization.id} value={organization.id}>
+                  {organization.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        <CreateProductionCustomerForm
+          key={organizationId}
+          onCancel={onClose}
+          onCreated={onCreated}
+          organizationId={organizationId}
+        />
+      </div>
+    </dialog>
+  );
+}
+
 function OrderBookingDialog({
   open,
   organizations,
@@ -737,14 +1037,17 @@ function OrderBookingDialog({
   const itemSelectRef = useRef<HTMLSelectElement>(null);
   const [organizationId, setOrganizationId] = useState(defaultOrganizationId);
   const [items, setItems] = useState<ProductionDashboardItem[]>([]);
+  const [customers, setCustomers] = useState<ProductionDashboardCustomer[]>([]);
   const [selectedItemId, setSelectedItemId] = useState("");
-  const [customer, setCustomer] = useState("");
+  const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const [customerPO, setCustomerPO] = useState("");
   const [orderQty, setOrderQty] = useState("");
   const [orderDate, setOrderDate] = useState(() => dateKey(new Date()));
   const [deliveryDate, setDeliveryDate] = useState("");
   const [isLoadingItems, setIsLoadingItems] = useState(false);
+  const [isLoadingCustomers, setIsLoadingCustomers] = useState(false);
   const [isCreatingItem, setIsCreatingItem] = useState(false);
+  const [isCreatingCustomer, setIsCreatingCustomer] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [status, setStatus] = useState("");
   const [hasError, setHasError] = useState(false);
@@ -756,14 +1059,17 @@ function OrderBookingDialog({
     if (open && !dialog.open) {
       setOrganizationId(defaultOrganizationId);
       setItems([]);
+      setCustomers([]);
       setSelectedItemId("");
-      setCustomer("");
+      setSelectedCustomerId("");
       setCustomerPO("");
       setOrderQty("");
       setOrderDate(dateKey(new Date()));
       setDeliveryDate("");
       setIsCreatingItem(false);
+      setIsCreatingCustomer(false);
       setIsLoadingItems(true);
+      setIsLoadingCustomers(true);
       setStatus("");
       setHasError(false);
       dialog.showModal();
@@ -802,7 +1108,37 @@ function OrderBookingDialog({
     };
   }, [open, organizationId]);
 
+  useEffect(() => {
+    if (!open || !organizationId) return;
+
+    let active = true;
+    requestProductionJson(
+      `/api/production/organizations/${encodeURIComponent(organizationId)}/customers`,
+      { method: "GET" },
+    )
+      .then((result) => {
+        if (!Array.isArray(result.customers) || !result.customers.every(isProductionDashboardCustomer)) {
+          throw new Error("The server returned invalid customer details.");
+        }
+        if (active) setCustomers(result.customers);
+      })
+      .catch((error) => {
+        if (!active) return;
+        console.error("Could not load production customers:", error);
+        setStatus(`Could not load customers: ${error instanceof Error ? error.message : String(error)}`);
+        setHasError(true);
+      })
+      .finally(() => {
+        if (active) setIsLoadingCustomers(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [open, organizationId]);
+
   const selectedItem = items.find((item) => item.id === selectedItemId) ?? null;
+  const selectedCustomer = customers.find((customer) => customer.id === selectedCustomerId) ?? null;
 
   const submitOrder = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -816,7 +1152,7 @@ function OrderBookingDialog({
           method: "POST",
           body: JSON.stringify({
             itemId: selectedItemId,
-            customer,
+            customerId: selectedCustomerId,
             customerPO,
             orderQty,
             orderDate,
@@ -828,7 +1164,7 @@ function OrderBookingDialog({
       const data = job && isRecord(job.data) ? job.data : null;
       const jobNo = data && typeof data.jobNo === "string" ? data.jobNo : "";
       setStatus(jobNo ? `Order ${jobNo} booked.` : "Order booked.");
-      setCustomer("");
+      setSelectedCustomerId("");
       setCustomerPO("");
       setOrderQty("");
       setDeliveryDate("");
@@ -868,8 +1204,11 @@ function OrderBookingDialog({
               onChange={(event) => {
                 setOrganizationId(event.currentTarget.value);
                 setItems([]);
+                setCustomers([]);
                 setSelectedItemId("");
+                setSelectedCustomerId("");
                 setIsLoadingItems(true);
+                setIsLoadingCustomers(true);
                 setStatus("");
                 setHasError(false);
               }}
@@ -887,14 +1226,35 @@ function OrderBookingDialog({
         {isCreatingItem ? (
           <CreateProductionItemForm
             cartonTypes={cartonTypes}
+            onCustomerCreated={(customer) => {
+              setCustomers((current) =>
+                [...current, customer].sort((left, right) => left.name.localeCompare(right.name)),
+              );
+              setSelectedCustomerId(customer.id);
+            }}
             onCancel={() => setIsCreatingItem(false)}
             onCreated={(item) => {
               setItems((current) =>
                 [...current, item].sort((left, right) => left.itemCode.localeCompare(right.itemCode)),
               );
               setSelectedItemId(item.id);
+              setSelectedCustomerId(item.customerId ?? "");
               setIsCreatingItem(false);
               setStatus(`Item ${item.itemCode} saved and selected.`);
+              setHasError(false);
+            }}
+            organizationId={organizationId}
+          />
+        ) : isCreatingCustomer ? (
+          <CreateProductionCustomerForm
+            onCancel={() => setIsCreatingCustomer(false)}
+            onCreated={(customer) => {
+              setCustomers((current) =>
+                [...current, customer].sort((left, right) => left.name.localeCompare(right.name)),
+              );
+              setSelectedCustomerId(customer.id);
+              setIsCreatingCustomer(false);
+              setStatus(`Customer ${customer.name} added and selected.`);
               setHasError(false);
             }}
             organizationId={organizationId}
@@ -906,7 +1266,12 @@ function OrderBookingDialog({
               Item
               <select
                 id="production-order-item"
-                onChange={(event) => setSelectedItemId(event.currentTarget.value)}
+                onChange={(event) => {
+                  const itemId = event.currentTarget.value;
+                  const item = items.find((entry) => entry.id === itemId);
+                  setSelectedItemId(itemId);
+                  setSelectedCustomerId(item?.customerId ?? "");
+                }}
                 ref={itemSelectRef}
                 required
                 value={selectedItemId}
@@ -950,15 +1315,52 @@ function OrderBookingDialog({
               </span>
             </div>
           )}
-          <label className="production-order-booking-field">
-            Customer
-            <input
-              maxLength={120}
-              onChange={(event) => setCustomer(event.currentTarget.value)}
-              required
-              value={customer}
-            />
-          </label>
+          <div className="production-order-item-picker">
+            <label className="production-order-booking-field" htmlFor="production-order-customer">
+              Customer
+              <select
+                id="production-order-customer"
+                disabled={isLoadingCustomers}
+                onChange={(event) => setSelectedCustomerId(event.currentTarget.value)}
+                required
+                value={selectedCustomerId}
+              >
+                <option value="">
+                  {isLoadingCustomers
+                    ? "Loading customers…"
+                    : customers.length
+                      ? "Select a customer"
+                      : "No customers yet"}
+                </option>
+                {customers.map((customer) => (
+                  <option key={customer.id} value={customer.id}>
+                    {customer.name}{customer.contactPerson ? ` — ${customer.contactPerson}` : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              className="production-text-action"
+              disabled={isLoadingCustomers || !organizationId}
+              onClick={() => {
+                setStatus("");
+                setHasError(false);
+                setIsCreatingCustomer(true);
+              }}
+              type="button"
+            >
+              + Add customer
+            </button>
+          </div>
+          {selectedCustomer && (
+            <div className="production-order-item-summary">
+              <strong>{selectedCustomer.name}</strong>
+              {selectedCustomer.contactPerson && <span>Contact: {selectedCustomer.contactPerson}</span>}
+              {selectedCustomer.phone && <span>Phone: {selectedCustomer.phone}</span>}
+              {selectedCustomer.email && <span>Email: {selectedCustomer.email}</span>}
+              {selectedCustomer.address && <span>Address: {selectedCustomer.address}</span>}
+            </div>
+          )}
           <label className="production-order-booking-field">
             Customer PO number (optional)
             <input
@@ -1005,7 +1407,11 @@ function OrderBookingDialog({
             </p>
           )}
           <div className="production-order-booking-actions">
-            <button className="production-primary-button" disabled={isSaving || isLoadingItems} type="submit">
+            <button
+              className="production-primary-button"
+              disabled={isSaving || isLoadingItems || isLoadingCustomers}
+              type="submit"
+            >
               {isSaving ? "Booking…" : "Book order"}
             </button>
             <button
@@ -1127,7 +1533,9 @@ export default function ProductionDashboard({
   const [selectedJob, setSelectedJob] = useState<ProductionDashboardJob | null>(null);
   const [isBookingOrder, setIsBookingOrder] = useState(false);
   const [isCreatingProduct, setIsCreatingProduct] = useState(false);
+  const [isCreatingCustomer, setIsCreatingCustomer] = useState(false);
   const [productCreationStatus, setProductCreationStatus] = useState("");
+  const [customerCreationStatus, setCustomerCreationStatus] = useState("");
   const [isRefreshing, startRefresh] = useTransition();
   const visibleJobs = useMemo(
     () => organizationFilter === "all"
@@ -1340,6 +1748,7 @@ export default function ProductionDashboard({
                   setOrganizationFilter(event.target.value);
                   setSelectedJob(null);
                   setProductCreationStatus("");
+                  setCustomerCreationStatus("");
                 }}
                 value={organizationFilter}
               >
@@ -1380,16 +1789,28 @@ export default function ProductionDashboard({
               <div className="production-page-intro">
                 <p>{pageDescription}</p>
                 {view === "overview" && canBookOrders ? (
-                  <button
-                    className="production-primary-button"
-                    onClick={() => {
-                      setProductCreationStatus("");
-                      setIsCreatingProduct(true);
-                    }}
-                    type="button"
-                  >
-                    + Create product
-                  </button>
+                  <div className="production-dashboard-creation-actions">
+                    <button
+                      className="production-primary-button"
+                      onClick={() => {
+                        setProductCreationStatus("");
+                        setIsCreatingProduct(true);
+                      }}
+                      type="button"
+                    >
+                      + Create product
+                    </button>
+                    <button
+                      className="production-primary-button"
+                      onClick={() => {
+                        setCustomerCreationStatus("");
+                        setIsCreatingCustomer(true);
+                      }}
+                      type="button"
+                    >
+                      + Create customer
+                    </button>
+                  </div>
                 ) : view === "Order Booking" && canBookOrders ? (
                   <button
                     className="production-primary-button"
@@ -1407,6 +1828,11 @@ export default function ProductionDashboard({
               {view === "overview" && productCreationStatus && (
                 <p className="production-order-booking-status" role="status">
                   {productCreationStatus}
+                </p>
+              )}
+              {view === "overview" && customerCreationStatus && (
+                <p className="production-order-booking-status" role="status">
+                  {customerCreationStatus}
                 </p>
               )}
 
@@ -1621,6 +2047,17 @@ export default function ProductionDashboard({
           router.refresh();
         }}
         open={isCreatingProduct}
+        organizations={productOrganizations}
+      />
+      <CreateProductionCustomerDialog
+        defaultOrganizationId={defaultOrderBookingOrganizationId}
+        onClose={() => setIsCreatingCustomer(false)}
+        onCreated={(customer) => {
+          setCustomerCreationStatus(`${customer.name} added to the shared catalog.`);
+          setIsCreatingCustomer(false);
+          router.refresh();
+        }}
+        open={isCreatingCustomer}
         organizations={productOrganizations}
       />
     </div>

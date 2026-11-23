@@ -176,10 +176,14 @@ organization-filtered job KPIs, workflow queues, and delivery visualizations.
 Jobs are shared with explicitly assigned organization members managed by a
 system admin at `/admin/production`. Production members create and update jobs;
 Order Bookers can enter basic customer orders into the Order Booking workflow
-without editing job sheets. They can create organization-specific catalog items
-with automatically generated item codes, a selectable carton type from the
-available keyline catalog, paper combination, and dimensions; selecting an
-item fills those job details when booking an order. Designers can view planned
+without editing job sheets. The dashboard provides quick actions to create
+products and shared customer records. They can create organization-specific
+catalog items with automatically generated item codes and a selectable carton
+type from the available keyline catalog, plus paper combination and dimensions.
+Each product is linked to a customer; booking the product preselects that
+customer, which can still be changed for the order. Customer records are shared
+across organizations and store the customer name plus optional contact person,
+phone, email, and address. Designers can view planned
 jobs in Origination and attach artwork files up to 5 MB without editing their
 job sheets. Designers can also flag a job with a reason; Production members can
 review and clear active flags. Artwork requires a **private** Vercel Blob store

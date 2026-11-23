@@ -38,6 +38,7 @@ model User {
   organizationMemberships    ProductionOrganizationMembership[]
   createdProductionJobs      ProductionJob[]                    @relation("ProductionJobCreator")
   createdProductionItems     ProductionItem[]                   @relation("ProductionItemCreator")
+  createdProductionCustomers ProductionCustomer[]               @relation("ProductionCustomerCreator")
   createdProductionJobFlags  ProductionJobFlag[]                @relation("ProductionJobFlagCreator")
   resolvedProductionJobFlags ProductionJobFlag[]                @relation("ProductionJobFlagResolver")
   uploadedProductionFiles    ProductionAttachment[]             @relation("ProductionAttachmentUploader")
@@ -249,6 +250,7 @@ model ProductionItem {
   id              String                 @id @default(cuid())
   organizationId  String
   createdByUserId String?
+  customerId      String?
   itemCode        String
   name            String
   boxType         String
@@ -263,9 +265,27 @@ model ProductionItem {
   updatedAt       DateTime               @updatedAt
   organization    ProductionOrganization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   createdBy       User?                  @relation("ProductionItemCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  customer        ProductionCustomer?    @relation(fields: [customerId], references: [id], onDelete: SetNull)
 
   @@unique([organizationId, itemCode])
   @@index([organizationId, name])
+  @@index([customerId])
+}
+
+model ProductionCustomer {
+  id              String           @id @default(cuid())
+  createdByUserId String?
+  name            String
+  contactPerson   String?
+  phone           String?
+  email           String?
+  address         String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  createdBy       User?            @relation("ProductionCustomerCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  items           ProductionItem[]
+
+  @@index([name])
 }
 
 model ProductionJobFlag {

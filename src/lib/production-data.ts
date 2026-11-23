@@ -20,7 +20,7 @@ export function isProductionWorkflowStage(
 
 export type ProductionOrderBookingInput = {
   itemId: string;
-  customer: string;
+  customerId: string;
   customerPO: string;
   orderQty: string;
   orderDate: string;
@@ -37,14 +37,14 @@ export function validateProductionOrderBooking(
   value: unknown,
 ): value is ProductionOrderBookingInput {
   if (!isRecord(value)) return false;
-  const { customer, customerPO, orderQty, orderDate, deliveryDate } = value;
+  const { customerPO, orderQty, orderDate, deliveryDate } = value;
   if (
     typeof value.itemId !== "string" ||
     !value.itemId.trim() ||
     value.itemId.length > 100 ||
-    typeof customer !== "string" ||
-    !customer.trim() ||
-    customer.length > 120 ||
+    typeof value.customerId !== "string" ||
+    !value.customerId.trim() ||
+    value.customerId.length > 100 ||
     typeof customerPO !== "string" ||
     customerPO.length > 60 ||
     typeof orderQty !== "string" ||
@@ -61,7 +61,32 @@ export function validateProductionOrderBooking(
   return true;
 }
 
+export type ProductionCustomerInput = {
+  name: string;
+  contactPerson: string;
+  phone: string;
+  email: string;
+  address: string;
+};
+
+function isBoundedString(value: unknown, maxLength: number): value is string {
+  return typeof value === "string" && value.length <= maxLength;
+}
+
+export function validateProductionCustomer(value: unknown): value is ProductionCustomerInput {
+  if (!isRecord(value)) return false;
+  return (
+    isNonEmptyString(value.name, 120) &&
+    isBoundedString(value.contactPerson, 120) &&
+    isBoundedString(value.phone, 40) &&
+    isBoundedString(value.email, 254) &&
+    (!value.email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.email)) &&
+    isBoundedString(value.address, 300)
+  );
+}
+
 export type ProductionItemInput = {
+  customerId: string;
   name: string;
   boxType: string;
   topLiner: string;
@@ -86,6 +111,7 @@ function isPositiveDimension(value: unknown): value is string {
 export function validateProductionItem(value: unknown): value is ProductionItemInput {
   if (!isRecord(value)) return false;
   return (
+    isNonEmptyString(value.customerId, 100) &&
     isNonEmptyString(value.name, 100) &&
     isNonEmptyString(value.boxType, 80) &&
     isNonEmptyString(value.topLiner, 60) &&

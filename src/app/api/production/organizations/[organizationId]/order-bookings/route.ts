@@ -57,13 +57,21 @@ export async function POST(request: Request, { params }: RouteContext) {
     return NextResponse.json({ error: "Select an item from this organization" }, { status: 404 });
   }
 
+  const customer = await prisma.productionCustomer.findUnique({
+    where: { id: body.customerId },
+    select: { name: true },
+  });
+  if (!customer) {
+    return NextResponse.json({ error: "Select a customer from the shared catalog" }, { status: 404 });
+  }
+
   const data = {
     jobNo: createJobSheetNumber(),
     workflowStage: "Order Booking",
     issueDate: new Date().toISOString().slice(0, 10),
     documentType: "JOB",
     priority: "Normal",
-    customer: body.customer.trim(),
+    customer: customer.name,
     itemId: item.id,
     itemCode: item.itemCode,
     jobName: item.name,
