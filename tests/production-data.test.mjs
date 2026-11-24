@@ -14,9 +14,12 @@ import {
   sanitizeArtworkFileName,
   validateProductionItem,
   validateProductionCustomer,
+  validateProductionQualityInspection,
+  validateProductionNonconformanceUpdate,
   validateProductionOrderBooking,
   validateProductionJobFlagReason,
   validateProductionJobData,
+  validateProductionOperationRun,
   validateProductionOperationSchedule,
 } from "../src/lib/production-data.ts";
 
@@ -177,4 +180,105 @@ test("validates operation schedules and rejects invalid quantities and time rang
   assert.equal(validateProductionOperationSchedule({ ...schedule, plannedQty: "1.5" }), false);
   assert.equal(validateProductionOperationSchedule({ ...schedule, operation: "Unknown" }), false);
   assert.equal(validateProductionOperationSchedule({ ...schedule, scheduledStartAt: "2026-11-23T08:00:00Z" }), false);
+});
+
+test("validates shop-floor production reports", () => {
+  const report = {
+    goodQty: "120",
+    rejectedQty: "3",
+    notes: "Minor print rejects",
+    completeOperation: false,
+  };
+  assert.equal(validateProductionOperationRun(report), true);
+  assert.equal(validateProductionOperationRun({ ...report, goodQty: "0" }), true);
+  assert.equal(validateProductionOperationRun({ ...report, goodQty: "0", rejectedQty: "0" }), false);
+  assert.equal(validateProductionOperationRun({ ...report, rejectedQty: "-1" }), false);
+  assert.equal(validateProductionOperationRun({ ...report, goodQty: "9007199254740992" }), false);
+  assert.equal(validateProductionOperationRun({ ...report, completeOperation: "true" }), false);
+});
+
+test("validates carton quality inspections and requires an NCR description for failures", () => {
+  const inspection = {
+    jobId: "job-123",
+    scheduleId: "",
+    inspectionType: "IN_PROCESS",
+    sampleQty: "5",
+    rejectedQty: "0",
+    checks: [{
+      checkpoint: "Sheet dimensions",
+      target: "300 x 220 mm",
+      observed: "300 x 220 mm",
+      result: "PASS",
+    }],
+    notes: "",
+    ncrDescription: "",
+    ncrSeverity: "MEDIUM",
+  };
+  assert.equal(validateProductionQualityInspection(inspection), true);
+  assert.equal(
+    validateProductionQualityInspection({ ...inspection, rejectedQty: "1" }),
+    false,
+  );
+  assert.equal(
+    validateProductionQualityInspection({
+      ...inspection,
+      rejectedQty: "1",
+      ncrDescription: "Cut size out of tolerance",
+    }),
+    true,
+  );
+  assert.equal(
+    validateProductionQualityInspection({
+      ...inspection,
+      rejectedQty: "6",
+    }),
+    false,
+  );
+  assert.equal(
+    validateProductionQualityInspection({
+      ...inspection,
+      sampleQty: "2147483648",
+    }),
+    false,
+  );
+  assert.equal(
+    validateProductionQualityInspection({
+      ...inspection,
+      checks: [{ ...inspection.checks[0], result: "UNKNOWN" }],
+    }),
+    false,
+  );
+});
+
+test("requires documented cause, corrective action, and verification to close an NCR", () => {
+  const update = {
+    status: "IN_PROGRESS",
+    rootCause: "",
+    correctiveAction: "",
+    disposition: "PENDING",
+    resolutionNotes: "",
+  };
+  assert.equal(validateProductionNonconformanceUpdate(update), true);
+  assert.equal(
+    validateProductionNonconformanceUpdate({
+      ...update,
+      status: "CLOSED",
+      rootCause: "Glue temperature was below setting",
+      correctiveAction: "Restore and verify machine temperature",
+      disposition: "REWORK",
+      resolutionNotes: "Reworked sample passed inspection",
+    }),
+    true,
+  );
+  assert.equal(
+    validateProductionNonconformanceUpdate({
+      ...update,
+      status: "CLOSED",
+      rootCause: "Unknown",
+      correctiveAction: "",
+      disposition: "PENDING",
+      resolutionNotes: "",
+    }),
+    false,
+  );
 });

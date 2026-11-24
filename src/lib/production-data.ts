@@ -104,6 +104,200 @@ export type ProductionOperationScheduleInput = {
   notes: string;
 };
 
+export type ProductionOperationRunInput = {
+  goodQty: string;
+  rejectedQty: string;
+  notes: string;
+  completeOperation: boolean;
+};
+
+function isNonNegativeIntegerString(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    /^(0|[1-9]\d*)$/.test(value) &&
+    Number.isSafeInteger(Number(value))
+  );
+}
+
+export function validateProductionOperationRun(
+  value: unknown,
+): value is ProductionOperationRunInput {
+  if (!isRecord(value)) return false;
+  return (
+    isNonNegativeIntegerString(value.goodQty) &&
+    isNonNegativeIntegerString(value.rejectedQty) &&
+    (Number(value.goodQty) > 0 || Number(value.rejectedQty) > 0) &&
+    typeof value.notes === "string" &&
+    value.notes.length <= 500 &&
+    typeof value.completeOperation === "boolean"
+  );
+}
+
+export const PRODUCTION_QUALITY_INSPECTION_TYPES = [
+  "INCOMING",
+  "IN_PROCESS",
+  "FINAL",
+  "CUSTOMER_RETURN",
+] as const;
+
+export const PRODUCTION_QUALITY_CHECK_RESULTS = [
+  "PASS",
+  "FAIL",
+  "NOT_APPLICABLE",
+] as const;
+
+const MAX_PRODUCTION_QUALITY_SAMPLE_QTY = 2_147_483_647;
+
+export function isProductionQualityCheckResult(
+  value: unknown,
+): value is (typeof PRODUCTION_QUALITY_CHECK_RESULTS)[number] {
+  return PRODUCTION_QUALITY_CHECK_RESULTS.some((result) => result === value);
+}
+
+export const PRODUCTION_NONCONFORMANCE_SEVERITIES = [
+  "LOW",
+  "MEDIUM",
+  "HIGH",
+  "CRITICAL",
+] as const;
+
+export const PRODUCTION_NONCONFORMANCE_DISPOSITIONS = [
+  "PENDING",
+  "REWORK",
+  "SCRAP",
+  "USE_AS_IS",
+  "RETURN_TO_SUPPLIER",
+] as const;
+
+export const PRODUCTION_NONCONFORMANCE_STATUSES = [
+  "OPEN",
+  "IN_PROGRESS",
+  "CLOSED",
+] as const;
+
+export type ProductionQualityCheckInput = {
+  checkpoint: string;
+  target: string;
+  observed: string;
+  result: (typeof PRODUCTION_QUALITY_CHECK_RESULTS)[number];
+};
+
+export type ProductionQualityInspectionInput = {
+  jobId: string;
+  scheduleId: string;
+  inspectionType: (typeof PRODUCTION_QUALITY_INSPECTION_TYPES)[number];
+  sampleQty: string;
+  rejectedQty: string;
+  checks: ProductionQualityCheckInput[];
+  notes: string;
+  ncrDescription: string;
+  ncrSeverity: (typeof PRODUCTION_NONCONFORMANCE_SEVERITIES)[number];
+};
+
+export type ProductionNonconformanceUpdateInput = {
+  status: "IN_PROGRESS" | "CLOSED";
+  rootCause: string;
+  correctiveAction: string;
+  disposition: (typeof PRODUCTION_NONCONFORMANCE_DISPOSITIONS)[number];
+  resolutionNotes: string;
+};
+
+export function isProductionQualityCheck(value: unknown): value is ProductionQualityCheckInput {
+  return (
+    isRecord(value) &&
+    isNonEmptyString(value.checkpoint, 100) &&
+    isNonEmptyString(value.target, 120) &&
+    isNonEmptyString(value.observed, 120) &&
+    PRODUCTION_QUALITY_CHECK_RESULTS.some((result) => result === value.result)
+  );
+}
+
+export function isProductionQualityInspectionType(
+  value: unknown,
+): value is (typeof PRODUCTION_QUALITY_INSPECTION_TYPES)[number] {
+  return PRODUCTION_QUALITY_INSPECTION_TYPES.some((type) => type === value);
+}
+
+export function isProductionNonconformanceSeverity(
+  value: unknown,
+): value is (typeof PRODUCTION_NONCONFORMANCE_SEVERITIES)[number] {
+  return PRODUCTION_NONCONFORMANCE_SEVERITIES.some((severity) => severity === value);
+}
+
+export function isProductionNonconformanceDisposition(
+  value: unknown,
+): value is (typeof PRODUCTION_NONCONFORMANCE_DISPOSITIONS)[number] {
+  return PRODUCTION_NONCONFORMANCE_DISPOSITIONS.some((disposition) => disposition === value);
+}
+
+export function isProductionNonconformanceStatus(
+  value: unknown,
+): value is (typeof PRODUCTION_NONCONFORMANCE_STATUSES)[number] {
+  return PRODUCTION_NONCONFORMANCE_STATUSES.some((status) => status === value);
+}
+
+export function isProductionQualityInspectionResult(
+  value: unknown,
+): value is "PASS" | "FAIL" {
+  return value === "PASS" || value === "FAIL";
+}
+
+export function validateProductionQualityInspection(
+  value: unknown,
+): value is ProductionQualityInspectionInput {
+  if (!isRecord(value) || !Array.isArray(value.checks)) return false;
+  const { sampleQty, rejectedQty, checks } = value;
+  if (
+    !isNonEmptyString(value.jobId, 100) ||
+    (value.scheduleId !== "" && !isNonEmptyString(value.scheduleId, 100)) ||
+    !isProductionQualityInspectionType(value.inspectionType) ||
+    !isNonNegativeIntegerString(sampleQty) ||
+    Number(sampleQty) < 1 ||
+    Number(sampleQty) > MAX_PRODUCTION_QUALITY_SAMPLE_QTY ||
+    !isNonNegativeIntegerString(rejectedQty) ||
+    Number(rejectedQty) > Number(sampleQty) ||
+    checks.length < 1 ||
+    checks.length > 30 ||
+    !checks.every(isProductionQualityCheck) ||
+    !checks.some((check) => check.result !== "NOT_APPLICABLE") ||
+    typeof value.notes !== "string" ||
+    value.notes.length > 1000 ||
+    typeof value.ncrDescription !== "string" ||
+    value.ncrDescription.length > 1000 ||
+    !isProductionNonconformanceSeverity(value.ncrSeverity)
+  ) {
+    return false;
+  }
+  const hasFailure =
+    Number(rejectedQty) > 0 || checks.some((check) => check.result === "FAIL");
+  return !hasFailure || Boolean(value.ncrDescription.trim());
+}
+
+export function validateProductionNonconformanceUpdate(
+  value: unknown,
+): value is ProductionNonconformanceUpdateInput {
+  if (!isRecord(value)) return false;
+  const isUpdateStatus = value.status === "IN_PROGRESS" || value.status === "CLOSED";
+  if (
+    !isUpdateStatus ||
+    !isBoundedString(value.rootCause, 1000) ||
+    !isBoundedString(value.correctiveAction, 1000) ||
+    !isProductionNonconformanceDisposition(value.disposition) ||
+    !isBoundedString(value.resolutionNotes, 1000)
+  ) {
+    return false;
+  }
+  if (value.status === "CLOSED") {
+    return Boolean(
+      value.rootCause.trim() &&
+      value.correctiveAction.trim() &&
+      value.resolutionNotes.trim() &&
+      value.disposition !== "PENDING",
+    );
+  }
+  return true;
+}
+
 function isValidIsoDateTime(value: unknown): value is string {
   if (typeof value !== "string" || value.length > 40) return false;
   const date = new Date(value);

@@ -16,9 +16,12 @@ import type { IconType } from "react-icons";
 import {
   FiAlertTriangle,
   FiArrowLeft,
+  FiActivity,
   FiBriefcase,
   FiCalendar,
+  FiCheckSquare,
   FiClipboard,
+  FiDollarSign,
   FiFileText,
   FiFlag,
   FiGrid,
@@ -40,19 +43,35 @@ import {
   MAX_PRODUCTION_JOB_FLAG_REASON_LENGTH,
   PRODUCTION_OPERATIONS,
   PRODUCTION_OPERATION_STATUSES,
+  PRODUCTION_QUALITY_INSPECTION_TYPES,
+  PRODUCTION_QUALITY_CHECK_RESULTS,
+  PRODUCTION_NONCONFORMANCE_DISPOSITIONS,
+  PRODUCTION_NONCONFORMANCE_SEVERITIES,
+  PRODUCTION_NONCONFORMANCE_STATUSES,
   PRODUCTION_WORKFLOW_STAGES,
   isProductionOperation,
   isProductionOperationStatus,
+  isProductionQualityCheckResult,
+  isProductionQualityInspectionType,
+  isProductionNonconformanceDisposition,
+  isProductionNonconformanceSeverity,
 } from "@/lib/production-data";
 import type {
+  ProductionNonconformanceUpdateInput,
   ProductionOperation,
   ProductionOperationStatus,
+  ProductionQualityCheckInput,
+  ProductionQualityInspectionInput,
   ProductionWorkflowStage,
 } from "@/lib/production-data";
 import {
   PRODUCTION_MATERIAL_CATEGORIES,
   PRODUCTION_MATERIAL_UNITS,
 } from "@/lib/production-supply-data";
+import {
+  calculateProductionQuoteLineCosts,
+  type ProductionQuoteLineInput,
+} from "@/lib/production-quote-data";
 
 export type ProductionDashboardOrganization = {
   id: string;
@@ -91,8 +110,78 @@ export type ProductionDashboardSchedule = {
   scheduledStartAt: string;
   scheduledEndAt: string;
   plannedQty: number;
+  actualGoodQty: number;
+  actualRejectedQty: number;
+  runCount: number;
   status: ProductionOperationStatus;
   notes: string;
+};
+
+export type ProductionDashboardRun = {
+  id: string;
+  organizationId: string;
+  scheduleId: string;
+  operation: ProductionOperation;
+  jobNo: string;
+  workCenter: string;
+  goodQty: number;
+  rejectedQty: number;
+  notes: string;
+  recordedAt: string;
+  recordedByName: string;
+};
+
+export type ProductionDashboardQualityInspection = {
+  id: string;
+  organizationId: string;
+  inspectionNo: string;
+  jobId: string;
+  jobNo: string;
+  jobName: string;
+  scheduleId: string | null;
+  operation: ProductionOperation | null;
+  inspectionType: (typeof PRODUCTION_QUALITY_INSPECTION_TYPES)[number];
+  sampleQty: number;
+  rejectedQty: number;
+  result: "PASS" | "FAIL";
+  checks: ProductionQualityCheckInput[];
+  notes: string;
+  inspectedAt: string;
+  inspectorName: string;
+};
+
+export type ProductionDashboardNonconformance = {
+  id: string;
+  organizationId: string;
+  ncrNo: string;
+  jobNo: string;
+  jobName: string;
+  inspectionNo: string | null;
+  description: string;
+  severity: (typeof PRODUCTION_NONCONFORMANCE_SEVERITIES)[number];
+  affectedQty: number;
+  disposition: (typeof PRODUCTION_NONCONFORMANCE_DISPOSITIONS)[number];
+  status: (typeof PRODUCTION_NONCONFORMANCE_STATUSES)[number];
+  rootCause: string;
+  correctiveAction: string;
+  resolutionNotes: string;
+  createdAt: string;
+  closedAt: string | null;
+  updatedAt: string;
+  createdByName: string;
+  updatedByName: string;
+  resolvedByName: string;
+};
+
+export type ProductionDashboardQualityMetrics = {
+  organizationId: string;
+  inspections: number;
+  passed: number;
+  failed: number;
+  sampledUnits: number;
+  rejectedUnits: number;
+  openNcrs: number;
+  totalNcrs: number;
 };
 
 export type ProductionDashboardMaterial = {
@@ -175,6 +264,59 @@ type ProductionDashboardCustomer = {
   address: string | null;
 };
 
+export type ProductionDashboardQuoteLine = {
+  id: string;
+  itemId: string | null;
+  itemCode: string;
+  itemName: string;
+  boxType: string;
+  topLiner: string;
+  medium: string;
+  bottomLiner: string;
+  length: string;
+  width: string;
+  height: string;
+  unit: string;
+  quantity: number;
+  boardAreaM2: string;
+  boardGsm: string;
+  paperCostPerKg: string;
+  trimWastePercent: string;
+  conversionCost: string;
+  consumablesCost: string;
+  marginPercent: string;
+  materialCostPerUnit: string;
+  unitCost: string;
+  unitPrice: string;
+  lineCostTotal: string;
+  linePriceTotal: string;
+};
+
+export type ProductionDashboardQuote = {
+  id: string;
+  organizationId: string;
+  organizationName: string;
+  quoteNo: string;
+  version: number;
+  status: string;
+  currency: string;
+  validUntil: string;
+  inquiryReference: string;
+  notes: string;
+  rejectionReason: string;
+  totalCost: string;
+  totalPrice: string;
+  submittedAt: string | null;
+  approvedAt: string | null;
+  rejectedAt: string | null;
+  convertedAt: string | null;
+  createdAt: string;
+  customer: { id: string; name: string };
+  createdByName: string;
+  approvedByName: string;
+  lines: ProductionDashboardQuoteLine[];
+};
+
 type Props = {
   accountId: string;
   accountName: string;
@@ -190,10 +332,15 @@ type Props = {
   organizations: ProductionDashboardOrganization[];
   jobs: ProductionDashboardJob[];
   schedules: ProductionDashboardSchedule[];
+  operationRuns: ProductionDashboardRun[];
+  qualityInspections: ProductionDashboardQualityInspection[];
+  nonconformances: ProductionDashboardNonconformance[];
+  qualityMetrics: ProductionDashboardQualityMetrics[];
   materials: ProductionDashboardMaterial[];
   suppliers: ProductionDashboardSupplier[];
   purchaseOrders: ProductionDashboardPurchaseOrder[];
   stockMovements: ProductionDashboardStockMovement[];
+  quotes: ProductionDashboardQuote[];
   isAdmin: boolean;
   canManageOrganizations: boolean;
 };
@@ -202,13 +349,16 @@ type DashboardView =
   | "overview"
   | "jobs"
   | "origination"
+  | "quotes"
   | "planning"
+  | "execution"
+  | "quality"
   | "procurement"
   | "inventory"
   | "job-sheet"
   | ProductionWorkflowStage;
 
-const STAGE_DETAILS: Record<ProductionWorkflowStage | "planning" | "procurement" | "inventory", string> = {
+const STAGE_DETAILS: Record<ProductionWorkflowStage | "planning" | "execution" | "quality" | "procurement" | "inventory", string> = {
   "Order Booking": "Enter customer orders to start the production workflow",
   Origination: "Job details, customer requirements and carton specification",
   "Paper Booking": "Board specifications, material requirements and reel planning",
@@ -216,19 +366,24 @@ const STAGE_DETAILS: Record<ProductionWorkflowStage | "planning" | "procurement"
   Printing: "Print setup, artwork references and print instructions",
   Dispatch: "Packing, delivery details and final approvals",
   planning: "Schedule production operations by work center and planned quantity",
+  execution: "Record actual production output, rejects, and operation completion",
+  quality: "Inspect carton quality, manage nonconformances, and verify corrective actions",
   procurement: "Manage suppliers, material purchasing, and goods receipts",
   inventory: "Track material stock, job issues, and inventory adjustments",
 };
 
 const WORKSPACE_ITEMS: Array<{
-  id: "overview" | "jobs" | "origination" | "planning" | "procurement" | "inventory" | "job-sheet";
+  id: "overview" | "jobs" | "origination" | "quotes" | "planning" | "execution" | "quality" | "procurement" | "inventory" | "job-sheet";
   label: string;
   icon: IconType;
 }> = [
   { id: "overview", label: "Overview", icon: FiGrid },
   { id: "jobs", label: "All jobs", icon: FiBriefcase },
   { id: "origination", label: "Origination", icon: FiPenTool },
+  { id: "quotes", label: "Costing & quotes", icon: FiDollarSign },
   { id: "planning", label: "Planning & scheduling", icon: FiCalendar },
+  { id: "execution", label: "Shop floor execution", icon: FiActivity },
+  { id: "quality", label: "Quality management", icon: FiCheckSquare },
   { id: "procurement", label: "Procurement", icon: FiShoppingCart },
   { id: "inventory", label: "Inventory & WIP", icon: FiPackage },
   { id: "job-sheet", label: "Job sheet", icon: FiFileText },
@@ -677,6 +832,7 @@ function PlanningBoard({
             <label className="production-order-booking-field">
               Status
               <select
+                disabled={form.status === "COMPLETED"}
                 onChange={(event) => {
                   const status = event.currentTarget.value;
                   if (isProductionOperationStatus(status)) {
@@ -685,11 +841,15 @@ function PlanningBoard({
                 }}
                 value={form.status}
               >
-                {PRODUCTION_OPERATION_STATUSES.map((operationStatus) => (
+                {PRODUCTION_OPERATION_STATUSES
+                  .filter((operationStatus) =>
+                    operationStatus !== "COMPLETED" || form.status === "COMPLETED",
+                  )
+                  .map((operationStatus) => (
                   <option key={operationStatus} value={operationStatus}>
                     {operationStatus.replaceAll("_", " ")}
                   </option>
-                ))}
+                  ))}
               </select>
             </label>
             <label className="production-order-booking-field">
@@ -797,6 +957,961 @@ function PlanningBoard({
         )}
       </section>
     </>
+  );
+}
+
+function ShopFloorExecutionBoard({
+  organizations,
+  schedules,
+  operationRuns,
+  preferredOrganizationId,
+  onSaved,
+}: {
+  organizations: ProductionDashboardOrganization[];
+  schedules: ProductionDashboardSchedule[];
+  operationRuns: ProductionDashboardRun[];
+  preferredOrganizationId: string;
+  onSaved: () => void;
+}) {
+  const productionOrganizations = organizations.filter(
+    (organization) => organization.role === "PRODUCTION",
+  );
+  const [organizationId, setOrganizationId] = useState(preferredOrganizationId);
+  const [selectedScheduleId, setSelectedScheduleId] = useState("");
+  const [form, setForm] = useState({
+    goodQty: "0",
+    rejectedQty: "0",
+    notes: "",
+    completeOperation: false,
+  });
+  const [isSaving, setIsSaving] = useState(false);
+  const [status, setStatus] = useState("");
+  const [hasError, setHasError] = useState(false);
+  const organizationSchedules = schedules
+    .filter((schedule) => schedule.organizationId === organizationId)
+    .sort((left, right) => left.scheduledStartAt.localeCompare(right.scheduledStartAt));
+  const selectedSchedule = organizationSchedules.find(
+    (schedule) => schedule.id === selectedScheduleId && schedule.status !== "COMPLETED",
+  );
+  const recentRuns = operationRuns
+    .filter((run) => run.organizationId === organizationId)
+    .sort((left, right) => right.recordedAt.localeCompare(left.recordedAt));
+
+  const changeOrganization = (nextOrganizationId: string) => {
+    setOrganizationId(nextOrganizationId);
+    setSelectedScheduleId("");
+    setStatus("");
+  };
+
+  const selectSchedule = (scheduleId: string) => {
+    setSelectedScheduleId(scheduleId);
+    setForm({ goodQty: "0", rejectedQty: "0", notes: "", completeOperation: false });
+    setStatus("");
+  };
+
+  const submitReport = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!selectedSchedule) return;
+    setIsSaving(true);
+    setStatus("");
+    setHasError(false);
+    try {
+      const response = await requestProductionJson(
+        `/api/production/organizations/${encodeURIComponent(organizationId)}/operation-schedules/${encodeURIComponent(selectedSchedule.id)}/runs`,
+        { method: "POST", body: JSON.stringify(form) },
+      );
+      if (!isRecord(response.run)) {
+        throw new Error("The server returned an invalid production report.");
+      }
+      setStatus("Production output recorded.");
+      setSelectedScheduleId("");
+      setForm({ goodQty: "0", rejectedQty: "0", notes: "", completeOperation: false });
+      onSaved();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error));
+      setHasError(true);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <>
+      <section className="production-panel production-list-panel">
+        <div className="production-panel-heading">
+          <div>
+            <span className="production-panel-kicker">SHOP FLOOR</span>
+            <h2>Scheduled operations</h2>
+          </div>
+          <span className="production-panel-total">{organizationSchedules.length} operations</span>
+        </div>
+        {productionOrganizations.length > 1 && (
+          <label className="production-order-booking-field production-execution-organization">
+            Production organization
+            <select onChange={(event) => changeOrganization(event.target.value)} value={organizationId}>
+              {productionOrganizations.map((organization) => (
+                <option key={organization.id} value={organization.id}>{organization.name}</option>
+              ))}
+            </select>
+          </label>
+        )}
+        {organizationSchedules.length ? (
+          <div className="production-table-scroll">
+            <table className="production-jobs-table production-execution-table">
+              <thead>
+                <tr>
+                  <th scope="col">Job sheet</th>
+                  <th scope="col">Operation</th>
+                  <th scope="col">Work center</th>
+                  <th scope="col">Planned</th>
+                  <th scope="col">Good output</th>
+                  <th scope="col">Rejected</th>
+                  <th scope="col">Status</th>
+                  <th scope="col"><span className="sr-only">Action</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {organizationSchedules.map((schedule) => (
+                  <tr key={schedule.id}>
+                    <td>
+                      <strong>{schedule.jobNo || "—"}</strong>
+                      <small className="production-schedule-job-name">{schedule.jobName || schedule.customer}</small>
+                    </td>
+                    <td>{schedule.operation}</td>
+                    <td>{schedule.workCenter}</td>
+                    <td>{schedule.plannedQty.toLocaleString("en-KE")}</td>
+                    <td>{schedule.actualGoodQty.toLocaleString("en-KE")}</td>
+                    <td>{schedule.actualRejectedQty.toLocaleString("en-KE")}</td>
+                    <td>
+                      <span className={`production-schedule-status status-${schedule.status.toLowerCase()}`}>
+                        {schedule.status.replaceAll("_", " ")}
+                      </span>
+                    </td>
+                    <td>
+                      <button
+                        className="production-table-action"
+                        disabled={schedule.status === "COMPLETED"}
+                        onClick={() => selectSchedule(schedule.id)}
+                        type="button"
+                      >
+                        {schedule.status === "COMPLETED"
+                          ? "Complete"
+                          : selectedScheduleId === schedule.id
+                            ? "Selected"
+                            : "Record output"}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="production-empty-state">
+            <span className="production-empty-mark" aria-hidden="true"><FiActivity /></span>
+            <h3>No operations ready for reporting</h3>
+            <p>Schedule a production operation before recording shop-floor output.</p>
+          </div>
+        )}
+      </section>
+
+      <section className="production-panel production-list-panel">
+        <div className="production-panel-heading">
+          <div>
+            <span className="production-panel-kicker">PRODUCTION REPORT</span>
+            <h2>{selectedSchedule ? `${selectedSchedule.operation} — ${selectedSchedule.jobNo || selectedSchedule.jobName}` : "Record actual output"}</h2>
+          </div>
+          {selectedSchedule && (
+            <span className="production-panel-total">
+              Planned {selectedSchedule.plannedQty.toLocaleString("en-KE")}
+            </span>
+          )}
+        </div>
+        {selectedSchedule ? (
+          <form className="production-planning-form" onSubmit={submitReport}>
+            <div className="production-order-booking-row">
+              <label className="production-order-booking-field">
+                Good quantity
+                <input
+                  min="0"
+                  onChange={(event) => setForm((current) => ({ ...current, goodQty: event.target.value }))}
+                  required
+                  type="number"
+                  value={form.goodQty}
+                />
+              </label>
+              <label className="production-order-booking-field">
+                Rejected quantity
+                <input
+                  min="0"
+                  onChange={(event) => setForm((current) => ({ ...current, rejectedQty: event.target.value }))}
+                  required
+                  type="number"
+                  value={form.rejectedQty}
+                />
+              </label>
+            </div>
+            <label className="production-order-booking-field">
+              Notes
+              <input
+                maxLength={500}
+                onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))}
+                placeholder="Optional shift notes or reject details"
+                value={form.notes}
+              />
+            </label>
+            <label className="production-execution-complete">
+              <input
+                checked={form.completeOperation}
+                onChange={(event) => setForm((current) => ({ ...current, completeOperation: event.target.checked }))}
+                type="checkbox"
+              />
+              Mark this operation complete after saving the report
+            </label>
+            {status && (
+              <p aria-live="polite" className={hasError ? "production-order-booking-error" : "production-order-booking-status"} role={hasError ? "alert" : "status"}>
+                {status}
+              </p>
+            )}
+            <div className="production-order-booking-actions">
+              <button className="production-primary-button" disabled={isSaving} type="submit">
+                {isSaving ? "Saving…" : "Record production"}
+              </button>
+              <button
+                className="production-text-action"
+                onClick={() => selectSchedule("")}
+                type="button"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        ) : (
+          <p className="production-chart-empty">
+            Select a scheduled operation to report good output, rejects, and completion.
+          </p>
+        )}
+      </section>
+
+      <section className="production-panel production-list-panel">
+        <div className="production-panel-heading">
+          <div>
+            <span className="production-panel-kicker">SHIFT REPORTS</span>
+            <h2>Recent production output</h2>
+          </div>
+          <span className="production-panel-total">Latest {recentRuns.length} reports</span>
+        </div>
+        {recentRuns.length ? (
+          <div className="production-table-scroll">
+            <table className="production-jobs-table">
+              <thead>
+                <tr>
+                  <th scope="col">Recorded</th>
+                  <th scope="col">Job sheet</th>
+                  <th scope="col">Operation</th>
+                  <th scope="col">Work center</th>
+                  <th scope="col">Good</th>
+                  <th scope="col">Rejected</th>
+                  <th scope="col">Operator</th>
+                  <th scope="col">Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentRuns.map((run) => (
+                  <tr key={run.id}>
+                    <td>{formatScheduleDate(run.recordedAt)}</td>
+                    <td>{run.jobNo || "—"}</td>
+                    <td>{run.operation}</td>
+                    <td>{run.workCenter}</td>
+                    <td>{run.goodQty.toLocaleString("en-KE")}</td>
+                    <td>{run.rejectedQty.toLocaleString("en-KE")}</td>
+                    <td>{run.recordedByName}</td>
+                    <td className="production-schedule-notes">{run.notes || "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="production-chart-empty">Production reports will appear here as operators record output.</p>
+        )}
+      </section>
+    </>
+  );
+}
+
+const DEFAULT_QUALITY_CHECKPOINTS: ProductionQualityCheckInput[] = [
+  { checkpoint: "Board grade / flute", target: "", observed: "", result: "PASS" },
+  { checkpoint: "Sheet dimensions", target: "", observed: "", result: "PASS" },
+  { checkpoint: "Print and color", target: "", observed: "", result: "PASS" },
+  { checkpoint: "Die-cut and crease", target: "", observed: "", result: "PASS" },
+  { checkpoint: "Joint and glue", target: "", observed: "", result: "PASS" },
+];
+
+function createQualityInspectionDraft(jobId: string): ProductionQualityInspectionInput {
+  return {
+    jobId,
+    scheduleId: "",
+    inspectionType: "IN_PROCESS",
+    sampleQty: "1",
+    rejectedQty: "0",
+    checks: DEFAULT_QUALITY_CHECKPOINTS.map((check) => ({ ...check })),
+    notes: "",
+    ncrDescription: "",
+    ncrSeverity: "MEDIUM",
+  };
+}
+
+function QualityManagementBoard({
+  organizations,
+  jobs,
+  schedules,
+  inspections,
+  nonconformances,
+  qualityMetrics,
+  preferredOrganizationId,
+  onSaved,
+}: {
+  organizations: ProductionDashboardOrganization[];
+  jobs: ProductionDashboardJob[];
+  schedules: ProductionDashboardSchedule[];
+  inspections: ProductionDashboardQualityInspection[];
+  nonconformances: ProductionDashboardNonconformance[];
+  qualityMetrics: ProductionDashboardQualityMetrics[];
+  preferredOrganizationId: string;
+  onSaved: () => void;
+}) {
+  const productionOrganizations = organizations.filter(
+    (organization) => organization.role === "PRODUCTION",
+  );
+  const [organizationId, setOrganizationId] = useState(preferredOrganizationId);
+  const organizationJobs = jobs.filter((job) => job.organizationId === organizationId);
+  const [draft, setDraft] = useState(() =>
+    createQualityInspectionDraft(organizationJobs[0]?.id ?? ""),
+  );
+  const [isSaving, setIsSaving] = useState(false);
+  const [status, setStatus] = useState("");
+  const [hasError, setHasError] = useState(false);
+  const organizationInspections = inspections.filter(
+    (inspection) => inspection.organizationId === organizationId,
+  );
+  const organizationNcrs = nonconformances.filter(
+    (ncr) => ncr.organizationId === organizationId,
+  );
+  const organizationQualityMetrics = qualityMetrics.find(
+    (metrics) => metrics.organizationId === organizationId,
+  );
+  const inspectionCount = organizationQualityMetrics?.inspections ?? 0;
+  const passedInspectionCount = organizationQualityMetrics?.passed ?? 0;
+  const inspectionPassRate = inspectionCount
+    ? Math.round((passedInspectionCount / inspectionCount) * 100)
+    : 0;
+  const openNcrCount = organizationQualityMetrics?.openNcrs ?? 0;
+  const rejectedUnitCount = organizationQualityMetrics?.rejectedUnits ?? 0;
+  const sampledUnitCount = organizationQualityMetrics?.sampledUnits ?? 0;
+  const sampleRejectRate = sampledUnitCount
+    ? ((rejectedUnitCount / sampledUnitCount) * 100).toFixed(1)
+    : "0.0";
+  const productionSchedules = schedules.filter(
+    (schedule) => schedule.organizationId === organizationId,
+  );
+  const hasInspectionFailure = Number(draft.rejectedQty) > 0 ||
+    draft.checks.some((check) => check.result === "FAIL");
+
+  const changeOrganization = (nextOrganizationId: string) => {
+    const nextJobId = jobs.find((job) => job.organizationId === nextOrganizationId)?.id ?? "";
+    setOrganizationId(nextOrganizationId);
+    setDraft(createQualityInspectionDraft(nextJobId));
+    setStatus("");
+  };
+
+  const updateCheck = (
+    index: number,
+    key: keyof ProductionQualityCheckInput,
+    value: string,
+  ) => {
+    if (key === "result") {
+      if (!isProductionQualityCheckResult(value)) return;
+      setDraft((current) => ({
+        ...current,
+        checks: current.checks.map((check, checkIndex) =>
+          checkIndex === index ? { ...check, result: value } : check,
+        ),
+      }));
+      return;
+    }
+    setDraft((current) => ({
+      ...current,
+      checks: current.checks.map((check, checkIndex) =>
+        checkIndex === index
+          ? { ...check, [key]: value }
+          : check,
+      ),
+    }));
+  };
+
+  const submitInspection = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsSaving(true);
+    setStatus("");
+    setHasError(false);
+    try {
+      const response = await requestProductionJson(
+        `/api/production/organizations/${encodeURIComponent(organizationId)}/quality/inspections`,
+        { method: "POST", body: JSON.stringify(draft) },
+      );
+      if (!isRecord(response.inspection) || typeof response.inspection.inspectionNo !== "string") {
+        throw new Error("The server returned an invalid quality inspection.");
+      }
+      const nonconformance = isRecord(response.nonconformance) ? response.nonconformance : null;
+      setStatus(nonconformance
+        ? `Inspection ${response.inspection.inspectionNo} saved; NCR ${String(nonconformance.ncrNo ?? "")} opened.`
+        : `Inspection ${response.inspection.inspectionNo} saved with a pass result.`);
+      setDraft(createQualityInspectionDraft(organizationJobs[0]?.id ?? ""));
+      onSaved();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error));
+      setHasError(true);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <>
+      <section className="production-quality-summary-grid" aria-label="Quality metrics">
+        <article className="production-kpi-card">
+          <span className="production-kpi-icon kpi-blue" aria-hidden="true"><FiCheckSquare /></span>
+          <p>Inspections recorded</p>
+          <strong>{inspectionCount}</strong>
+          <small>{organizationQualityMetrics?.failed ?? 0} failed inspections</small>
+        </article>
+        <article className="production-kpi-card">
+          <span className="production-kpi-icon kpi-green" aria-hidden="true"><FiCheckSquare /></span>
+          <p>Inspection pass rate</p>
+          <strong>{inspectionPassRate}%</strong>
+          <small>{passedInspectionCount} passed inspections</small>
+        </article>
+        <article className="production-kpi-card">
+          <span className="production-kpi-icon kpi-red" aria-hidden="true"><FiAlertTriangle /></span>
+          <p>Open nonconformances</p>
+          <strong>{openNcrCount}</strong>
+          <small>Awaiting corrective action</small>
+        </article>
+        <article className="production-kpi-card">
+          <span className="production-kpi-icon kpi-amber" aria-hidden="true"><FiFlag /></span>
+          <p>Sample reject rate</p>
+          <strong>{sampleRejectRate}%</strong>
+          <small>{rejectedUnitCount.toLocaleString("en-KE")} rejected of {sampledUnitCount.toLocaleString("en-KE")} inspected</small>
+        </article>
+      </section>
+
+      <section className="production-panel production-list-panel">
+        <div className="production-panel-heading">
+          <div>
+            <span className="production-panel-kicker">QUALITY ASSURANCE</span>
+            <h2>Record an inspection</h2>
+          </div>
+          {productionOrganizations.length > 1 && (
+            <label className="production-order-booking-field production-quality-organization">
+              Organization
+              <select onChange={(event) => changeOrganization(event.target.value)} value={organizationId}>
+                {productionOrganizations.map((organization) => (
+                  <option key={organization.id} value={organization.id}>{organization.name}</option>
+                ))}
+              </select>
+            </label>
+          )}
+        </div>
+        <form className="production-planning-form" onSubmit={submitInspection}>
+          <div className="production-order-booking-row">
+            <label className="production-order-booking-field">
+              Job sheet
+              <select
+                onChange={(event) => setDraft((current) => ({
+                  ...current,
+                  jobId: event.target.value,
+                  scheduleId: "",
+                }))}
+                required
+                value={draft.jobId}
+              >
+                <option value="">Select a job</option>
+                {organizationJobs.map((job) => (
+                  <option key={job.id} value={job.id}>
+                    {job.jobNo || "Unnumbered"} — {job.jobName || job.customer || "Untitled job"}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="production-order-booking-field">
+              Inspection stage
+              <select
+                onChange={(event) => {
+                  const inspectionType = event.target.value;
+                  if (isProductionQualityInspectionType(inspectionType)) {
+                    setDraft((current) => ({ ...current, inspectionType }));
+                  }
+                }}
+                value={draft.inspectionType}
+              >
+                {PRODUCTION_QUALITY_INSPECTION_TYPES.map((type) => (
+                  <option key={type} value={type}>{type.replaceAll("_", " ")}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <label className="production-order-booking-field">
+            Related operation (optional)
+            <select
+              disabled={!draft.jobId}
+              onChange={(event) => setDraft((current) => ({ ...current, scheduleId: event.target.value }))}
+              value={draft.scheduleId}
+            >
+              <option value="">Not linked to an operation</option>
+              {productionSchedules
+                .filter((schedule) => schedule.jobId === draft.jobId)
+                .map((schedule) => (
+                  <option key={schedule.id} value={schedule.id}>
+                    {schedule.operation} — {schedule.workCenter} ({schedule.status.replaceAll("_", " ")})
+                  </option>
+                ))}
+            </select>
+          </label>
+          <div className="production-order-booking-row">
+            <label className="production-order-booking-field">
+              Sample quantity
+              <input
+                max="1000000000"
+                min="1"
+                onChange={(event) => setDraft((current) => ({ ...current, sampleQty: event.target.value }))}
+                required
+                type="number"
+                value={draft.sampleQty}
+              />
+            </label>
+            <label className="production-order-booking-field">
+              Rejected units in sample
+              <input
+                max={draft.sampleQty || undefined}
+                min="0"
+                onChange={(event) => setDraft((current) => ({ ...current, rejectedQty: event.target.value }))}
+                required
+                type="number"
+                value={draft.rejectedQty}
+              />
+            </label>
+          </div>
+          <div className="production-quality-checks">
+            <div className="production-panel-heading">
+              <div>
+                <span className="production-panel-kicker">CARTON CHECKPOINTS</span>
+                <h3>Specification checks</h3>
+              </div>
+              <button
+                className="production-text-action"
+                disabled={draft.checks.length >= 30}
+                onClick={() => setDraft((current) => ({
+                  ...current,
+                  checks: [
+                    ...current.checks,
+                    { checkpoint: "", target: "", observed: "", result: "PASS" },
+                  ],
+                }))}
+                type="button"
+              >
+                <FiPlus aria-hidden="true" /> Add check
+              </button>
+            </div>
+            {draft.checks.map((check, index) => (
+              <div className="production-quality-check-row" key={`quality-check-${index}`}>
+                <label className="production-order-booking-field">
+                  Checkpoint
+                  <input
+                    maxLength={100}
+                    onChange={(event) => updateCheck(index, "checkpoint", event.target.value)}
+                    required
+                    value={check.checkpoint}
+                  />
+                </label>
+                <label className="production-order-booking-field">
+                  Target / specification
+                  <input
+                    maxLength={120}
+                    onChange={(event) => updateCheck(index, "target", event.target.value)}
+                    required
+                    value={check.target}
+                  />
+                </label>
+                <label className="production-order-booking-field">
+                  Observed
+                  <input
+                    maxLength={120}
+                    onChange={(event) => updateCheck(index, "observed", event.target.value)}
+                    required
+                    value={check.observed}
+                  />
+                </label>
+                <label className="production-order-booking-field">
+                  Result
+                  <select
+                    onChange={(event) => updateCheck(index, "result", event.target.value)}
+                    value={check.result}
+                  >
+                    {PRODUCTION_QUALITY_CHECK_RESULTS.map((result) => (
+                      <option key={result} value={result}>{result.replaceAll("_", " ")}</option>
+                    ))}
+                  </select>
+                </label>
+                {draft.checks.length > 1 && (
+                  <button
+                    aria-label={`Remove checkpoint ${index + 1}`}
+                    className="production-table-action production-quality-remove"
+                    onClick={() => setDraft((current) => ({
+                      ...current,
+                      checks: current.checks.filter((_, checkIndex) => checkIndex !== index),
+                    }))}
+                    type="button"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+          <label className="production-order-booking-field">
+            Inspection notes
+            <input
+              maxLength={1000}
+              onChange={(event) => setDraft((current) => ({ ...current, notes: event.target.value }))}
+              value={draft.notes}
+            />
+          </label>
+          {hasInspectionFailure && (
+            <div className="production-quality-ncr-prompt">
+              <strong>Failure detected — an NCR will be opened with this inspection.</strong>
+              <label className="production-order-booking-field">
+                Nonconformance description
+                <textarea
+                  maxLength={1000}
+                  onChange={(event) => setDraft((current) => ({
+                    ...current,
+                    ncrDescription: event.target.value,
+                  }))}
+                  required
+                  rows={3}
+                  value={draft.ncrDescription}
+                />
+              </label>
+              <label className="production-order-booking-field">
+                Severity
+                <select
+                  onChange={(event) => {
+                    const ncrSeverity = event.target.value;
+                    if (isProductionNonconformanceSeverity(ncrSeverity)) {
+                      setDraft((current) => ({ ...current, ncrSeverity }));
+                    }
+                  }}
+                  value={draft.ncrSeverity}
+                >
+                  {PRODUCTION_NONCONFORMANCE_SEVERITIES.map((severity) => (
+                    <option key={severity} value={severity}>{severity}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          )}
+          {status && (
+            <p aria-live="polite" className={hasError ? "production-order-booking-error" : "production-order-booking-status"} role={hasError ? "alert" : "status"}>
+              {status}
+            </p>
+          )}
+          <div className="production-order-booking-actions">
+            <button className="production-primary-button" disabled={isSaving || !organizationJobs.length} type="submit">
+              {isSaving ? "Saving…" : "Save inspection"}
+            </button>
+          </div>
+          {!organizationJobs.length && (
+            <p className="production-chart-empty">Book a job in this organization before recording an inspection.</p>
+          )}
+        </form>
+      </section>
+
+      <section className="production-panel production-list-panel">
+        <div className="production-panel-heading">
+          <div>
+            <span className="production-panel-kicker">INSPECTION REGISTER</span>
+            <h2>Recent quality inspections</h2>
+          </div>
+          <span className="production-panel-total">Latest {organizationInspections.length} records</span>
+        </div>
+        {organizationInspections.length ? (
+          <div className="production-table-scroll">
+            <table className="production-jobs-table production-quality-table">
+              <thead>
+                <tr>
+                  <th scope="col">Inspection</th>
+                  <th scope="col">Job sheet</th>
+                  <th scope="col">Stage / operation</th>
+                  <th scope="col">Sample</th>
+                  <th scope="col">Rejected</th>
+                  <th scope="col">Result</th>
+                  <th scope="col">Inspector</th>
+                  <th scope="col">Date</th>
+                  <th scope="col">Notes</th>
+                  <th scope="col">Checks</th>
+                </tr>
+              </thead>
+              <tbody>
+                {organizationInspections.map((inspection) => (
+                  <tr key={inspection.id}>
+                    <td><strong>{inspection.inspectionNo}</strong></td>
+                    <td>
+                      <strong>{inspection.jobNo || "—"}</strong>
+                      <small className="production-schedule-job-name">{inspection.jobName}</small>
+                    </td>
+                    <td>
+                      {inspection.inspectionType.replaceAll("_", " ")}
+                      {inspection.operation && <small className="production-schedule-job-name">{inspection.operation}</small>}
+                    </td>
+                    <td>{inspection.sampleQty.toLocaleString("en-KE")}</td>
+                    <td>{inspection.rejectedQty.toLocaleString("en-KE")}</td>
+                    <td>
+                      <span className={`production-schedule-status status-${inspection.result.toLowerCase()}`}>
+                        {inspection.result}
+                      </span>
+                    </td>
+                    <td>{inspection.inspectorName}</td>
+                    <td>{formatScheduleDate(inspection.inspectedAt)}</td>
+                    <td className="production-schedule-notes">{inspection.notes || "—"}</td>
+                    <td>
+                      <details className="production-quality-check-details">
+                        <summary>{inspection.checks.length} checks</summary>
+                        <ul>
+                          {inspection.checks.map((check, index) => (
+                            <li key={`${inspection.id}-check-${index}`}>
+                              <strong>{check.checkpoint}</strong>
+                              <span>{check.target} → {check.observed}</span>
+                              <span className={`production-quality-result result-${check.result.toLowerCase()}`}>
+                                {check.result.replaceAll("_", " ")}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </details>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="production-empty-state">
+            <span className="production-empty-mark" aria-hidden="true"><FiCheckSquare /></span>
+            <h3>No inspections recorded</h3>
+            <p>Inspection results will appear here as quality checks are completed.</p>
+          </div>
+        )}
+      </section>
+
+      <section className="production-panel production-list-panel">
+        <div className="production-panel-heading">
+          <div>
+            <span className="production-panel-kicker">CORRECTIVE ACTION</span>
+            <h2>Nonconformance register</h2>
+          </div>
+          <span className="production-panel-total">
+            Latest {organizationNcrs.length} of {organizationQualityMetrics?.totalNcrs ?? 0}
+          </span>
+        </div>
+        {organizationNcrs.length ? (
+          <div className="production-quality-ncr-list">
+            {organizationNcrs.map((ncr) => (
+              <QualityNonconformanceCard
+                key={`${ncr.id}:${ncr.updatedAt}`}
+                nonconformance={ncr}
+                onSaved={onSaved}
+                organizationId={organizationId}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="production-empty-state">
+            <span className="production-empty-mark" aria-hidden="true"><FiCheckSquare /></span>
+            <h3>No nonconformances</h3>
+            <p>Failed inspections automatically open a corrective-action record here.</p>
+          </div>
+        )}
+      </section>
+    </>
+  );
+}
+
+function QualityNonconformanceCard({
+  nonconformance,
+  organizationId,
+  onSaved,
+}: {
+  nonconformance: ProductionDashboardNonconformance;
+  organizationId: string;
+  onSaved: () => void;
+}) {
+  const [form, setForm] = useState<ProductionNonconformanceUpdateInput>(() => ({
+    status: "IN_PROGRESS",
+    rootCause: nonconformance.rootCause,
+    correctiveAction: nonconformance.correctiveAction,
+    disposition: nonconformance.disposition,
+    resolutionNotes: nonconformance.resolutionNotes,
+  }));
+  const [isSaving, setIsSaving] = useState(false);
+  const [statusMessage, setStatusMessage] = useState("");
+  const [hasError, setHasError] = useState(false);
+
+  const submitUpdate = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsSaving(true);
+    setStatusMessage("");
+    setHasError(false);
+    try {
+      await requestProductionJson(
+        `/api/production/organizations/${encodeURIComponent(organizationId)}/quality/nonconformances/${encodeURIComponent(nonconformance.id)}`,
+        { method: "PATCH", body: JSON.stringify(form) },
+      );
+      setStatusMessage(form.status === "CLOSED" ? "Nonconformance closed." : "Corrective-action plan saved.");
+      onSaved();
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : String(error));
+      setHasError(true);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <article className="production-quality-ncr-card">
+      <div className="production-quality-ncr-heading">
+        <div>
+          <strong>{nonconformance.ncrNo}</strong>
+          <span>{nonconformance.jobNo || "Job"} — {nonconformance.jobName}</span>
+        </div>
+        <div className="production-quality-ncr-badges">
+          <span className={`production-quality-severity severity-${nonconformance.severity.toLowerCase()}`}>
+            {nonconformance.severity}
+          </span>
+          <span className={`production-schedule-status status-${nonconformance.status.toLowerCase()}`}>
+            {nonconformance.status.replaceAll("_", " ")}
+          </span>
+        </div>
+      </div>
+      <p className="production-quality-ncr-description">{nonconformance.description}</p>
+      <div className="production-quality-ncr-meta">
+        <span>Affected: {nonconformance.affectedQty.toLocaleString("en-KE")} units</span>
+        <span>Disposition: {nonconformance.disposition.replaceAll("_", " ")}</span>
+        <span>Raised {formatScheduleDate(nonconformance.createdAt)} by {nonconformance.createdByName}</span>
+        {nonconformance.inspectionNo && <span>Inspection {nonconformance.inspectionNo}</span>}
+        {nonconformance.status !== "OPEN" && (
+          <span>Last updated by {nonconformance.updatedByName}</span>
+        )}
+        {nonconformance.closedAt && (
+          <span>Closed {formatScheduleDate(nonconformance.closedAt)} by {nonconformance.resolvedByName}</span>
+        )}
+      </div>
+      {nonconformance.status !== "CLOSED" ? (
+        <form className="production-quality-resolution-form" onSubmit={submitUpdate}>
+          <div className="production-order-booking-row">
+            <label className="production-order-booking-field">
+              Root cause
+              <textarea
+                maxLength={1000}
+                onChange={(event) => setForm((current) => ({ ...current, rootCause: event.target.value }))}
+                required={form.status === "CLOSED"}
+                rows={2}
+                value={form.rootCause}
+              />
+            </label>
+            <label className="production-order-booking-field">
+              Corrective action
+              <textarea
+                maxLength={1000}
+                onChange={(event) => setForm((current) => ({ ...current, correctiveAction: event.target.value }))}
+                required={form.status === "CLOSED"}
+                rows={2}
+                value={form.correctiveAction}
+              />
+            </label>
+          </div>
+          <div className="production-order-booking-row">
+            <label className="production-order-booking-field">
+              Disposition
+              <select
+                onChange={(event) => {
+                  const disposition = event.target.value;
+                  if (isProductionNonconformanceDisposition(disposition)) {
+                    setForm((current) => ({ ...current, disposition }));
+                  }
+                }}
+                required={form.status === "CLOSED"}
+                value={form.disposition}
+              >
+                {PRODUCTION_NONCONFORMANCE_DISPOSITIONS.map((disposition) => (
+                  <option key={disposition} value={disposition}>
+                    {disposition.replaceAll("_", " ")}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="production-order-booking-field">
+              Resolution / verification notes
+              <textarea
+                maxLength={1000}
+                onChange={(event) => setForm((current) => ({
+                  ...current,
+                  resolutionNotes: event.target.value,
+                }))}
+                required={form.status === "CLOSED"}
+                rows={2}
+                value={form.resolutionNotes}
+              />
+            </label>
+          </div>
+          {nonconformance.status === "IN_PROGRESS" && (
+            <label className="production-order-booking-field production-quality-status-field">
+              Workflow status
+              <select
+                onChange={(event) => setForm((current) => ({
+                  ...current,
+                  status: event.target.value === "CLOSED" ? "CLOSED" : "IN_PROGRESS",
+                }))}
+                value={form.status}
+              >
+                <option value="IN_PROGRESS">In progress</option>
+                <option value="CLOSED">Close NCR</option>
+              </select>
+            </label>
+          )}
+          {statusMessage && (
+            <p aria-live="polite" className={hasError ? "production-order-booking-error" : "production-order-booking-status"} role={hasError ? "alert" : "status"}>
+              {statusMessage}
+            </p>
+          )}
+          <button className="production-primary-button" disabled={isSaving} type="submit">
+            {isSaving
+              ? "Saving…"
+              : nonconformance.status === "OPEN"
+                ? "Start investigation"
+                : form.status === "CLOSED"
+                  ? "Close nonconformance"
+                  : "Save action plan"}
+          </button>
+        </form>
+      ) : (
+        <div className="production-quality-closed-summary">
+          <p><strong>Root cause:</strong> {nonconformance.rootCause}</p>
+          <p><strong>Corrective action:</strong> {nonconformance.correctiveAction}</p>
+          <p><strong>Verification:</strong> {nonconformance.resolutionNotes}</p>
+        </div>
+      )}
+    </article>
   );
 }
 
@@ -2674,6 +3789,745 @@ function ArtworkUploadButton({
   );
 }
 
+type QuoteFormState = {
+  customerId: string;
+  currency: "KES" | "USD" | "EUR";
+  validUntil: string;
+  inquiryReference: string;
+  notes: string;
+  lines: ProductionQuoteLineInput[];
+};
+
+function emptyQuoteLine(): ProductionQuoteLineInput {
+  return {
+    itemId: "",
+    quantity: "1000",
+    boardAreaM2: "",
+    boardGsm: "",
+    paperCostPerKg: "",
+    trimWastePercent: "0",
+    conversionCost: "",
+    consumablesCost: "0",
+    marginPercent: "",
+  };
+}
+
+function dateAfterDays(days: number): string {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  return dateKey(date);
+}
+
+function formatQuoteAmount(amount: string | number, currency: string): string {
+  return new Intl.NumberFormat("en-KE", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number(amount) || 0);
+}
+
+function quoteLineSpec(line: ProductionDashboardQuoteLine): string {
+  const board = [line.topLiner, line.medium, line.bottomLiner].filter(Boolean).join("/");
+  return [line.boxType, board, `${line.length} × ${line.width} × ${line.height} ${line.unit}`]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+function ProductionQuotesBoard({
+  organizations,
+  preferredOrganizationId,
+  quotes,
+  isAdmin,
+  onSaved,
+}: {
+  organizations: ProductionDashboardOrganization[];
+  preferredOrganizationId: string;
+  quotes: ProductionDashboardQuote[];
+  isAdmin: boolean;
+  onSaved: () => void;
+}) {
+  const [organizationId, setOrganizationId] = useState(
+    preferredOrganizationId || organizations[0]?.id || "",
+  );
+  const [form, setForm] = useState<QuoteFormState>(() => ({
+    customerId: "",
+    currency: "KES",
+    validUntil: dateAfterDays(30),
+    inquiryReference: "",
+    notes: "",
+    lines: [emptyQuoteLine()],
+  }));
+  const [revisionOf, setRevisionOf] = useState<string | null>(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [items, setItems] = useState<ProductionDashboardItem[]>([]);
+  const [customers, setCustomers] = useState<ProductionDashboardCustomer[]>([]);
+  const [catalogLoadedOrganizationId, setCatalogLoadedOrganizationId] = useState("");
+  const [catalogRefreshCount, setCatalogRefreshCount] = useState(0);
+  const [isSaving, setIsSaving] = useState(false);
+  const [actionQuoteId, setActionQuoteId] = useState<string | null>(null);
+  const [rejectQuoteId, setRejectQuoteId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [conversionQuoteId, setConversionQuoteId] = useState<string | null>(null);
+  const [conversionForm, setConversionForm] = useState({
+    customerPO: "",
+    orderDate: dateKey(new Date()),
+    deliveryDate: dateAfterDays(30),
+  });
+  const [status, setStatus] = useState("");
+  const [hasError, setHasError] = useState(false);
+  const isLoadingCatalog = Boolean(
+    organizationId && catalogLoadedOrganizationId !== organizationId,
+  );
+
+  useEffect(() => {
+    if (!organizationId) return;
+    let active = true;
+    requestProductionJson(
+      `/api/production/organizations/${encodeURIComponent(organizationId)}/quotes?catalog=true`,
+      { method: "GET" },
+    )
+      .then((catalog) => {
+        if (!active) return;
+        if (!Array.isArray(catalog.items) || !Array.isArray(catalog.customers)) {
+          throw new Error("The server returned an invalid product or customer list.");
+        }
+        setItems(catalog.items.filter(isProductionDashboardItem));
+        setCustomers(catalog.customers.filter(isProductionDashboardCustomer));
+        setCatalogLoadedOrganizationId(organizationId);
+      })
+      .catch((error) => {
+        if (!active) return;
+        setStatus(`Could not load quotation catalogs: ${error instanceof Error ? error.message : String(error)}`);
+        setHasError(true);
+        setCatalogLoadedOrganizationId(organizationId);
+      })
+    return () => {
+      active = false;
+    };
+  }, [organizationId, catalogRefreshCount]);
+
+  const updateLine = (
+    index: number,
+    field: keyof ProductionQuoteLineInput,
+    value: string,
+  ) => {
+    setForm((current) => ({
+      ...current,
+      lines: current.lines.map((line, lineIndex) =>
+        lineIndex === index ? { ...line, [field]: value } : line,
+      ),
+    }));
+  };
+
+  const resetForm = () => {
+    setForm({
+      customerId: "",
+      currency: "KES",
+      validUntil: dateAfterDays(30),
+      inquiryReference: "",
+      notes: "",
+      lines: [emptyQuoteLine()],
+    });
+    setRevisionOf(null);
+    setIsFormOpen(false);
+  };
+
+  const submitQuote = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!organizationId) return;
+    setIsSaving(true);
+    setStatus("");
+    setHasError(false);
+    try {
+      await requestProductionJson(
+        `/api/production/organizations/${encodeURIComponent(organizationId)}/quotes`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            ...form,
+            ...(revisionOf ? { revisionOf } : {}),
+          }),
+        },
+      );
+      setStatus(revisionOf ? "Quote revision created as a new draft." : "Draft quote created.");
+      resetForm();
+      onSaved();
+    } catch (error) {
+      setStatus(`Could not save quote: ${error instanceof Error ? error.message : String(error)}`);
+      setHasError(true);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const updateQuote = async (
+    quote: ProductionDashboardQuote,
+    action: "SUBMIT" | "APPROVE" | "REJECT",
+    reason = "",
+  ) => {
+    setActionQuoteId(quote.id);
+    setStatus("");
+    setHasError(false);
+    try {
+      await requestProductionJson(
+        `/api/production/organizations/${encodeURIComponent(quote.organizationId)}/quotes/${encodeURIComponent(quote.id)}`,
+        { method: "PATCH", body: JSON.stringify({ action, reason }) },
+      );
+      setStatus(
+        action === "SUBMIT"
+          ? "Quote submitted for approval."
+          : action === "APPROVE"
+            ? "Quote approved."
+            : "Quote rejected.",
+      );
+      setRejectQuoteId(null);
+      setRejectReason("");
+      onSaved();
+    } catch (error) {
+      setStatus(`Could not update quote: ${error instanceof Error ? error.message : String(error)}`);
+      setHasError(true);
+    } finally {
+      setActionQuoteId(null);
+    }
+  };
+
+  const reviseQuote = (quote: ProductionDashboardQuote) => {
+    if (quote.lines.some((line) => !line.itemId)) {
+      setStatus("A revision needs each quoted product to still exist in the product catalog.");
+      setHasError(true);
+      return;
+    }
+    setOrganizationId(quote.organizationId);
+    setRevisionOf(quote.id);
+    setForm({
+      customerId: quote.customer.id,
+      currency: quote.currency as QuoteFormState["currency"],
+      validUntil: quote.validUntil.slice(0, 10),
+      inquiryReference: quote.inquiryReference,
+      notes: quote.notes,
+      lines: quote.lines.map((line) => ({
+        itemId: line.itemId ?? "",
+        quantity: String(line.quantity),
+        boardAreaM2: line.boardAreaM2,
+        boardGsm: line.boardGsm,
+        paperCostPerKg: line.paperCostPerKg,
+        trimWastePercent: line.trimWastePercent,
+        conversionCost: line.conversionCost,
+        consumablesCost: line.consumablesCost,
+        marginPercent: line.marginPercent,
+      })),
+    });
+    setIsFormOpen(true);
+    setStatus(`Preparing revision of ${quote.quoteNo} v${quote.version}. Review the cost inputs and expiry before saving.`);
+    setHasError(false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const convertQuote = async (event: FormEvent<HTMLFormElement>, quote: ProductionDashboardQuote) => {
+    event.preventDefault();
+    setActionQuoteId(quote.id);
+    setStatus("");
+    setHasError(false);
+    try {
+      const result = await requestProductionJson(
+        `/api/production/organizations/${encodeURIComponent(quote.organizationId)}/quotes/${encodeURIComponent(quote.id)}/convert`,
+        { method: "POST", body: JSON.stringify(conversionForm) },
+      );
+      const jobCount = Array.isArray(result.jobs) ? result.jobs.length : 0;
+      setStatus(`${quote.quoteNo} converted into ${jobCount} order job${jobCount === 1 ? "" : "s"}.`);
+      setConversionQuoteId(null);
+      onSaved();
+    } catch (error) {
+      setStatus(`Could not convert quote: ${error instanceof Error ? error.message : String(error)}`);
+      setHasError(true);
+    } finally {
+      setActionQuoteId(null);
+    }
+  };
+
+  const previewTotals = form.lines.reduce(
+    (total, line) => {
+      const costs = calculateProductionQuoteLineCosts(line);
+      return {
+        cost: total.cost + Number(costs?.lineCostTotal ?? 0),
+        price: total.price + Number(costs?.linePriceTotal ?? 0),
+      };
+    },
+    { cost: 0, price: 0 },
+  );
+  const todayKey = new Date().toISOString().slice(0, 10);
+
+  return (
+    <div className="production-quotes-board">
+      <section className="production-panel production-list-panel">
+        <div className="production-panel-heading">
+          <div>
+            <span className="production-panel-kicker">SALES & COSTING</span>
+            <h2>Customer quotes</h2>
+          </div>
+          <button
+            className="production-primary-button"
+            disabled={!organizationId || isLoadingCatalog}
+            onClick={() => setIsFormOpen((open) => !open)}
+            type="button"
+          >
+            {isFormOpen ? "Close quote form" : "Create quote"}
+          </button>
+        </div>
+        {organizations.length > 1 && (
+          <label className="production-order-booking-field production-quote-organization">
+            <span>Quotation organization</span>
+            <select
+              onChange={(event) => {
+                setOrganizationId(event.target.value);
+                setItems([]);
+                setCustomers([]);
+                setCatalogLoadedOrganizationId("");
+                setForm((current) => ({ ...current, customerId: "", lines: [emptyQuoteLine()] }));
+                setRevisionOf(null);
+                setStatus("");
+                setHasError(false);
+              }}
+              value={organizationId}
+            >
+              {organizations.map((organization) => (
+                <option key={organization.id} value={organization.id}>{organization.name}</option>
+              ))}
+            </select>
+          </label>
+        )}
+        {isFormOpen && (
+          <form className="production-quote-form" onSubmit={submitQuote}>
+            <div className="production-quote-form-heading">
+              <div>
+                <h3>{revisionOf ? "Create quote revision" : "New customer quotation"}</h3>
+                <p>Enter the developed board area and actual paper rates; no carton-area dimensions are inferred.</p>
+              </div>
+              <span>{organizations.find((organization) => organization.id === organizationId)?.name}</span>
+            </div>
+            <div className="production-quote-header-grid">
+              <label className="production-order-booking-field">
+                <span>Customer</span>
+                <select
+                  onChange={(event) => setForm((current) => ({ ...current, customerId: event.target.value }))}
+                  required
+                  value={form.customerId}
+                >
+                  <option value="">Select a customer</option>
+                  {customers.map((customer) => (
+                    <option key={customer.id} value={customer.id}>{customer.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="production-order-booking-field">
+                <span>Currency</span>
+                <select
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, currency: event.target.value as QuoteFormState["currency"] }))
+                  }
+                  value={form.currency}
+                >
+                  <option value="KES">KES</option>
+                  <option value="USD">USD</option>
+                  <option value="EUR">EUR</option>
+                </select>
+              </label>
+              <label className="production-order-booking-field">
+                <span>Valid until</span>
+                <input
+                  min={todayKey}
+                  onChange={(event) => setForm((current) => ({ ...current, validUntil: event.target.value }))}
+                  required
+                  type="date"
+                  value={form.validUntil}
+                />
+              </label>
+              <label className="production-order-booking-field">
+                <span>Inquiry / RFQ reference</span>
+                <input
+                  maxLength={80}
+                  onChange={(event) => setForm((current) => ({ ...current, inquiryReference: event.target.value }))}
+                  value={form.inquiryReference}
+                />
+              </label>
+              <label className="production-order-booking-field production-quote-notes">
+                <span>Requirements / notes</span>
+                <textarea
+                  maxLength={2000}
+                  onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))}
+                  value={form.notes}
+                />
+              </label>
+            </div>
+            <div className="production-quote-lines">
+              <div className="production-quote-lines-heading">
+                <h3>Costed products</h3>
+                <button
+                  className="production-table-action"
+                  onClick={() => setForm((current) => ({ ...current, lines: [...current.lines, emptyQuoteLine()] }))}
+                  type="button"
+                >
+                  Add product line
+                </button>
+              </div>
+              {form.lines.map((line, index) => {
+                const costs = calculateProductionQuoteLineCosts(line);
+                return (
+                  <fieldset className="production-quote-line" key={`${index}-${line.itemId}`}>
+                    <legend>Product {index + 1}</legend>
+                    <div className="production-quote-line-grid">
+                      <label className="production-order-booking-field">
+                        <span>Product</span>
+                        <select
+                          onChange={(event) => updateLine(index, "itemId", event.target.value)}
+                          required
+                          value={line.itemId}
+                        >
+                          <option value="">Select an item</option>
+                          {items.map((item) => (
+                            <option key={item.id} value={item.id}>{item.itemCode} · {item.name}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="production-order-booking-field">
+                        <span>Quantity</span>
+                        <input
+                          min="1"
+                          max="2147483647"
+                          onChange={(event) => updateLine(index, "quantity", event.target.value)}
+                          required
+                          step="1"
+                          type="number"
+                          value={line.quantity}
+                        />
+                      </label>
+                      <label className="production-order-booking-field">
+                        <span>Developed board area (m² / unit)</span>
+                        <input
+                          min="0.0001"
+                          max="1000"
+                          onChange={(event) => updateLine(index, "boardAreaM2", event.target.value)}
+                          required
+                          step="0.0001"
+                          type="number"
+                          value={line.boardAreaM2}
+                        />
+                      </label>
+                      <label className="production-order-booking-field">
+                        <span>Board GSM</span>
+                        <input
+                          min="0.0001"
+                          max="5000"
+                          onChange={(event) => updateLine(index, "boardGsm", event.target.value)}
+                          required
+                          step="0.001"
+                          type="number"
+                          value={line.boardGsm}
+                        />
+                      </label>
+                      <label className="production-order-booking-field">
+                        <span>Paper cost / kg ({form.currency})</span>
+                        <input
+                          min="0.0001"
+                          max="1000000"
+                          onChange={(event) => updateLine(index, "paperCostPerKg", event.target.value)}
+                          required
+                          step="0.0001"
+                          type="number"
+                          value={line.paperCostPerKg}
+                        />
+                      </label>
+                      <label className="production-order-booking-field">
+                        <span>Trim waste (%)</span>
+                        <input
+                          min="0"
+                          max="200"
+                          onChange={(event) => updateLine(index, "trimWastePercent", event.target.value)}
+                          required
+                          step="0.001"
+                          type="number"
+                          value={line.trimWastePercent}
+                        />
+                      </label>
+                      <label className="production-order-booking-field">
+                        <span>Conversion cost / unit ({form.currency})</span>
+                        <input
+                          min="0"
+                          max="1000000"
+                          onChange={(event) => updateLine(index, "conversionCost", event.target.value)}
+                          required
+                          step="0.0001"
+                          type="number"
+                          value={line.conversionCost}
+                        />
+                      </label>
+                      <label className="production-order-booking-field">
+                        <span>Consumables / unit ({form.currency})</span>
+                        <input
+                          min="0"
+                          max="1000000"
+                          onChange={(event) => updateLine(index, "consumablesCost", event.target.value)}
+                          required
+                          step="0.0001"
+                          type="number"
+                          value={line.consumablesCost}
+                        />
+                      </label>
+                      <label className="production-order-booking-field">
+                        <span>Gross margin (%)</span>
+                        <input
+                          min="0"
+                          max="80"
+                          onChange={(event) => updateLine(index, "marginPercent", event.target.value)}
+                          required
+                          step="0.001"
+                          type="number"
+                          value={line.marginPercent}
+                        />
+                      </label>
+                    </div>
+                    <div className="production-quote-line-summary">
+                      {costs
+                        ? <>Unit cost <strong>{formatQuoteAmount(costs.unitCost, form.currency)}</strong> · Quote price / unit <strong>{formatQuoteAmount(costs.unitPrice, form.currency)}</strong> · Line total <strong>{formatQuoteAmount(costs.linePriceTotal, form.currency)}</strong></>
+                        : "Complete valid cost inputs to preview this line."}
+                      {form.lines.length > 1 && (
+                        <button
+                          aria-label={`Remove product ${index + 1}`}
+                          className="production-table-action"
+                          onClick={() => setForm((current) => ({
+                            ...current,
+                            lines: current.lines.filter((_, lineIndex) => lineIndex !== index),
+                          }))}
+                          type="button"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                  </fieldset>
+                );
+              })}
+            </div>
+            <div className="production-quote-preview">
+              <span>Estimated cost <strong>{formatQuoteAmount(previewTotals.cost, form.currency)}</strong></span>
+              <span>Quote total <strong>{formatQuoteAmount(previewTotals.price, form.currency)}</strong></span>
+            </div>
+            <div className="production-supply-form-actions">
+              <span>Material cost = area × GSM × paper rate, adjusted for trim waste; selling price uses gross margin.</span>
+              <div>
+                <button className="production-table-action" onClick={resetForm} type="button">Cancel</button>
+                <button className="production-primary-button" disabled={isSaving || isLoadingCatalog} type="submit">
+                  {isSaving ? "Saving…" : revisionOf ? "Save revision draft" : "Save draft quote"}
+                </button>
+              </div>
+            </div>
+          </form>
+        )}
+
+        {status && (
+          <p className="production-quote-message" role={hasError ? "alert" : "status"}>
+            {status}
+            {status.startsWith("Could not load quotation catalogs:") && (
+              <button
+                className="production-table-action"
+                onClick={() => {
+                  setCatalogLoadedOrganizationId("");
+                  setCatalogRefreshCount((count) => count + 1);
+                }}
+                type="button"
+              >
+                Retry catalog load
+              </button>
+            )}
+          </p>
+        )}
+        {!quotes.length ? (
+          <div className="production-empty-state">
+            <span className="production-empty-mark" aria-hidden="true"><FiDollarSign /></span>
+            <h3>No quotations yet</h3>
+            <p>Create a costed quote using customer requirements and current paper rates.</p>
+          </div>
+        ) : (
+          <div className="production-quote-list">
+            {quotes.map((quote) => {
+              const role = organizations.find((organization) => organization.id === quote.organizationId)?.role;
+              const canApprove = isAdmin || role === "PRODUCTION";
+              const canSubmit = isAdmin || role === "ORDER_BOOKER" || role === "PRODUCTION";
+              const expired = quote.validUntil.slice(0, 10) < todayKey;
+              const isExpired = expired && (quote.status === "SUBMITTED" || quote.status === "APPROVED");
+              const displayStatus = isExpired ? "EXPIRED" : quote.status;
+              return (
+                <article className="production-quote-card" key={quote.id}>
+                  <div className="production-quote-card-header">
+                    <div>
+                      <span className={`production-quote-status status-${displayStatus.toLowerCase()}`}>{displayStatus}</span>
+                      <h3>{quote.quoteNo} <small>v{quote.version}</small></h3>
+                      <p>{quote.customer.name} · {quote.organizationName}</p>
+                    </div>
+                    <div className="production-quote-total">
+                      <span>Quote total</span>
+                      <strong>{formatQuoteAmount(quote.totalPrice, quote.currency)}</strong>
+                      <small>Cost {formatQuoteAmount(quote.totalCost, quote.currency)}</small>
+                    </div>
+                  </div>
+                  <div className="production-quote-meta">
+                    <span>Valid until {formatDate(quote.validUntil.slice(0, 10))}</span>
+                    <span>{quote.inquiryReference ? `RFQ ${quote.inquiryReference}` : "No RFQ reference"}</span>
+                    <span>Prepared by {quote.createdByName}</span>
+                    {quote.approvedAt && <span>Approved by {quote.approvedByName}</span>}
+                  </div>
+                  <div className="production-table-scroll">
+                    <table className="production-jobs-table production-quote-table">
+                      <thead>
+                        <tr>
+                          <th>Item</th>
+                          <th>Carton / board spec</th>
+                          <th className="production-number-cell">Qty</th>
+                          <th className="production-number-cell">Unit cost</th>
+                          <th className="production-number-cell">Unit price</th>
+                          <th className="production-number-cell">Line total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {quote.lines.map((line) => (
+                          <tr key={line.id}>
+                            <td><strong>{line.itemCode}</strong><br />{line.itemName}</td>
+                            <td>{quoteLineSpec(line)}</td>
+                            <td className="production-number-cell">{line.quantity.toLocaleString("en-KE")}</td>
+                            <td className="production-number-cell">{formatQuoteAmount(line.unitCost, quote.currency)}</td>
+                            <td className="production-number-cell">{formatQuoteAmount(line.unitPrice, quote.currency)}</td>
+                            <td className="production-number-cell">{formatQuoteAmount(line.linePriceTotal, quote.currency)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {quote.notes && <p className="production-quote-notes-display">{quote.notes}</p>}
+                  {quote.rejectionReason && <p className="production-quote-rejection">Rejection reason: {quote.rejectionReason}</p>}
+                  <div className="production-quote-actions">
+                    {quote.status === "DRAFT" && canSubmit && (
+                      <button
+                        className="production-table-action"
+                        disabled={actionQuoteId === quote.id}
+                        onClick={() => updateQuote(quote, "SUBMIT")}
+                        type="button"
+                      >
+                        Submit for approval
+                      </button>
+                    )}
+                    {quote.status === "SUBMITTED" && canApprove && !isExpired && (
+                      <>
+                        <button
+                          className="production-table-action"
+                          disabled={actionQuoteId === quote.id}
+                          onClick={() => updateQuote(quote, "APPROVE")}
+                          type="button"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          className="production-table-action"
+                          onClick={() => {
+                            setRejectQuoteId(rejectQuoteId === quote.id ? null : quote.id);
+                            setRejectReason("");
+                          }}
+                          type="button"
+                        >
+                          Reject
+                        </button>
+                      </>
+                    )}
+                    {quote.status === "APPROVED" && !isExpired && (
+                      <button
+                        className="production-table-action"
+                        onClick={() => {
+                          setConversionQuoteId(conversionQuoteId === quote.id ? null : quote.id);
+                          setConversionForm({
+                            customerPO: "",
+                            orderDate: dateKey(new Date()),
+                            deliveryDate: dateAfterDays(30),
+                          });
+                        }}
+                        type="button"
+                      >
+                        Convert to order
+                      </button>
+                    )}
+                    {["DRAFT", "REJECTED", "APPROVED"].includes(quote.status) && (
+                      <button
+                        className="production-table-action"
+                        onClick={() => reviseQuote(quote)}
+                        type="button"
+                      >
+                        Create revision
+                      </button>
+                    )}
+                  </div>
+                  {rejectQuoteId === quote.id && (
+                    <form
+                      className="production-quote-inline-form"
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        void updateQuote(quote, "REJECT", rejectReason);
+                      }}
+                    >
+                      <label className="production-order-booking-field">
+                        <span>Reason for rejection</span>
+                        <input
+                          onChange={(event) => setRejectReason(event.target.value)}
+                          required
+                          value={rejectReason}
+                        />
+                      </label>
+                      <button className="production-table-action" disabled={actionQuoteId === quote.id} type="submit">Confirm rejection</button>
+                    </form>
+                  )}
+                  {conversionQuoteId === quote.id && (
+                    <form className="production-quote-inline-form" onSubmit={(event) => void convertQuote(event, quote)}>
+                      <label className="production-order-booking-field">
+                        <span>Customer PO</span>
+                        <input
+                          maxLength={60}
+                          onChange={(event) => setConversionForm((current) => ({ ...current, customerPO: event.target.value }))}
+                          required
+                          value={conversionForm.customerPO}
+                        />
+                      </label>
+                      <label className="production-order-booking-field">
+                        <span>Order date</span>
+                        <input
+                          onChange={(event) => setConversionForm((current) => ({ ...current, orderDate: event.target.value }))}
+                          required
+                          type="date"
+                          value={conversionForm.orderDate}
+                        />
+                      </label>
+                      <label className="production-order-booking-field">
+                        <span>Delivery date</span>
+                        <input
+                          min={conversionForm.orderDate}
+                          onChange={(event) => setConversionForm((current) => ({ ...current, deliveryDate: event.target.value }))}
+                          required
+                          type="date"
+                          value={conversionForm.deliveryDate}
+                        />
+                      </label>
+                      <button className="production-table-action" disabled={actionQuoteId === quote.id} type="submit">
+                        {actionQuoteId === quote.id ? "Creating orders…" : "Create order jobs"}
+                      </button>
+                    </form>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
 export default function ProductionDashboard({
   accountId,
   accountName,
@@ -2683,10 +4537,15 @@ export default function ProductionDashboard({
   organizations,
   jobs,
   schedules,
+  operationRuns,
+  qualityInspections,
+  nonconformances,
+  qualityMetrics,
   materials,
   suppliers,
   purchaseOrders,
   stockMovements,
+  quotes,
   isAdmin,
   canManageOrganizations,
 }: Props) {
@@ -2726,12 +4585,24 @@ export default function ProductionDashboard({
       : organizations.filter((organization) => organization.role === "ORDER_BOOKER"),
     [isAdmin, organizations],
   );
+  const quoteOrganizations = useMemo(
+    () => isAdmin
+      ? organizations
+      : organizations.filter((organization) =>
+        organization.role === "ORDER_BOOKER" || organization.role === "PRODUCTION",
+      ),
+    [isAdmin, organizations],
+  );
   const canBookOrders = orderBookingOrganizations.some(
     (organization) => organizationFilter === "all" || organization.id === organizationFilter,
   ) || isAdmin;
   const defaultOrderBookingOrganizationId =
     orderBookingOrganizations.find((organization) => organization.id === organizationFilter)?.id ??
     orderBookingOrganizations[0]?.id ??
+    "";
+  const defaultQuoteOrganizationId =
+    quoteOrganizations.find((organization) => organization.id === organizationFilter)?.id ??
+    quoteOrganizations[0]?.id ??
     "";
   const productOrganizations = organizationFilter === "all"
     ? orderBookingOrganizations
@@ -2803,7 +4674,10 @@ export default function ProductionDashboard({
     view === "overview" ? "Production overview"
       : view === "jobs" ? "All production jobs"
         : view === "origination" ? "Origination"
+          : view === "quotes" ? "Costing & quotes"
           : view === "planning" ? "Production planning & scheduling"
+            : view === "execution" ? "Shop floor execution"
+            : view === "quality" ? "Quality management"
             : view === "procurement" ? "Procurement"
               : view === "inventory" ? "Inventory & WIP"
           : view === "job-sheet" ? "Production job sheet"
@@ -2812,7 +4686,10 @@ export default function ProductionDashboard({
     view === "overview" ? "Live snapshot of your shared production work."
       : view === "jobs" ? "Track and open jobs across your production organizations."
         : view === "origination" ? "Review planned jobs for your designer organizations and attach their artwork."
+          : view === "quotes" ? "Cost carton products, manage quotation approvals, and convert approved quotes into orders."
           : view === "planning" ? STAGE_DETAILS.planning
+            : view === "execution" ? STAGE_DETAILS.execution
+            : view === "quality" ? STAGE_DETAILS.quality
             : view === "procurement" ? STAGE_DETAILS.procurement
               : view === "inventory" ? STAGE_DETAILS.inventory
           : view === "job-sheet" ? "Create a local draft or work on an organization-shared job."
@@ -2845,6 +4722,9 @@ export default function ProductionDashboard({
               (item.id !== "procurement" && item.id !== "inventory") ||
               productionOrganizationIds.size > 0,
             )
+            .filter((item) => item.id !== "execution" || productionOrganizationIds.size > 0)
+            .filter((item) => item.id !== "quality" || productionOrganizationIds.size > 0)
+            .filter((item) => item.id !== "quotes" || quoteOrganizations.length > 0)
             .filter((item) => item.id !== "job-sheet" || canManageJobs)
             .map((item) => (
               <button
@@ -3213,6 +5093,67 @@ export default function ProductionDashboard({
                     </p>
                   </section>
                 )
+              ) : view === "execution" ? (
+                productionOrganizationIds.size ? (
+                  <ShopFloorExecutionBoard
+                    key={planningOrganizationId}
+                    onSaved={() => router.refresh()}
+                    operationRuns={operationRuns}
+                    organizations={organizations.filter((organization) =>
+                      productionOrganizationIds.has(organization.id),
+                    )}
+                    preferredOrganizationId={planningOrganizationId}
+                    schedules={schedules}
+                  />
+                ) : (
+                  <section className="production-panel production-list-panel">
+                    <div className="production-panel-heading">
+                      <div>
+                        <span className="production-panel-kicker">SHOP FLOOR</span>
+                        <h2>Production access required</h2>
+                      </div>
+                    </div>
+                    <p className="production-chart-empty">
+                      Shop-floor reporting is available to members with Production access. Ask your organization administrator to update your access.
+                    </p>
+                  </section>
+                )
+              ) : view === "quality" ? (
+                productionOrganizationIds.size ? (
+                  <QualityManagementBoard
+                    key={planningOrganizationId}
+                    inspections={qualityInspections}
+                    jobs={jobs}
+                    nonconformances={nonconformances}
+                    qualityMetrics={qualityMetrics}
+                    onSaved={() => router.refresh()}
+                    organizations={organizations.filter((organization) =>
+                      productionOrganizationIds.has(organization.id),
+                    )}
+                    preferredOrganizationId={planningOrganizationId}
+                    schedules={schedules}
+                  />
+                ) : (
+                  <section className="production-panel production-list-panel">
+                    <div className="production-panel-heading">
+                      <div>
+                        <span className="production-panel-kicker">QUALITY ASSURANCE</span>
+                        <h2>Production access required</h2>
+                      </div>
+                    </div>
+                    <p className="production-chart-empty">
+                      Quality management is available to members with Production access. Ask your organization administrator to update your access.
+                    </p>
+                  </section>
+                )
+              ) : view === "quotes" ? (
+                <ProductionQuotesBoard
+                  isAdmin={isAdmin}
+                  onSaved={() => router.refresh()}
+                  organizations={quoteOrganizations}
+                  preferredOrganizationId={defaultQuoteOrganizationId}
+                  quotes={quotes}
+                />
               ) : view === "procurement" ? (
                 <ProcurementBoard
                   key={planningOrganizationId}

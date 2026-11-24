@@ -190,7 +190,10 @@ jobs in Origination and attach artwork files up to 5 MB without editing their
 job sheets. Designers can also flag a job with a reason; Production members can
 review and clear active flags. Production members can schedule job operations
 by work center, planned quantity, time range, and status; overlapping active
-schedules for the same work center are rejected. Artwork requires a **private**
+schedules for the same work center are rejected. The Shop floor execution
+workspace records good and rejected quantities against scheduled operations,
+tracks each report with the signed-in operator and timestamp, and can mark an
+operation complete. Artwork requires a **private**
 Vercel Blob store connected to the project in Development, Preview, and
 Production. Vercel
 supplies `BLOB_STORE_ID` and OIDC credentials; for local development, connect
@@ -202,6 +205,25 @@ purchase orders, and partial goods receipts. Receipts create auditable stock
 movements. Inventory shows ledger-derived on-hand quantities and reorder points;
 job-linked material issues track raw-material consumption into WIP, and stock
 issues are rejected when they would make inventory negative.
+
+Quality Management records incoming, in-process, final, and customer-return
+inspections against jobs and optional scheduled operations. Each inspection
+captures carton checkpoints, targets, observed results, sample and reject
+quantities, and inspector. Failed checks automatically open a severity-ranked
+nonconformance; Production members can document root cause, disposition, and
+corrective action, then close it with verification notes. Inspection and
+nonconformance registers are organization-scoped and retain operator and
+resolution attribution.
+
+Costing & Quotes supports customer/RFQ references, multi-item quotations, and
+versioned quote revisions. Cost estimates use an explicitly entered developed
+board area, board GSM, paper cost per kilogram, trim-waste allowance, conversion
+and consumables costs, and gross margin; carton area is never inferred from
+external dimension assumptions. Drafts can be submitted for Production
+approval, rejected with a reason, or approved and converted into order-booking
+jobs using the customer's PO and delivery dates. Quote lines retain product
+specification and costing snapshots, and expiry and approval attribution are
+shown in the quote register.
 
 For local Origination demos, set `PACKSTUDIO_ALLOW_LOCAL_DEMO_SEED=true` and
 `DEMO_USER_EMAIL` for a verified local account in `.env.local`, then run

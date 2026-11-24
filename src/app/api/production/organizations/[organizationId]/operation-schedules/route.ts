@@ -50,8 +50,20 @@ export async function POST(request: Request, { params }: RouteContext) {
     where: {
       jobId_operation: { jobId: job.id, operation: body.operation },
     },
-    select: { id: true },
+    select: { id: true, status: true },
   });
+  if (body.status === "COMPLETED" && existing?.status !== "COMPLETED") {
+    return NextResponse.json(
+      { error: "Complete an operation by recording its production output." },
+      { status: 400 },
+    );
+  }
+  if (existing?.status === "COMPLETED" && body.status !== "COMPLETED") {
+    return NextResponse.json(
+      { error: "A completed operation cannot be reopened." },
+      { status: 409 },
+    );
+  }
   const start = new Date(body.scheduledStartAt);
   const end = new Date(body.scheduledEndAt);
   const conflict = body.status === "COMPLETED"
