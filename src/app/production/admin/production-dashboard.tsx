@@ -20,6 +20,7 @@ import {
   FiBriefcase,
   FiCalendar,
   FiCheckSquare,
+  FiChevronDown,
   FiClipboard,
   FiDollarSign,
   FiFileText,
@@ -32,8 +33,10 @@ import {
   FiPlus,
   FiPrinter,
   FiRefreshCw,
+  FiSettings,
   FiShoppingCart,
   FiTruck,
+  FiTool,
   FiUsers,
 } from "react-icons/fi";
 import AppFrame from "@/app/app/app-frame";
@@ -69,9 +72,29 @@ import {
   PRODUCTION_MATERIAL_UNITS,
 } from "@/lib/production-supply-data";
 import {
+  isProductionInvoiceCurrency,
+  isProductionPaymentMethod,
+  PRODUCTION_INVOICE_CURRENCIES,
+  PRODUCTION_PAYMENT_METHODS,
+} from "@/lib/production-invoice-data";
+import { receivableFinishedGoodsQuantity } from "@/lib/production-warehouse-data";
+import {
   calculateProductionQuoteLineCosts,
   type ProductionQuoteLineInput,
 } from "@/lib/production-quote-data";
+import {
+  PRODUCTION_TOOLING_CATEGORIES,
+  PRODUCTION_TOOLING_EVENT_TYPES,
+  PRODUCTION_TOOLING_OWNERS,
+  PRODUCTION_TOOLING_STATUSES,
+} from "@/lib/production-tooling-data";
+import {
+  isProductionMaintenanceTransitionAllowed,
+  PRODUCTION_MAINTENANCE_PRIORITIES,
+  PRODUCTION_MAINTENANCE_TICKET_TYPES,
+  PRODUCTION_MAINTENANCE_TICKET_STATUSES,
+} from "@/lib/production-maintenance-data";
+import { PRODUCTION_LEAVE_TYPES } from "@/lib/production-hr-data";
 
 export type ProductionDashboardOrganization = {
   id: string;
@@ -240,6 +263,47 @@ export type ProductionDashboardStockMovement = {
   jobNo: string;
 };
 
+export type ProductionDashboardPaperReel = {
+  id: string;
+  organizationId: string;
+  materialId: string;
+  supplierId: string | null;
+  purchaseOrderLineId: string | null;
+  parentReelId: string | null;
+  reelNo: string;
+  barcode: string;
+  batchNo: string;
+  widthMm: string;
+  gsm: string;
+  receivedWeightKg: string;
+  availableWeightKg: string;
+  status: string;
+  storageLocation: string;
+  notes: string;
+  receivedAt: string;
+  material: { id: string; code: string; name: string };
+  supplier: { id: string; name: string } | null;
+  purchaseOrderNo: string | null;
+  parentReel: { id: string; reelNo: string } | null;
+};
+
+export type ProductionDashboardReelMovement = {
+  id: string;
+  organizationId: string;
+  reelId: string;
+  relatedReelId: string | null;
+  jobId: string | null;
+  reelNo: string;
+  relatedReelNo: string | null;
+  jobNo: string;
+  jobName: string;
+  type: string;
+  deltaKg: string;
+  notes: string;
+  createdAt: string;
+  createdByName: string;
+};
+
 type ProductionDashboardItem = {
   id: string;
   itemCode: string;
@@ -255,7 +319,7 @@ type ProductionDashboardItem = {
   unit: "mm" | "in";
 };
 
-type ProductionDashboardCustomer = {
+export type ProductionDashboardCustomer = {
   id: string;
   name: string;
   contactPerson: string | null;
@@ -317,6 +381,231 @@ export type ProductionDashboardQuote = {
   lines: ProductionDashboardQuoteLine[];
 };
 
+export type ProductionDashboardWarehousePallet = {
+  id: string;
+  organizationId: string;
+  jobId: string;
+  palletNo: string;
+  quantityReceived: number;
+  quantityAvailable: number;
+  location: string;
+  notes: string;
+  receivedAt: string;
+  jobNo: string;
+  jobName: string;
+  customer: string;
+};
+
+export type ProductionDashboardDispatch = {
+  id: string;
+  organizationId: string;
+  jobId: string;
+  dispatchNo: string;
+  deliveryNoteNo: string;
+  status: "DISPATCHED" | "DELIVERED";
+  vehicleRegistration: string;
+  driverName: string;
+  route: string;
+  notes: string;
+  dispatchedAt: string;
+  deliveredAt: string | null;
+  receivedBy: string;
+  deliveryNotes: string;
+  jobNo: string;
+  jobName: string;
+  customer: string;
+  quotedUnitPrice: string | null;
+  quoteCurrency: string | null;
+  lines: Array<{
+    palletId: string;
+    palletNo: string;
+    location: string;
+    quantity: number;
+  }>;
+};
+
+export type ProductionDashboardInvoice = {
+  id: string;
+  organizationId: string;
+  jobId: string;
+  dispatchId: string;
+  invoiceNo: string;
+  customerName: string;
+  jobNo: string;
+  jobName: string;
+  customerPO: string;
+  status: "OPEN" | "PARTIALLY_PAID" | "PAID" | "CREDITED";
+  currency: string;
+  quantity: number;
+  unitPrice: string;
+  totalAmount: string;
+  amountPaid: string;
+  amountCredited: string;
+  issuedAt: string;
+  dueAt: string;
+  dispatchNo: string;
+  deliveryNoteNo: string;
+  payments: Array<{
+    paymentNo: string;
+    amount: string;
+    method: string;
+    reference: string;
+    notes: string;
+    paidAt: string;
+  }>;
+  creditNotes: Array<{
+    creditNoteNo: string;
+    amount: string;
+    reason: string;
+    notes: string;
+    issuedAt: string;
+  }>;
+};
+
+export type ProductionDashboardToolingEvent = {
+  id: string;
+  eventType: string;
+  description: string;
+  createdAt: string;
+  jobId: string | null;
+  jobNo: string;
+  createdByName: string;
+};
+
+export type ProductionDashboardTooling = {
+  id: string;
+  organizationId: string;
+  toolNo: string;
+  name: string;
+  category: string;
+  ownerType: string;
+  customerId: string | null;
+  customerName: string | null;
+  storageLocation: string;
+  status: string;
+  usageCount: number;
+  wearNotes: string;
+  notes: string;
+  updatedAt: string;
+  events: ProductionDashboardToolingEvent[];
+};
+
+export type ProductionDashboardMachine = {
+  id: string;
+  organizationId: string;
+  machineNo: string;
+  name: string;
+  machineType: string;
+  workCenter: string;
+  location: string;
+  status: string;
+};
+
+export type ProductionDashboardMaintenancePlan = {
+  id: string;
+  organizationId: string;
+  machineId: string;
+  taskName: string;
+  intervalDays: number;
+  nextDueAt: string;
+  lastCompletedAt: string | null;
+  instructions: string;
+  active: boolean;
+  machineNo: string;
+  machineName: string;
+};
+
+export type ProductionDashboardMaintenanceTicket = {
+  id: string;
+  organizationId: string;
+  machineId: string;
+  planId: string | null;
+  jobId: string | null;
+  operationScheduleId: string | null;
+  ticketNo: string;
+  ticketType: string;
+  priority: string;
+  status: string;
+  description: string;
+  resolution: string;
+  downtimeMinutes: number;
+  openedAt: string;
+  closedAt: string | null;
+  machineNo: string;
+  machineName: string;
+  planName: string | null;
+  jobNo: string;
+  operation: string;
+  createdByName: string;
+  closedByName: string;
+  parts: Array<{
+    id: string;
+    quantity: string;
+    issuedAt: string;
+    material: { id: string; code: string; name: string; unit: string };
+    issuedByName: string;
+  }>;
+};
+
+export type ProductionDashboardEmployee = {
+  id: string;
+  organizationId: string;
+  employeeNo: string;
+  name: string;
+  department: string;
+  jobTitle: string;
+  status: string;
+  hiredAt: string;
+};
+
+export type ProductionDashboardShift = {
+  id: string;
+  organizationId: string;
+  employeeId: string;
+  shiftName: string;
+  workCenter: string;
+  startsAt: string;
+  endsAt: string;
+  breakMinutes: number;
+  status: string;
+  notes: string;
+  employee: { employeeNo: string; name: string; department: string };
+  attendance: {
+    clockedInAt: string;
+    clockedOutAt: string | null;
+    overtimeMinutes: number;
+    notes: string;
+  } | null;
+};
+
+export type ProductionDashboardLeaveRequest = {
+  id: string;
+  organizationId: string;
+  employeeId: string;
+  leaveType: string;
+  startsAt: string;
+  endsAt: string;
+  reason: string;
+  status: string;
+  reviewNotes: string;
+  createdAt: string;
+  reviewedAt: string | null;
+  employee: { employeeNo: string; name: string; department: string };
+  reviewedBy: { name: string | null } | null;
+};
+
+export type ProductionDashboardSafetyTraining = {
+  id: string;
+  organizationId: string;
+  employeeId: string;
+  trainingName: string;
+  provider: string;
+  completedAt: string;
+  expiresAt: string | null;
+  notes: string;
+  employee: { employeeNo: string; name: string; department: string };
+};
+
 type Props = {
   accountId: string;
   accountName: string;
@@ -340,6 +629,20 @@ type Props = {
   suppliers: ProductionDashboardSupplier[];
   purchaseOrders: ProductionDashboardPurchaseOrder[];
   stockMovements: ProductionDashboardStockMovement[];
+  paperReels: ProductionDashboardPaperReel[];
+  reelMovements: ProductionDashboardReelMovement[];
+  warehousePallets: ProductionDashboardWarehousePallet[];
+  dispatches: ProductionDashboardDispatch[];
+  invoices: ProductionDashboardInvoice[];
+  tooling: ProductionDashboardTooling[];
+  customers: ProductionDashboardCustomer[];
+  machines: ProductionDashboardMachine[];
+  maintenancePlans: ProductionDashboardMaintenancePlan[];
+  maintenanceTickets: ProductionDashboardMaintenanceTicket[];
+  employees: ProductionDashboardEmployee[];
+  rosterShifts: ProductionDashboardShift[];
+  leaveRequests: ProductionDashboardLeaveRequest[];
+  safetyTrainings: ProductionDashboardSafetyTraining[];
   quotes: ProductionDashboardQuote[];
   isAdmin: boolean;
   canManageOrganizations: boolean;
@@ -355,10 +658,24 @@ type DashboardView =
   | "quality"
   | "procurement"
   | "inventory"
+  | "reels"
+  | "warehouse"
+  | "invoicing"
+  | "tooling"
+  | "maintenance"
+  | "hr"
   | "job-sheet"
   | ProductionWorkflowStage;
 
-const STAGE_DETAILS: Record<ProductionWorkflowStage | "planning" | "execution" | "quality" | "procurement" | "inventory", string> = {
+type WorkspaceNavGroup =
+  | "orders"
+  | "production"
+  | "supply"
+  | "fulfillment"
+  | "assets"
+  | "people";
+
+const STAGE_DETAILS: Record<ProductionWorkflowStage | "planning" | "execution" | "quality" | "procurement" | "inventory" | "reels" | "warehouse" | "invoicing" | "tooling" | "maintenance" | "hr", string> = {
   "Order Booking": "Enter customer orders to start the production workflow",
   Origination: "Job details, customer requirements and carton specification",
   "Paper Booking": "Board specifications, material requirements and reel planning",
@@ -370,23 +687,45 @@ const STAGE_DETAILS: Record<ProductionWorkflowStage | "planning" | "execution" |
   quality: "Inspect carton quality, manage nonconformances, and verify corrective actions",
   procurement: "Manage suppliers, material purchasing, and goods receipts",
   inventory: "Track material stock, job issues, and inventory adjustments",
+  reels: "Register paper reels, issue them to jobs, trace batches, and manage remnants",
+  warehouse: "Receive quality-released cartons, track pallet locations, and dispatch customer orders",
+  invoicing: "Issue dispatch invoices, record collections, credits, and customer balances",
+  tooling: "Track dies, print plates, cylinders, anilox rolls, storage, usage, and repairs",
+  maintenance: "Maintain machine assets, preventive schedules, breakdown tickets, spare parts, and downtime",
+  hr: "Maintain employee records, shift rosters, attendance, leave approvals, and safety training",
 };
 
+const WORKSPACE_GROUPS: Array<{ id: WorkspaceNavGroup; label: string }> = [
+  { id: "orders", label: "Overview & orders" },
+  { id: "production", label: "Production" },
+  { id: "supply", label: "Inventory & supply" },
+  { id: "fulfillment", label: "Delivery & finance" },
+  { id: "assets", label: "Assets & maintenance" },
+  { id: "people", label: "People & safety" },
+];
+
 const WORKSPACE_ITEMS: Array<{
-  id: "overview" | "jobs" | "origination" | "quotes" | "planning" | "execution" | "quality" | "procurement" | "inventory" | "job-sheet";
+  id: "overview" | "jobs" | "origination" | "quotes" | "planning" | "execution" | "quality" | "procurement" | "inventory" | "reels" | "warehouse" | "invoicing" | "tooling" | "maintenance" | "hr" | "job-sheet";
   label: string;
   icon: IconType;
+  group: WorkspaceNavGroup;
 }> = [
-  { id: "overview", label: "Overview", icon: FiGrid },
-  { id: "jobs", label: "All jobs", icon: FiBriefcase },
-  { id: "origination", label: "Origination", icon: FiPenTool },
-  { id: "quotes", label: "Costing & quotes", icon: FiDollarSign },
-  { id: "planning", label: "Planning & scheduling", icon: FiCalendar },
-  { id: "execution", label: "Shop floor execution", icon: FiActivity },
-  { id: "quality", label: "Quality management", icon: FiCheckSquare },
-  { id: "procurement", label: "Procurement", icon: FiShoppingCart },
-  { id: "inventory", label: "Inventory & WIP", icon: FiPackage },
-  { id: "job-sheet", label: "Job sheet", icon: FiFileText },
+  { id: "overview", label: "Overview", icon: FiGrid, group: "orders" },
+  { id: "jobs", label: "All jobs", icon: FiBriefcase, group: "orders" },
+  { id: "origination", label: "Origination", icon: FiPenTool, group: "orders" },
+  { id: "quotes", label: "Costing & quotes", icon: FiDollarSign, group: "orders" },
+  { id: "job-sheet", label: "Job sheet", icon: FiFileText, group: "orders" },
+  { id: "planning", label: "Planning & scheduling", icon: FiCalendar, group: "production" },
+  { id: "execution", label: "Shop floor execution", icon: FiActivity, group: "production" },
+  { id: "quality", label: "Quality management", icon: FiCheckSquare, group: "production" },
+  { id: "procurement", label: "Procurement", icon: FiShoppingCart, group: "supply" },
+  { id: "inventory", label: "Inventory & WIP", icon: FiPackage, group: "supply" },
+  { id: "reels", label: "Paper reel traceability", icon: FiLayers, group: "supply" },
+  { id: "warehouse", label: "Warehouse & dispatch", icon: FiTruck, group: "fulfillment" },
+  { id: "invoicing", label: "Invoicing & collections", icon: FiDollarSign, group: "fulfillment" },
+  { id: "tooling", label: "Tooling management", icon: FiTool, group: "assets" },
+  { id: "maintenance", label: "Maintenance (CMMS)", icon: FiSettings, group: "assets" },
+  { id: "hr", label: "HR & safety", icon: FiUsers, group: "people" },
 ];
 
 const WORKFLOW_STAGE_ICONS: Record<ProductionWorkflowStage, IconType> = {
@@ -608,9 +947,16 @@ type ProductionScheduleForm = {
   notes: string;
 };
 
-function localDateTimeValue(value: Date) {
-  const localDate = new Date(value.getTime() - value.getTimezoneOffset() * 60_000);
+function localDateTimeValue(value: Date | string = new Date()): string {
+  const date = value instanceof Date ? value : new Date(value);
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
   return localDate.toISOString().slice(0, 16);
+}
+
+function dateOnlyLabel(value: string): string {
+  return new Date(value.slice(0, 10) + "T00:00:00.000Z").toLocaleDateString(undefined, {
+    timeZone: "UTC",
+  });
 }
 
 function createProductionScheduleForm(jobId: string): ProductionScheduleForm {
@@ -2580,6 +2926,604 @@ function InventoryBoard({
   );
 }
 
+function PaperReelBoard({
+  organizations,
+  jobs,
+  materials,
+  suppliers,
+  purchaseOrders,
+  paperReels,
+  reelMovements,
+  preferredOrganizationId,
+  onSaved,
+}: {
+  organizations: ProductionDashboardOrganization[];
+  jobs: ProductionDashboardJob[];
+  materials: ProductionDashboardMaterial[];
+  suppliers: ProductionDashboardSupplier[];
+  purchaseOrders: ProductionDashboardPurchaseOrder[];
+  paperReels: ProductionDashboardPaperReel[];
+  reelMovements: ProductionDashboardReelMovement[];
+  preferredOrganizationId: string;
+  onSaved: () => void;
+}) {
+  const [organizationId, setOrganizationId] = useState(preferredOrganizationId);
+  const [reelDraft, setReelDraft] = useState({
+    materialId: "",
+    supplierId: "",
+    purchaseOrderLineId: "",
+    batchNo: "",
+    widthMm: "",
+    gsm: "",
+    weightKg: "",
+    storageLocation: "",
+    notes: "",
+  });
+  const [selectedReelId, setSelectedReelId] = useState("");
+  const [movementAction, setMovementAction] = useState<
+    "ISSUE" | "RETURN" | "REMNANT" | "ADJUSTMENT"
+  >("ISSUE");
+  const [movementForm, setMovementForm] = useState({
+    quantityKg: "",
+    jobId: "",
+    widthMm: "",
+    storageLocation: "",
+    notes: "",
+  });
+  const [isSaving, setIsSaving] = useState(false);
+  const [status, setStatus] = useState("");
+  const [hasError, setHasError] = useState(false);
+
+  const organizationMaterials = materials.filter(
+    (material) => material.organizationId === organizationId,
+  );
+  const paperMaterials = organizationMaterials.filter(
+    (material) =>
+      material.active &&
+      material.category === "PAPER" &&
+      material.unit === "kg",
+  );
+  const paperMaterialsWithoutKgUnit = organizationMaterials.filter(
+    (material) =>
+      material.active &&
+      material.category === "PAPER" &&
+      material.unit !== "kg",
+  );
+  const organizationSuppliers = suppliers.filter(
+    (supplier) => supplier.organizationId === organizationId && supplier.active,
+  );
+  const organizationJobs = jobs.filter((job) => job.organizationId === organizationId);
+  const organizationReels = paperReels.filter(
+    (reel) => reel.organizationId === organizationId,
+  );
+  const organizationMovements = reelMovements.filter(
+    (movement) => movement.organizationId === organizationId,
+  );
+  const selectedReel = organizationReels.find((reel) => reel.id === selectedReelId);
+  const paperMaterialIds = new Set(paperMaterials.map((material) => material.id));
+  const receivedPaperOrderLines = purchaseOrders
+    .filter((order) =>
+      order.organizationId === organizationId &&
+      order.status !== "CANCELLED",
+    )
+    .flatMap((order) => order.lines
+      .filter((line) =>
+        paperMaterialIds.has(line.material.id) &&
+        Number(line.receivedQty) > 0,
+      )
+      .map((line) => ({ ...line, orderNo: order.orderNo, supplier: order.supplier })));
+  const trackedWeightByMaterial = organizationReels.reduce((totals, reel) => {
+    totals.set(
+      reel.materialId,
+      (totals.get(reel.materialId) ?? 0) + Number(reel.availableWeightKg),
+    );
+    return totals;
+  }, new Map<string, number>());
+  const selectedMaterial = organizationMaterials.find(
+    (material) => material.id === reelDraft.materialId,
+  );
+  const unregisteredWeight = selectedMaterial
+    ? Math.max(0, Number(selectedMaterial.onHand) - (trackedWeightByMaterial.get(selectedMaterial.id) ?? 0))
+    : 0;
+  const selectedPurchaseLine = receivedPaperOrderLines.find(
+    (line) => line.id === reelDraft.purchaseOrderLineId,
+  );
+  const registeredOrderLineWeight = selectedPurchaseLine
+    ? organizationReels
+      .filter((reel) =>
+        reel.purchaseOrderLineId === selectedPurchaseLine.id &&
+        !reel.parentReelId,
+      )
+      .reduce((total, reel) => total + Number(reel.receivedWeightKg), 0)
+    : 0;
+  const unregisteredOrderLineWeight = selectedPurchaseLine
+    ? Math.max(0, Number(selectedPurchaseLine.receivedQty) - registeredOrderLineWeight)
+    : Number.POSITIVE_INFINITY;
+  const registrationLimit = Math.min(unregisteredWeight, unregisteredOrderLineWeight);
+
+  const changeOrganization = (nextOrganizationId: string) => {
+    setOrganizationId(nextOrganizationId);
+    setReelDraft({
+      materialId: "",
+      supplierId: "",
+      purchaseOrderLineId: "",
+      batchNo: "",
+      widthMm: "",
+      gsm: "",
+      weightKg: "",
+      storageLocation: "",
+      notes: "",
+    });
+    setSelectedReelId("");
+    setStatus("");
+    setHasError(false);
+  };
+
+  const registerReel = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsSaving(true);
+    setStatus("");
+    setHasError(false);
+    try {
+      const result = await requestProductionJson(
+        `/api/production/organizations/${encodeURIComponent(organizationId)}/reels`,
+        {
+          method: "POST",
+          body: JSON.stringify({ ...reelDraft, parentReelId: "" }),
+        },
+      );
+      const reel = isRecord(result.reel) ? result.reel : null;
+      setStatus(
+        typeof reel?.reelNo === "string"
+          ? `Reel ${reel.reelNo} registered with its batch and barcode.`
+          : "Paper reel registered.",
+      );
+      setReelDraft((current) => ({
+        ...current,
+        purchaseOrderLineId: "",
+        weightKg: "",
+        notes: "",
+      }));
+      onSaved();
+    } catch (error) {
+      setStatus(`Could not register reel: ${error instanceof Error ? error.message : String(error)}`);
+      setHasError(true);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const postReelMovement = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!selectedReel) return;
+    setIsSaving(true);
+    setStatus("");
+    setHasError(false);
+    try {
+      const result = await requestProductionJson(
+        `/api/production/organizations/${encodeURIComponent(organizationId)}/reels/${encodeURIComponent(selectedReel.id)}/movements`,
+        { method: "POST", body: JSON.stringify({ action: movementAction, ...movementForm }) },
+      );
+      if (movementAction === "REMNANT" && isRecord(result.child) && typeof result.child.reelNo === "string") {
+        setStatus(`Remnant ${result.child.reelNo} created and linked to ${selectedReel.reelNo}.`);
+      } else {
+        setStatus(
+          movementAction === "ISSUE"
+            ? `${movementForm.quantityKg} kg issued from ${selectedReel.reelNo} to the job.`
+            : movementAction === "RETURN"
+              ? `Paper returned to ${selectedReel.reelNo}.`
+              : "Reel stock adjustment posted.",
+        );
+      }
+      setSelectedReelId("");
+      setMovementForm({
+        quantityKg: "",
+        jobId: "",
+        widthMm: "",
+        storageLocation: "",
+        notes: "",
+      });
+      onSaved();
+    } catch (error) {
+      setStatus(`Could not post reel movement: ${error instanceof Error ? error.message : String(error)}`);
+      setHasError(true);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const openMovement = (
+    reel: ProductionDashboardPaperReel,
+    action: "ISSUE" | "RETURN" | "REMNANT" | "ADJUSTMENT",
+  ) => {
+    setSelectedReelId(reel.id);
+    setMovementAction(action);
+    setMovementForm({
+      quantityKg: "",
+      jobId: "",
+      widthMm: action === "REMNANT" ? reel.widthMm : "",
+      storageLocation: reel.storageLocation,
+      notes: "",
+    });
+    setStatus("");
+    setHasError(false);
+  };
+
+  return (
+    <>
+      <section className="production-panel production-list-panel">
+        <div className="production-panel-heading">
+          <div>
+            <span className="production-panel-kicker">PAPER INVENTORY</span>
+            <h2>Paper reel register</h2>
+          </div>
+          {organizations.length > 1 && (
+            <label className="production-organization-filter">
+              <span>Organization</span>
+              <select onChange={(event) => changeOrganization(event.target.value)} value={organizationId}>
+                {organizations.map((organization) => (
+                  <option key={organization.id} value={organization.id}>{organization.name}</option>
+                ))}
+              </select>
+            </label>
+          )}
+        </div>
+        <p className="production-reel-explainer">
+          Register reels against received paper stock. Registration does not add stock a second time; issues and returns update both the reel and material ledgers.
+        </p>
+        {paperMaterialsWithoutKgUnit.length > 0 && (
+          <p className="production-reel-stock-note" role="note">
+            Reel tracking is limited to paper materials stocked in kilograms. {paperMaterialsWithoutKgUnit.length} paper material(s) with other units are excluded until their stock is safely reconciled in kg.
+          </p>
+        )}
+        <form className="production-reel-form" onSubmit={registerReel}>
+          <div className="production-reel-form-grid">
+            <label className="production-order-booking-field">
+              <span>Paper grade</span>
+              <select
+                onChange={(event) => setReelDraft((current) => ({
+                  ...current,
+                  materialId: event.target.value,
+                  purchaseOrderLineId: "",
+                  supplierId: "",
+                }))}
+                required
+                value={reelDraft.materialId}
+              >
+                <option value="">Select paper material</option>
+                {paperMaterials.map((material) => (
+                  <option key={material.id} value={material.id}>{material.code} · {material.name}</option>
+                ))}
+              </select>
+            </label>
+            <label className="production-order-booking-field">
+              <span>Received purchase-order line (optional)</span>
+              <select
+                onChange={(event) => {
+                  const line = receivedPaperOrderLines.find((candidate) => candidate.id === event.target.value);
+                  setReelDraft((current) => ({
+                    ...current,
+                    purchaseOrderLineId: event.target.value,
+                    materialId: line?.material.id ?? current.materialId,
+                    supplierId: line?.supplier.id ?? current.supplierId,
+                  }));
+                }}
+                value={reelDraft.purchaseOrderLineId}
+              >
+                <option value="">Register against unassigned stock</option>
+                {receivedPaperOrderLines.map((line) => (
+                  <option key={line.id} value={line.id}>
+                    {line.orderNo} · {line.material.code} · {formatSupplyQuantity(line.receivedQty)} {line.material.unit} received
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="production-order-booking-field">
+              <span>Supplier</span>
+              <select
+                onChange={(event) => setReelDraft((current) => ({ ...current, supplierId: event.target.value }))}
+                value={reelDraft.supplierId}
+              >
+                <option value="">No supplier recorded</option>
+                {organizationSuppliers.map((supplier) => (
+                  <option key={supplier.id} value={supplier.id}>{supplier.code} · {supplier.name}</option>
+                ))}
+              </select>
+            </label>
+            <label className="production-order-booking-field">
+              <span>Supplier batch / paper lot</span>
+              <input
+                maxLength={80}
+                onChange={(event) => setReelDraft((current) => ({ ...current, batchNo: event.target.value }))}
+                required
+                value={reelDraft.batchNo}
+              />
+            </label>
+            <label className="production-order-booking-field">
+              <span>Reel width (mm)</span>
+              <input
+                max="3000"
+                min="1"
+                onChange={(event) => setReelDraft((current) => ({ ...current, widthMm: event.target.value }))}
+                required
+                step="0.01"
+                type="number"
+                value={reelDraft.widthMm}
+              />
+            </label>
+            <label className="production-order-booking-field">
+              <span>GSM</span>
+              <input
+                max="5000"
+                min="1"
+                onChange={(event) => setReelDraft((current) => ({ ...current, gsm: event.target.value }))}
+                required
+                step="0.001"
+                type="number"
+                value={reelDraft.gsm}
+              />
+            </label>
+            <label className="production-order-booking-field">
+              <span>Reel weight (kg)</span>
+              <input
+                max={Number.isFinite(registrationLimit) ? registrationLimit : 1000000}
+                min="0.001"
+                onChange={(event) => setReelDraft((current) => ({ ...current, weightKg: event.target.value }))}
+                required
+                step="0.001"
+                type="number"
+                value={reelDraft.weightKg}
+              />
+            </label>
+            <label className="production-order-booking-field">
+              <span>Storage bay / location</span>
+              <input
+                maxLength={120}
+                onChange={(event) => setReelDraft((current) => ({ ...current, storageLocation: event.target.value }))}
+                value={reelDraft.storageLocation}
+              />
+            </label>
+          </div>
+          {selectedMaterial && (
+            <p className="production-reel-stock-note">
+              {formatSupplyQuantity(String(unregisteredWeight))} {selectedMaterial.unit} available to register against {selectedMaterial.name}.
+              {selectedPurchaseLine && ` This PO line has ${formatSupplyQuantity(String(unregisteredOrderLineWeight))} ${selectedMaterial.unit} not yet assigned to reels.`}
+            </p>
+          )}
+          <label className="production-order-booking-field">
+            <span>Receipt notes</span>
+            <textarea
+              maxLength={500}
+              onChange={(event) => setReelDraft((current) => ({ ...current, notes: event.target.value }))}
+              value={reelDraft.notes}
+            />
+          </label>
+          <div className="production-supply-form-actions">
+            <span>A unique reel number and machine-readable barcode are generated automatically.</span>
+            <button
+              className="production-primary-button"
+              disabled={isSaving || !paperMaterials.length}
+              type="submit"
+            >
+              {isSaving ? "Registering…" : "Register paper reel"}
+            </button>
+          </div>
+        </form>
+        {status && <p className="production-quote-message" role={hasError ? "alert" : "status"}>{status}</p>}
+      </section>
+
+      <section className="production-panel production-list-panel">
+        <div className="production-panel-heading">
+          <div>
+            <span className="production-panel-kicker">REEL AND BATCH TRACEABILITY</span>
+            <h2>Available paper reels</h2>
+          </div>
+          <span className="production-panel-total">
+            {organizationReels.filter((reel) => Number(reel.availableWeightKg) > 0).length} active · {formatSupplyQuantity(String(organizationReels.reduce((total, reel) => total + Number(reel.availableWeightKg), 0)))} kg
+          </span>
+        </div>
+        {organizationReels.length ? (
+          <div className="production-table-scroll">
+            <table className="production-jobs-table production-reel-table">
+              <thead>
+                <tr>
+                  <th>Reel / barcode</th>
+                  <th>Paper grade / batch</th>
+                  <th>Width / GSM</th>
+                  <th className="production-number-cell">Available / received</th>
+                  <th>Supplier / PO</th>
+                  <th>Parent / location</th>
+                  <th>Status</th>
+                  <th><span className="sr-only">Actions</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {organizationReels.map((reel) => (
+                  <tr key={reel.id}>
+                    <td>
+                      <strong>{reel.reelNo}</strong>
+                      <small className="production-reel-barcode">{reel.barcode}</small>
+                    </td>
+                    <td>
+                      {reel.material.code} · {reel.material.name}
+                      <small>{reel.batchNo || "No batch recorded"}</small>
+                    </td>
+                    <td>{formatSupplyQuantity(reel.widthMm)} mm · {formatSupplyQuantity(reel.gsm)} GSM</td>
+                    <td className="production-number-cell">
+                      {formatSupplyQuantity(reel.availableWeightKg)} / {formatSupplyQuantity(reel.receivedWeightKg)} kg
+                    </td>
+                    <td>{reel.supplier?.name || "—"}<small>{reel.purchaseOrderNo || "No PO reference"}</small></td>
+                    <td>{reel.parentReel?.reelNo || "—"}<small>{reel.storageLocation || "No location"}</small></td>
+                    <td>
+                      <span className={`production-schedule-status${reel.status === "AVAILABLE" ? " status-completed" : ""}`}>
+                        {reel.status}
+                      </span>
+                    </td>
+                    <td>
+                      {reel.status !== "QUARANTINED" && Number(reel.availableWeightKg) > 0 ? (
+                        <div className="production-reel-row-actions">
+                          <button className="production-table-action" onClick={() => openMovement(reel, "ISSUE")} type="button">Issue</button>
+                          <button className="production-table-action" onClick={() => openMovement(reel, "REMNANT")} type="button">Split remnant</button>
+                          <button className="production-table-action" onClick={() => openMovement(reel, "ADJUSTMENT")} type="button">Adjust</button>
+                          <button className="production-table-action" onClick={() => openMovement(reel, "RETURN")} type="button">Return from job</button>
+                        </div>
+                      ) : reel.status !== "QUARANTINED" ? (
+                        <button className="production-table-action" onClick={() => openMovement(reel, "RETURN")} type="button">Return from job</button>
+                      ) : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="production-empty-state">
+            <span className="production-empty-mark" aria-hidden="true"><FiLayers /></span>
+            <h3>No paper reels registered</h3>
+            <p>Receive paper through Procurement, then register its reel, grade, width, GSM, batch, supplier, and location.</p>
+          </div>
+        )}
+        {selectedReel && (
+          <form className="production-reel-movement-form" onSubmit={postReelMovement}>
+            <div className="production-quote-form-heading">
+              <div>
+                <h3>
+                  {movementAction === "ISSUE" ? "Issue reel to job"
+                    : movementAction === "RETURN" ? "Return paper from job"
+                      : movementAction === "REMNANT" ? "Split a remnant"
+                        : "Adjust reel weight"}
+                </h3>
+                <p>{selectedReel.reelNo} · {selectedReel.material.name} · {formatSupplyQuantity(selectedReel.availableWeightKg)} kg available</p>
+              </div>
+              <button className="production-table-action" onClick={() => setSelectedReelId("")} type="button">Cancel</button>
+            </div>
+            <div className="production-reel-movement-grid">
+              {movementAction !== "ADJUSTMENT" && (
+                <label className="production-order-booking-field">
+                  <span>{movementAction === "REMNANT" ? "Remnant weight (kg)" : `${movementAction === "ISSUE" ? "Issue" : "Return"} weight (kg)`}</span>
+                  <input
+                    max={movementAction === "RETURN"
+                      ? Number(selectedReel.receivedWeightKg) - Number(selectedReel.availableWeightKg)
+                      : Number(selectedReel.availableWeightKg)}
+                    min="0.001"
+                    onChange={(event) => setMovementForm((current) => ({ ...current, quantityKg: event.target.value }))}
+                    required
+                    step="0.001"
+                    type="number"
+                    value={movementForm.quantityKg}
+                  />
+                </label>
+              )}
+              {movementAction === "ADJUSTMENT" && (
+                <label className="production-order-booking-field">
+                  <span>Weight adjustment (+/- kg)</span>
+                  <input
+                    onChange={(event) => setMovementForm((current) => ({ ...current, quantityKg: event.target.value }))}
+                    required
+                    step="0.001"
+                    type="number"
+                    value={movementForm.quantityKg}
+                  />
+                </label>
+              )}
+              {(movementAction === "ISSUE" || movementAction === "RETURN") && (
+                <label className="production-order-booking-field">
+                  <span>Job sheet</span>
+                  <select
+                    onChange={(event) => setMovementForm((current) => ({ ...current, jobId: event.target.value }))}
+                    required
+                    value={movementForm.jobId}
+                  >
+                    <option value="">Select a job</option>
+                    {organizationJobs.map((job) => (
+                      <option key={job.id} value={job.id}>{job.jobNo || "Unnumbered"} · {job.jobName || job.customer}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              {movementAction === "REMNANT" && (
+                <label className="production-order-booking-field">
+                  <span>Remnant width (mm)</span>
+                  <input
+                    max={Number(selectedReel.widthMm)}
+                    min="1"
+                    onChange={(event) => setMovementForm((current) => ({ ...current, widthMm: event.target.value }))}
+                    required
+                    step="0.01"
+                    type="number"
+                    value={movementForm.widthMm}
+                  />
+                </label>
+              )}
+              {movementAction === "REMNANT" && (
+                <label className="production-order-booking-field">
+                  <span>Remnant storage location</span>
+                  <input
+                    maxLength={120}
+                    onChange={(event) => setMovementForm((current) => ({ ...current, storageLocation: event.target.value }))}
+                    value={movementForm.storageLocation}
+                  />
+                </label>
+              )}
+            </div>
+            <label className="production-order-booking-field">
+              <span>{movementAction === "ADJUSTMENT" ? "Reason (required)" : "Movement notes"}</span>
+              <textarea
+                maxLength={500}
+                onChange={(event) => setMovementForm((current) => ({ ...current, notes: event.target.value }))}
+                required={movementAction === "ADJUSTMENT"}
+                value={movementForm.notes}
+              />
+            </label>
+            <div className="production-supply-form-actions">
+              <span>Reel actions are recorded in the batch ledger; job issues and returns also update paper stock.</span>
+              <button className="production-primary-button" disabled={isSaving} type="submit">
+                {isSaving ? "Posting…" : movementAction === "ISSUE" ? "Issue paper"
+                  : movementAction === "RETURN" ? "Return paper"
+                    : movementAction === "REMNANT" ? "Create remnant reel"
+                      : "Post adjustment"}
+              </button>
+            </div>
+          </form>
+        )}
+      </section>
+
+      <section className="production-panel production-list-panel">
+        <div className="production-panel-heading">
+          <div>
+            <span className="production-panel-kicker">REEL MOVEMENT HISTORY</span>
+            <h2>Paper-to-job traceability</h2>
+          </div>
+          <span className="production-panel-total">Latest {Math.min(organizationMovements.length, 100)} movements</span>
+        </div>
+        {organizationMovements.length ? (
+          <div className="production-table-scroll">
+            <table className="production-jobs-table">
+              <thead>
+                <tr><th>Date</th><th>Reel</th><th>Movement</th><th>Related reel / job</th><th>Weight delta</th><th>Operator / notes</th></tr>
+              </thead>
+              <tbody>
+                {organizationMovements.slice(0, 100).map((movement) => (
+                  <tr key={movement.id}>
+                    <td>{formatScheduleDate(movement.createdAt)}</td>
+                    <td><strong>{movement.reelNo}</strong></td>
+                    <td>{movement.type.replaceAll("_", " ")}</td>
+                    <td>{movement.relatedReelNo || movement.jobNo || "—"}<small>{movement.jobName}</small></td>
+                    <td>{Number(movement.deltaKg) > 0 ? "+" : ""}{formatSupplyQuantity(movement.deltaKg)} kg</td>
+                    <td>{movement.createdByName}<small>{movement.notes || "—"}</small></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="production-chart-empty">Reel registration, job issues, returns, and remnant splits will appear in the traceability ledger.</p>
+        )}
+      </section>
+    </>
+  );
+}
+
 function JobFlagControl({
   job,
   canFlag,
@@ -3827,11 +4771,1851 @@ function formatQuoteAmount(amount: string | number, currency: string): string {
   }).format(Number(amount) || 0);
 }
 
+function formatInvoiceUnitPrice(amount: string, currency: string): string {
+  return new Intl.NumberFormat("en-KE", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 4,
+  }).format(Number(amount) || 0);
+}
+
 function quoteLineSpec(line: ProductionDashboardQuoteLine): string {
   const board = [line.topLiner, line.medium, line.bottomLiner].filter(Boolean).join("/");
   return [line.boxType, board, `${line.length} × ${line.width} × ${line.height} ${line.unit}`]
     .filter(Boolean)
     .join(" · ");
+}
+
+function WarehouseDispatchBoard({
+  organizations,
+  jobs,
+  schedules,
+  warehousePallets,
+  dispatches,
+  preferredOrganizationId,
+  onSaved,
+}: {
+  organizations: ProductionDashboardOrganization[];
+  jobs: ProductionDashboardJob[];
+  schedules: ProductionDashboardSchedule[];
+  warehousePallets: ProductionDashboardWarehousePallet[];
+  dispatches: ProductionDashboardDispatch[];
+  preferredOrganizationId: string;
+  onSaved: () => void;
+}) {
+  const [organizationId, setOrganizationId] = useState(preferredOrganizationId);
+  const [receipt, setReceipt] = useState({ jobId: "", quantity: "", location: "", notes: "" });
+  const [dispatchJobId, setDispatchJobId] = useState("");
+  const [dispatchQuantities, setDispatchQuantities] = useState<Record<string, string>>({});
+  const [dispatchForm, setDispatchForm] = useState({
+    vehicleRegistration: "",
+    driverName: "",
+    route: "",
+    notes: "",
+  });
+  const [deliveryDispatchId, setDeliveryDispatchId] = useState("");
+  const [deliveryForm, setDeliveryForm] = useState({ receivedBy: "", deliveryNotes: "" });
+  const [selectedNoteId, setSelectedNoteId] = useState("");
+  const [selectedLabelId, setSelectedLabelId] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [status, setStatus] = useState("");
+  const [hasError, setHasError] = useState(false);
+
+  const organizationJobs = jobs.filter((job) => job.organizationId === organizationId);
+  const organizationPallets = warehousePallets.filter(
+    (pallet) => pallet.organizationId === organizationId,
+  );
+  const organizationDispatches = dispatches.filter(
+    (dispatch) => dispatch.organizationId === organizationId,
+  );
+  const selectedDispatchJob = organizationJobs.find((job) => job.id === dispatchJobId);
+  const selectedReceiptJob = organizationJobs.find((job) => job.id === receipt.jobId);
+  const selectedPackingSchedule = selectedReceiptJob
+    ? schedules.find((schedule) =>
+      schedule.organizationId === organizationId &&
+      schedule.jobId === selectedReceiptJob.id &&
+      schedule.operation === "Packing" &&
+      schedule.status === "COMPLETED",
+    )
+    : undefined;
+  const packedQuantity = selectedPackingSchedule?.actualGoodQty ?? 0;
+  const receivedForSelectedJob = selectedReceiptJob
+    ? organizationPallets
+      .filter((pallet) => pallet.jobId === selectedReceiptJob.id)
+      .reduce((total, pallet) => total + pallet.quantityReceived, 0)
+    : 0;
+  const remainingForSelectedJob = selectedReceiptJob?.orderQty !== null &&
+    selectedReceiptJob?.orderQty !== undefined
+    ? receivableFinishedGoodsQuantity(
+      selectedReceiptJob.orderQty,
+      packedQuantity,
+      receivedForSelectedJob,
+    )
+    : undefined;
+  const dispatchPallets = organizationPallets.filter(
+    (pallet) => pallet.jobId === dispatchJobId && pallet.quantityAvailable > 0,
+  );
+  const selectedNote = organizationDispatches.find((dispatch) => dispatch.id === selectedNoteId);
+  const selectedLabel = organizationPallets.find((pallet) => pallet.id === selectedLabelId);
+
+  const changeOrganization = (nextOrganizationId: string) => {
+    setOrganizationId(nextOrganizationId);
+    setReceipt({ jobId: "", quantity: "", location: "", notes: "" });
+    setDispatchJobId("");
+    setDispatchQuantities({});
+    setDeliveryDispatchId("");
+    setSelectedNoteId("");
+    setSelectedLabelId("");
+    setStatus("");
+    setHasError(false);
+  };
+
+  const receivePallet = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsSaving(true);
+    setStatus("");
+    setHasError(false);
+    try {
+      const result = await requestProductionJson(
+        `/api/production/organizations/${encodeURIComponent(organizationId)}/warehouse/pallets`,
+        { method: "POST", body: JSON.stringify(receipt) },
+      );
+      const pallet = isRecord(result.pallet) ? result.pallet : null;
+      setStatus(
+        typeof pallet?.palletNo === "string"
+          ? `Pallet ${pallet.palletNo} received into the warehouse.`
+          : "Finished goods received into the warehouse.",
+      );
+      setReceipt((current) => ({ ...current, quantity: "", notes: "" }));
+      onSaved();
+    } catch (error) {
+      setStatus(`Could not receive finished goods: ${error instanceof Error ? error.message : String(error)}`);
+      setHasError(true);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const submitDispatch = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const lines = dispatchPalletsFromForm();
+    if (!selectedDispatchJob || !lines.length) return;
+    setIsSaving(true);
+    setStatus("");
+    setHasError(false);
+    try {
+      const result = await requestProductionJson(
+        `/api/production/organizations/${encodeURIComponent(organizationId)}/warehouse/dispatches`,
+        {
+          method: "POST",
+          body: JSON.stringify({ ...dispatchForm, jobId: selectedDispatchJob.id, lines }),
+        },
+      );
+      const dispatch = isRecord(result.dispatch) ? result.dispatch : null;
+      setStatus(
+        typeof dispatch?.deliveryNoteNo === "string"
+          ? `Dispatch created. Delivery note ${dispatch.deliveryNoteNo} is ready to print.`
+          : "Finished goods dispatched.",
+      );
+      setDispatchQuantities({});
+      setDispatchForm({ vehicleRegistration: "", driverName: "", route: "", notes: "" });
+      onSaved();
+    } catch (error) {
+      setStatus(`Could not dispatch pallets: ${error instanceof Error ? error.message : String(error)}`);
+      setHasError(true);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  function dispatchPalletsFromForm() {
+    return Object.entries(dispatchQuantities)
+      .filter(([, quantity]) => Number(quantity) > 0)
+      .map(([palletId, quantity]) => ({ palletId, quantity }));
+  }
+
+  const recordDelivery = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!deliveryDispatchId) return;
+    setIsSaving(true);
+    setStatus("");
+    setHasError(false);
+    try {
+      await requestProductionJson(
+        `/api/production/organizations/${encodeURIComponent(organizationId)}/warehouse/dispatches/${encodeURIComponent(deliveryDispatchId)}`,
+        { method: "PATCH", body: JSON.stringify(deliveryForm) },
+      );
+      setStatus("Delivery acknowledgement recorded.");
+      setDeliveryDispatchId("");
+      setDeliveryForm({ receivedBy: "", deliveryNotes: "" });
+      onSaved();
+    } catch (error) {
+      setStatus(`Could not confirm delivery: ${error instanceof Error ? error.message : String(error)}`);
+      setHasError(true);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const printDocument = (target: "delivery-note" | "pallet-label") => {
+    document.body.dataset.printTarget = target;
+    window.print();
+  };
+
+  return (
+    <div className="production-warehouse-board">
+      <section className="production-panel production-list-panel">
+        <div className="production-panel-heading">
+          <div>
+            <span className="production-panel-kicker">FINISHED GOODS</span>
+            <h2>Receive cartons into warehouse</h2>
+          </div>
+          {organizations.length > 1 && (
+            <label className="production-organization-filter">
+              <span>Organization</span>
+              <select onChange={(event) => changeOrganization(event.target.value)} value={organizationId}>
+                {organizations.map((organization) => (
+                  <option key={organization.id} value={organization.id}>{organization.name}</option>
+                ))}
+              </select>
+            </label>
+          )}
+        </div>
+        <p className="production-reel-explainer">
+          Receiving requires a completed Packing report, a passing final inspection, and no open nonconformances. Each receipt creates a traceable pallet label.
+        </p>
+        <form className="production-reel-form" onSubmit={receivePallet}>
+          <div className="production-reel-form-grid">
+            <label className="production-order-booking-field">
+              <span>Production job</span>
+              <select
+                onChange={(event) => setReceipt((current) => ({ ...current, jobId: event.target.value }))}
+                required
+                value={receipt.jobId}
+              >
+                <option value="">Select job</option>
+                {organizationJobs.filter((job) => job.orderQty).map((job) => (
+                  <option key={job.id} value={job.id}>
+                    {job.jobNo} · {job.jobName} · {job.customer}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="production-order-booking-field">
+              <span>Finished quantity</span>
+              <input
+                max={remainingForSelectedJob}
+                min="1"
+                onChange={(event) => setReceipt((current) => ({ ...current, quantity: event.target.value }))}
+                required
+                step="1"
+                type="number"
+                value={receipt.quantity}
+              />
+            </label>
+            <label className="production-order-booking-field">
+              <span>Warehouse bay / location</span>
+              <input
+                maxLength={120}
+                onChange={(event) => setReceipt((current) => ({ ...current, location: event.target.value }))}
+                required
+                value={receipt.location}
+              />
+            </label>
+            <label className="production-order-booking-field">
+              <span>Receipt notes</span>
+              <input
+                maxLength={500}
+                onChange={(event) => setReceipt((current) => ({ ...current, notes: event.target.value }))}
+                value={receipt.notes}
+              />
+            </label>
+          </div>
+          <div className="production-supply-form-actions">
+            <span>
+              {selectedReceiptJob && !selectedPackingSchedule
+                ? "Complete and report the Packing operation before warehouse receipt."
+                : "Receipt quantity is limited to reported packed output and the remaining order quantity."}
+            </span>
+            <button className="production-primary-button" disabled={isSaving || !organizationJobs.length} type="submit">
+              {isSaving ? "Receiving…" : "Receive finished goods"}
+            </button>
+          </div>
+        </form>
+        {status && <p className="production-quote-message" role={hasError ? "alert" : "status"}>{status}</p>}
+      </section>
+
+      <section className="production-panel production-list-panel">
+        <div className="production-panel-heading">
+          <div>
+            <span className="production-panel-kicker">PALLET REGISTER</span>
+            <h2>Warehouse stock by location</h2>
+          </div>
+          <span className="production-panel-total">
+            {organizationPallets.reduce((total, pallet) => total + pallet.quantityAvailable, 0).toLocaleString("en-KE")} units available
+          </span>
+        </div>
+        {organizationPallets.length ? (
+          <div className="production-table-scroll">
+            <table className="production-jobs-table production-warehouse-table">
+              <thead>
+                <tr>
+                  <th>Pallet label</th>
+                  <th>Job / Customer</th>
+                  <th>Bay / location</th>
+                  <th className="production-number-cell">Available / received</th>
+                  <th>Received</th>
+                  <th><span className="sr-only">Actions</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {organizationPallets.map((pallet) => (
+                  <tr key={pallet.id}>
+                    <td><strong>{pallet.palletNo}</strong></td>
+                    <td>{pallet.jobNo} · {pallet.jobName}<small>{pallet.customer}</small></td>
+                    <td>{pallet.location}</td>
+                    <td className="production-number-cell">
+                      {pallet.quantityAvailable.toLocaleString("en-KE")} / {pallet.quantityReceived.toLocaleString("en-KE")} units
+                    </td>
+                    <td>{new Date(pallet.receivedAt).toLocaleDateString("en-KE")}</td>
+                    <td>
+                      <button className="production-table-action" onClick={() => setSelectedLabelId(pallet.id)} type="button">
+                        Print pallet label
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="production-empty-state">
+            <span className="production-empty-mark" aria-hidden="true"><FiPackage /></span>
+            <h3>No finished goods in warehouse</h3>
+            <p>Final-QC-released pallets will appear here with their storage bay and available quantity.</p>
+          </div>
+        )}
+      </section>
+
+      <section className="production-panel production-list-panel">
+        <div className="production-panel-heading">
+          <div>
+            <span className="production-panel-kicker">DELIVERY PLANNING</span>
+            <h2>Pack and dispatch a customer order</h2>
+          </div>
+        </div>
+        <form className="production-reel-form" onSubmit={submitDispatch}>
+          <div className="production-warehouse-form-grid">
+            <label className="production-order-booking-field">
+              <span>Job / delivery</span>
+              <select
+                onChange={(event) => {
+                  setDispatchJobId(event.target.value);
+                  setDispatchQuantities({});
+                }}
+                required
+                value={dispatchJobId}
+              >
+                <option value="">Select job</option>
+                {organizationJobs.map((job) => (
+                  <option key={job.id} value={job.id}>
+                    {job.jobNo} · {job.customer} · Due {job.deliveryDate || "date not set"}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="production-order-booking-field">
+              <span>Vehicle registration</span>
+              <input
+                maxLength={40}
+                onChange={(event) => setDispatchForm((current) => ({ ...current, vehicleRegistration: event.target.value }))}
+                required
+                value={dispatchForm.vehicleRegistration}
+              />
+            </label>
+            <label className="production-order-booking-field">
+              <span>Driver</span>
+              <input
+                maxLength={120}
+                onChange={(event) => setDispatchForm((current) => ({ ...current, driverName: event.target.value }))}
+                required
+                value={dispatchForm.driverName}
+              />
+            </label>
+            <label className="production-order-booking-field">
+              <span>Route / destination</span>
+              <input
+                maxLength={200}
+                onChange={(event) => setDispatchForm((current) => ({ ...current, route: event.target.value }))}
+                value={dispatchForm.route}
+              />
+            </label>
+          </div>
+          {selectedDispatchJob && (
+            <div className="production-warehouse-pallet-picklist">
+              <div className="production-panel-heading">
+                <div>
+                  <span className="production-panel-kicker">PACKING LIST</span>
+                  <h3>{selectedDispatchJob.jobNo} · {selectedDispatchJob.customer}</h3>
+                </div>
+              </div>
+              {dispatchPallets.length ? dispatchPallets.map((pallet) => (
+                <label className="production-warehouse-pallet-option" key={pallet.id}>
+                  <span>
+                    <strong>{pallet.palletNo}</strong>
+                    <small>{pallet.location} · {pallet.quantityAvailable.toLocaleString("en-KE")} units available</small>
+                  </span>
+                  <input
+                    aria-label={`Quantity from ${pallet.palletNo}`}
+                    max={pallet.quantityAvailable}
+                    min="0"
+                    onChange={(event) => setDispatchQuantities((current) => ({
+                      ...current,
+                      [pallet.id]: event.target.value,
+                    }))}
+                    step="1"
+                    type="number"
+                    value={dispatchQuantities[pallet.id] ?? ""}
+                  />
+                </label>
+              )) : (
+                <p className="production-chart-empty">No available pallets are currently assigned to this job.</p>
+              )}
+            </div>
+          )}
+          <label className="production-order-booking-field">
+            <span>Dispatch notes</span>
+            <textarea
+              maxLength={500}
+              onChange={(event) => setDispatchForm((current) => ({ ...current, notes: event.target.value }))}
+              value={dispatchForm.notes}
+            />
+          </label>
+          <div className="production-supply-form-actions">
+            <span>Select pallet quantities to create a delivery note and reduce warehouse stock.</span>
+            <button
+              className="production-primary-button"
+              disabled={isSaving || !dispatchPalletsFromForm().length || !selectedDispatchJob}
+              type="submit"
+            >
+              {isSaving ? "Dispatching…" : "Create dispatch"}
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section className="production-panel production-list-panel">
+        <div className="production-panel-heading">
+          <div>
+            <span className="production-panel-kicker">SHIPMENT REGISTER</span>
+            <h2>Dispatches and proof of delivery</h2>
+          </div>
+          <span className="production-panel-total">{organizationDispatches.length} dispatches</span>
+        </div>
+        {organizationDispatches.length ? (
+          <div className="production-warehouse-dispatch-list">
+            {organizationDispatches.map((dispatch) => (
+              <article className="production-warehouse-dispatch-card" key={dispatch.id}>
+                <div className="production-warehouse-dispatch-heading">
+                  <div>
+                    <strong>{dispatch.deliveryNoteNo}</strong>
+                    <span>{dispatch.jobNo} · {dispatch.jobName} · {dispatch.customer}</span>
+                  </div>
+                  <span className={`production-schedule-status${dispatch.status === "DELIVERED" ? " status-completed" : ""}`}>
+                    {dispatch.status}
+                  </span>
+                </div>
+                <div className="production-warehouse-dispatch-meta">
+                  <span>{dispatch.vehicleRegistration} · {dispatch.driverName}</span>
+                  <span>{dispatch.route || "No route recorded"}</span>
+                  <span>{dispatch.lines.reduce((total, line) => total + line.quantity, 0).toLocaleString("en-KE")} units · {dispatch.lines.length} pallets</span>
+                  <span>{new Date(dispatch.dispatchedAt).toLocaleString("en-KE")}</span>
+                </div>
+                <div className="production-warehouse-dispatch-actions">
+                  <button className="production-table-action" onClick={() => setSelectedNoteId(dispatch.id)} type="button">
+                    View / print delivery note
+                  </button>
+                  {dispatch.status === "DISPATCHED" && (
+                    <button
+                      className="production-table-action"
+                      onClick={() => {
+                        setDeliveryDispatchId(dispatch.id);
+                        setDeliveryForm({ receivedBy: "", deliveryNotes: "" });
+                      }}
+                      type="button"
+                    >
+                      Record delivery acknowledgement
+                    </button>
+                  )}
+                  {dispatch.status === "DELIVERED" && (
+                    <span className="production-warehouse-recipient">
+                      Received by {dispatch.receivedBy} · {dispatch.deliveredAt ? new Date(dispatch.deliveredAt).toLocaleString("en-KE") : ""}
+                    </span>
+                  )}
+                </div>
+                {deliveryDispatchId === dispatch.id && (
+                  <form className="production-warehouse-delivery-form" onSubmit={recordDelivery}>
+                    <label className="production-order-booking-field">
+                      <span>Recipient / typed acknowledgement</span>
+                      <input
+                        maxLength={120}
+                        onChange={(event) => setDeliveryForm((current) => ({ ...current, receivedBy: event.target.value }))}
+                        required
+                        value={deliveryForm.receivedBy}
+                      />
+                    </label>
+                    <label className="production-order-booking-field">
+                      <span>Proof-of-delivery notes</span>
+                      <textarea
+                        maxLength={500}
+                        onChange={(event) => setDeliveryForm((current) => ({ ...current, deliveryNotes: event.target.value }))}
+                        value={deliveryForm.deliveryNotes}
+                      />
+                    </label>
+                    <div className="production-supply-form-actions">
+                      <button className="production-table-action" onClick={() => setDeliveryDispatchId("")} type="button">Cancel</button>
+                      <button className="production-primary-button" disabled={isSaving} type="submit">
+                        {isSaving ? "Saving…" : "Confirm delivery"}
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p className="production-chart-empty">Dispatches and their delivery notes will be listed here.</p>
+        )}
+      </section>
+
+      {selectedNote && (
+        <section className="production-delivery-note">
+          <div className="production-delivery-note-heading">
+            <div>
+              <span>PACKSTUDIO · DELIVERY NOTE</span>
+              <h2>{selectedNote.deliveryNoteNo}</h2>
+            </div>
+            <button className="production-primary-button production-no-print" onClick={() => printDocument("delivery-note")} type="button">
+              Print delivery note
+            </button>
+          </div>
+          <dl className="production-delivery-note-details">
+            <div><dt>Customer</dt><dd>{selectedNote.customer}</dd></div>
+            <div><dt>Job</dt><dd>{selectedNote.jobNo} · {selectedNote.jobName}</dd></div>
+            <div><dt>Dispatch reference</dt><dd>{selectedNote.dispatchNo}</dd></div>
+            <div><dt>Vehicle / driver</dt><dd>{selectedNote.vehicleRegistration} · {selectedNote.driverName}</dd></div>
+            <div><dt>Route</dt><dd>{selectedNote.route || "—"}</dd></div>
+            <div><dt>Dispatched</dt><dd>{new Date(selectedNote.dispatchedAt).toLocaleString("en-KE")}</dd></div>
+          </dl>
+          <table className="production-delivery-note-table">
+            <thead><tr><th>Pallet</th><th>Warehouse location</th><th>Quantity</th></tr></thead>
+            <tbody>
+              {selectedNote.lines.map((line) => (
+                <tr key={line.palletId}><td>{line.palletNo}</td><td>{line.location}</td><td>{line.quantity.toLocaleString("en-KE")}</td></tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr><th colSpan={2}>Total units</th><th>{selectedNote.lines.reduce((total, line) => total + line.quantity, 0).toLocaleString("en-KE")}</th></tr>
+            </tfoot>
+          </table>
+          {selectedNote.status === "DELIVERED" && (
+            <p className="production-delivery-note-signature">
+              Received by: <strong>{selectedNote.receivedBy}</strong>
+              {selectedNote.deliveryNotes && <span>{selectedNote.deliveryNotes}</span>}
+            </p>
+          )}
+        </section>
+      )}
+      {selectedLabel && (
+        <section className="production-pallet-label">
+          <div>
+            <span>PACKSTUDIO · FINISHED GOODS</span>
+            <h2>{selectedLabel.palletNo}</h2>
+          </div>
+          <dl>
+            <div><dt>Job</dt><dd>{selectedLabel.jobNo} · {selectedLabel.jobName}</dd></div>
+            <div><dt>Customer</dt><dd>{selectedLabel.customer}</dd></div>
+            <div><dt>Location</dt><dd>{selectedLabel.location}</dd></div>
+            <div><dt>Available / received</dt><dd>{selectedLabel.quantityAvailable.toLocaleString("en-KE")} / {selectedLabel.quantityReceived.toLocaleString("en-KE")} units</dd></div>
+            <div><dt>Received</dt><dd>{new Date(selectedLabel.receivedAt).toLocaleDateString("en-KE")}</dd></div>
+          </dl>
+          <button className="production-primary-button production-no-print" onClick={() => printDocument("pallet-label")} type="button">
+            Print pallet label
+          </button>
+        </section>
+      )}
+    </div>
+  );
+}
+
+function MaintenanceBoard({
+  organizations,
+  machines,
+  maintenancePlans,
+  maintenanceTickets,
+  jobs,
+  schedules,
+  materials,
+  preferredOrganizationId,
+  onSaved,
+}: {
+  organizations: ProductionDashboardOrganization[];
+  machines: ProductionDashboardMachine[];
+  maintenancePlans: ProductionDashboardMaintenancePlan[];
+  maintenanceTickets: ProductionDashboardMaintenanceTicket[];
+  jobs: ProductionDashboardJob[];
+  schedules: ProductionDashboardSchedule[];
+  materials: ProductionDashboardMaterial[];
+  preferredOrganizationId: string;
+  onSaved: () => void;
+}) {
+  const [organizationId, setOrganizationId] = useState(preferredOrganizationId);
+  const [message, setMessage] = useState("");
+  const [hasError, setHasError] = useState(false);
+  const orgMachines = machines.filter((machine) => machine.organizationId === organizationId);
+  const orgPlans = maintenancePlans.filter((plan) => plan.organizationId === organizationId);
+  const orgTickets = maintenanceTickets.filter((ticket) => ticket.organizationId === organizationId);
+  const orgJobs = jobs.filter((job) => job.organizationId === organizationId);
+  const orgSchedules = schedules.filter((schedule) => schedule.organizationId === organizationId);
+  const orgMaterials = materials.filter(
+    (material) => material.organizationId === organizationId &&
+      material.active &&
+      material.category !== "PAPER",
+  );
+  const openTicketCount = orgTickets.filter(
+    (ticket) => ticket.status === "OPEN" || ticket.status === "IN_PROGRESS",
+  ).length;
+  const downtimeMinutes = orgTickets.reduce((total, ticket) => total + ticket.downtimeMinutes, 0);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const overduePlans = orgPlans.filter(
+    (plan) => plan.active && new Date(plan.nextDueAt) < today,
+  ).length;
+
+  const showError = (error: unknown, fallback: string) => {
+    setMessage(error instanceof Error ? error.message : fallback);
+    setHasError(true);
+  };
+
+  const createMachine = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    setMessage("");
+    setHasError(false);
+    try {
+      await requestProductionJson(
+        `/api/production/organizations/${encodeURIComponent(organizationId)}/maintenance/assets`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            machineNo: String(data.get("machineNo") ?? ""),
+            name: String(data.get("name") ?? ""),
+            machineType: String(data.get("machineType") ?? ""),
+            workCenter: String(data.get("workCenter") ?? ""),
+            location: String(data.get("location") ?? ""),
+          }),
+        },
+      );
+      form.reset();
+      setMessage("Machine registered.");
+      onSaved();
+    } catch (error) {
+      showError(error, "Could not register machine.");
+    }
+  };
+
+  const createPlan = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    setMessage("");
+    setHasError(false);
+    try {
+      await requestProductionJson(
+        `/api/production/organizations/${encodeURIComponent(organizationId)}/maintenance/schedules`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            machineId: String(data.get("machineId") ?? ""),
+            taskName: String(data.get("taskName") ?? ""),
+            intervalDays: String(data.get("intervalDays") ?? ""),
+            nextDueAt: String(data.get("nextDueAt") ?? ""),
+            instructions: String(data.get("instructions") ?? ""),
+          }),
+        },
+      );
+      form.reset();
+      setMessage("Preventive maintenance plan created.");
+      onSaved();
+    } catch (error) {
+      showError(error, "Could not create preventive plan.");
+    }
+  };
+
+  const createTicket = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    const ticketType = String(data.get("ticketType") ?? "");
+    setMessage("");
+    setHasError(false);
+    try {
+      await requestProductionJson(
+        `/api/production/organizations/${encodeURIComponent(organizationId)}/maintenance/tickets`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            machineId: String(data.get("machineId") ?? ""),
+            ticketType,
+            planId: ticketType === "PREVENTIVE" ? String(data.get("planId") ?? "") : "",
+            jobId: String(data.get("jobId") ?? ""),
+            operationScheduleId: String(data.get("operationScheduleId") ?? ""),
+            priority: String(data.get("priority") ?? ""),
+            description: String(data.get("description") ?? ""),
+            downtimeMinutes: String(data.get("downtimeMinutes") ?? "0"),
+          }),
+        },
+      );
+      form.reset();
+      setMessage("Maintenance ticket opened.");
+      onSaved();
+    } catch (error) {
+      showError(error, "Could not open maintenance ticket.");
+    }
+  };
+
+  const updateTicket = async (event: FormEvent<HTMLFormElement>, ticket: ProductionDashboardMaintenanceTicket) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    setMessage("");
+    setHasError(false);
+    try {
+      await requestProductionJson(
+        `/api/production/organizations/${encodeURIComponent(organizationId)}/maintenance/tickets/${encodeURIComponent(ticket.id)}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            status: String(data.get("status") ?? ""),
+            resolution: String(data.get("resolution") ?? ""),
+            downtimeMinutes: String(data.get("downtimeMinutes") ?? ""),
+          }),
+        },
+      );
+      setMessage(`${ticket.ticketNo} updated.`);
+      onSaved();
+    } catch (error) {
+      showError(error, "Could not update maintenance ticket.");
+    }
+  };
+
+  const issuePart = async (event: FormEvent<HTMLFormElement>, ticket: ProductionDashboardMaintenanceTicket) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    setMessage("");
+    setHasError(false);
+    try {
+      await requestProductionJson(
+        `/api/production/organizations/${encodeURIComponent(organizationId)}/maintenance/tickets/${encodeURIComponent(ticket.id)}/parts`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            materialId: String(data.get("materialId") ?? ""),
+            quantity: String(data.get("quantity") ?? ""),
+          }),
+        },
+      );
+      form.reset();
+      setMessage(`Spare part issued to ${ticket.ticketNo}.`);
+      onSaved();
+    } catch (error) {
+      showError(error, "Could not issue spare part.");
+    }
+  };
+
+  const setPlanActive = async (plan: ProductionDashboardMaintenancePlan, active: boolean) => {
+    setMessage("");
+    setHasError(false);
+    try {
+      await requestProductionJson(
+        `/api/production/organizations/${encodeURIComponent(organizationId)}/maintenance/schedules/${encodeURIComponent(plan.id)}`,
+        { method: "PATCH", body: JSON.stringify({ active }) },
+      );
+      setMessage(`${plan.taskName} ${active ? "activated" : "paused"}.`);
+      onSaved();
+    } catch (error) {
+      showError(error, "Could not update preventive plan.");
+    }
+  };
+
+  const updateMachine = async (
+    event: FormEvent<HTMLFormElement>,
+    machine: ProductionDashboardMachine,
+  ) => {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    setMessage("");
+    setHasError(false);
+    try {
+      await requestProductionJson(
+        `/api/production/organizations/${encodeURIComponent(organizationId)}/maintenance/assets/${encodeURIComponent(machine.id)}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            status: String(data.get("status") ?? ""),
+            location: String(data.get("location") ?? ""),
+          }),
+        },
+      );
+      setMessage(`${machine.machineNo} updated.`);
+      onSaved();
+    } catch (error) {
+      showError(error, "Could not update machine.");
+    }
+  };
+
+  return (
+    <div className="production-board-stack">
+      <section className="production-panel production-list-panel">
+        <div className="production-panel-heading">
+          <div>
+            <span className="production-panel-kicker">ASSETS · PREVENTIVE CARE · BREAKDOWNS</span>
+            <h2>Maintenance control center</h2>
+          </div>
+          <label>
+            <span className="sr-only">Production organization</span>
+            <select value={organizationId} onChange={(event) => setOrganizationId(event.target.value)}>
+              {organizations.map((organization) => (
+                <option key={organization.id} value={organization.id}>{organization.name}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <div className="production-kpi-grid">
+          <article className="production-kpi-card"><span>Registered machines</span><strong>{orgMachines.length}</strong></article>
+          <article className="production-kpi-card"><span>Open tickets</span><strong>{openTicketCount}</strong></article>
+          <article className="production-kpi-card"><span>Overdue PM plans</span><strong>{overduePlans}</strong></article>
+          <article className="production-kpi-card"><span>Downtime logged</span><strong>{downtimeMinutes.toLocaleString("en-KE")} min</strong></article>
+        </div>
+        {message && <p className={hasError ? "production-order-booking-error" : "production-order-booking-status"} role={hasError ? "alert" : "status"}>{message}</p>}
+        <h3>Register machine / work center</h3>
+        <form className="production-reel-form production-maintenance-form" onSubmit={createMachine}>
+          <label><span>Asset number</span><input name="machineNo" required maxLength={60} /></label>
+          <label><span>Machine name</span><input name="name" required maxLength={120} /></label>
+          <label><span>Machine type</span><input name="machineType" placeholder="Corrugator, flexo, die-cutter…" required maxLength={80} /></label>
+          <label><span>Work center</span><input name="workCenter" placeholder="Match the production schedule work center" required maxLength={80} /></label>
+          <label><span>Plant / location</span><input name="location" maxLength={120} /></label>
+          <button className="production-primary-button" disabled={!organizationId} type="submit">Register machine</button>
+        </form>
+
+        <h3>Machine register</h3>
+        {orgMachines.length ? (
+          <div className="production-table-scroll">
+            <table className="production-data-table">
+              <thead><tr><th>Asset</th><th>Type</th><th>Work center</th><th>Status</th><th>Location / action</th></tr></thead>
+              <tbody>
+                {orgMachines.map((machine) => (
+                  <tr key={machine.id}>
+                    <td><strong>{machine.machineNo}</strong><small>{machine.name}</small></td>
+                    <td>{machine.machineType}</td>
+                    <td>{machine.workCenter}</td>
+                    <td>{machine.status}</td>
+                    <td>
+                      {machine.status === "MAINTENANCE" ? machine.location || "—" : (
+                        <form
+                          className="production-maintenance-machine-form"
+                          key={`${machine.id}:${machine.status}:${machine.location}`}
+                          onSubmit={(event) => updateMachine(event, machine)}
+                        >
+                          <select name="status" defaultValue={machine.status}>
+                            <option value="ACTIVE">ACTIVE</option>
+                            <option value="RETIRED">RETIRED</option>
+                          </select>
+                          <input name="location" aria-label="Plant or location" defaultValue={machine.location} maxLength={120} />
+                          <button className="production-table-action" type="submit">Save</button>
+                        </form>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : <p className="production-chart-empty">No machine assets registered.</p>}
+
+        <h3>Preventive maintenance schedule</h3>
+        <form className="production-reel-form production-maintenance-form" onSubmit={createPlan}>
+          <label>
+            <span>Machine</span>
+            <select name="machineId" required defaultValue="">
+              <option value="" disabled>Select machine</option>
+              {orgMachines.filter((machine) => machine.status !== "RETIRED").map((machine) => (
+                <option key={machine.id} value={machine.id}>{machine.machineNo} · {machine.name}</option>
+              ))}
+            </select>
+          </label>
+          <label><span>Maintenance task</span><input name="taskName" required maxLength={160} /></label>
+          <label><span>Interval (days)</span><input name="intervalDays" type="number" min="1" max="3650" required /></label>
+          <label><span>Next due</span><input name="nextDueAt" type="date" required /></label>
+          <label><span>Work instructions</span><input name="instructions" maxLength={1000} /></label>
+          <button className="production-primary-button" disabled={!orgMachines.length} type="submit">Add PM plan</button>
+        </form>
+
+        <h3>Open maintenance ticket</h3>
+        <form className="production-reel-form production-maintenance-form" onSubmit={createTicket}>
+          <label>
+            <span>Machine</span>
+            <select name="machineId" required defaultValue="">
+              <option value="" disabled>Select machine</option>
+              {orgMachines.filter((machine) => machine.status !== "RETIRED").map((machine) => (
+                <option key={machine.id} value={machine.id}>{machine.machineNo} · {machine.name}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>Ticket type</span>
+            <select name="ticketType" defaultValue={PRODUCTION_MAINTENANCE_TICKET_TYPES[0]}>
+              {PRODUCTION_MAINTENANCE_TICKET_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
+            </select>
+          </label>
+          <label>
+            <span>Preventive plan (for PREVENTIVE)</span>
+            <select name="planId" defaultValue="">
+              <option value="">Select preventive plan</option>
+              {orgPlans.filter((plan) => plan.active).map((plan) => (
+                <option key={plan.id} value={plan.id}>{plan.machineNo} · {plan.taskName}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>Priority</span>
+            <select name="priority" defaultValue="MEDIUM">
+              {PRODUCTION_MAINTENANCE_PRIORITIES.map((priority) => <option key={priority} value={priority}>{priority}</option>)}
+            </select>
+          </label>
+          <label>
+            <span>Related job (optional)</span>
+            <select name="jobId" defaultValue="">
+              <option value="">No job reference</option>
+              {orgJobs.map((job) => <option key={job.id} value={job.id}>{job.jobNo} · {job.jobName}</option>)}
+            </select>
+          </label>
+          <label>
+            <span>Scheduled operation (optional)</span>
+            <select name="operationScheduleId" defaultValue="">
+              <option value="">No operation reference</option>
+              {orgSchedules.map((schedule) => (
+                <option key={schedule.id} value={schedule.id}>{schedule.jobNo} · {schedule.workCenter} · {schedule.operation}</option>
+              ))}
+            </select>
+          </label>
+          <label><span>Initial downtime (minutes)</span><input name="downtimeMinutes" type="number" min="0" max="1000000" defaultValue="0" required /></label>
+          <label><span>Problem / task details</span><input name="description" required maxLength={1000} /></label>
+          <button className="production-primary-button" disabled={!orgMachines.length} type="submit">Open ticket</button>
+        </form>
+      </section>
+
+      <section className="production-panel production-list-panel">
+        <div className="production-panel-heading">
+          <div>
+            <span className="production-panel-kicker">DUE DATE · FREQUENCY · MACHINE</span>
+            <h2>Preventive plans</h2>
+          </div>
+          <span className="production-panel-total">{orgPlans.length} plans</span>
+        </div>
+        {orgPlans.length ? (
+          <div className="production-table-scroll">
+            <table className="production-data-table">
+              <thead><tr><th>Machine</th><th>Task</th><th>Frequency</th><th>Last done</th><th>Next due</th><th>Status</th><th>Instructions</th><th>Action</th></tr></thead>
+              <tbody>
+                {orgPlans.map((plan) => {
+                  const due = new Date(plan.nextDueAt);
+                  const isOverdue = plan.active && due < today;
+                  return (
+                    <tr key={plan.id}>
+                      <td><strong>{plan.machineNo}</strong><small>{plan.machineName}</small></td>
+                      <td>{plan.taskName}</td>
+                      <td>Every {plan.intervalDays} days</td>
+                      <td>{plan.lastCompletedAt ? new Date(plan.lastCompletedAt).toLocaleDateString("en-KE") : "—"}</td>
+                      <td>{due.toLocaleDateString("en-KE")}</td>
+                      <td>{!plan.active ? "PAUSED" : isOverdue ? "OVERDUE" : "ACTIVE"}</td>
+                      <td>{plan.instructions || "—"}</td>
+                      <td>
+                        <button className="production-table-action" onClick={() => setPlanActive(plan, !plan.active)} type="button">
+                          {plan.active ? "Pause" : "Activate"}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : <p className="production-chart-empty">No preventive maintenance plans yet.</p>}
+      </section>
+
+      <section className="production-panel production-list-panel">
+        <div className="production-panel-heading">
+          <div>
+            <span className="production-panel-kicker">BREAKDOWN · PREVENTIVE · SPARE-PARTS LEDGER</span>
+            <h2>Maintenance tickets</h2>
+          </div>
+          <span className="production-panel-total">{orgTickets.length} tickets</span>
+        </div>
+        {orgTickets.length ? (
+          <div className="production-maintenance-tickets">
+            {orgTickets.map((ticket) => {
+              const canUpdate = ticket.status === "OPEN" || ticket.status === "IN_PROGRESS";
+              const nextStatuses = PRODUCTION_MAINTENANCE_TICKET_STATUSES.filter((next) =>
+                isProductionMaintenanceTransitionAllowed(ticket.status, next as "IN_PROGRESS" | "COMPLETED" | "CANCELLED"),
+              );
+              return (
+                <article className="production-maintenance-ticket" key={ticket.id}>
+                  <div className="production-panel-heading">
+                    <div>
+                      <span className="production-panel-kicker">{ticket.ticketType} · {ticket.priority}</span>
+                      <h3>{ticket.ticketNo} · {ticket.machineNo} · {ticket.machineName}</h3>
+                    </div>
+                    <span className={`production-schedule-status status-${ticket.status.toLowerCase()}`}>{ticket.status.replaceAll("_", " ")}</span>
+                  </div>
+                  <p>{ticket.description}</p>
+                  <div className="production-maintenance-meta">
+                    <span>Downtime: {ticket.downtimeMinutes.toLocaleString("en-KE")} min</span>
+                    {ticket.operation && <span>Operation: {ticket.operation}</span>}
+                    {ticket.jobNo && <span>Job: {ticket.jobNo}</span>}
+                    {ticket.planName && <span>PM task: {ticket.planName}</span>}
+                    <span>Opened {new Date(ticket.openedAt).toLocaleString("en-KE")} by {ticket.createdByName}</span>
+                  </div>
+                  {ticket.resolution && <p><strong>Resolution:</strong> {ticket.resolution}</p>}
+                  {ticket.parts.length > 0 && (
+                    <ul className="production-tooling-events">
+                      {ticket.parts.map((part) => (
+                        <li key={part.id}>
+                          <strong>{part.material.code} · {part.material.name} — {part.quantity} {part.material.unit}</strong>
+                          <small>Issued {new Date(part.issuedAt).toLocaleString("en-KE")} by {part.issuedByName}</small>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {canUpdate && (
+                    <>
+                      <form
+                        className="production-reel-form production-maintenance-update-form"
+                        key={`${ticket.id}:${ticket.status}:${ticket.downtimeMinutes}`}
+                        onSubmit={(event) => updateTicket(event, ticket)}
+                      >
+                        <label>
+                          <span>Next status</span>
+                          <select name="status" defaultValue={nextStatuses[0]}>
+                            {nextStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
+                          </select>
+                        </label>
+                        <label><span>Downtime total (minutes)</span><input name="downtimeMinutes" type="number" min="0" max="1000000" defaultValue={String(ticket.downtimeMinutes)} required /></label>
+                        <label><span>Resolution / cancellation reason</span><input name="resolution" maxLength={1000} defaultValue={ticket.resolution} /></label>
+                        <button className="production-primary-button" type="submit">Update ticket</button>
+                      </form>
+                      <form className="production-reel-form production-maintenance-parts-form" onSubmit={(event) => issuePart(event, ticket)}>
+                        <label>
+                          <span>Issue spare part (non-paper inventory)</span>
+                          <select name="materialId" required defaultValue="">
+                            <option value="" disabled>Select material</option>
+                            {orgMaterials.map((material) => (
+                              <option key={material.id} value={material.id}>
+                                {material.code} · {material.name} · on hand {material.onHand} {material.unit}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label><span>Quantity</span><input name="quantity" type="number" min="0.001" step="0.001" required /></label>
+                        <button className="production-table-action" type="submit" disabled={!orgMaterials.length}>Issue part</button>
+                      </form>
+                    </>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+        ) : <p className="production-chart-empty">No maintenance tickets recorded.</p>}
+      </section>
+    </div>
+  );
+}
+
+function ToolingManagementBoard({
+  organizations,
+  tooling,
+  customers,
+  jobs,
+  onSaved,
+  preferredOrganizationId,
+}: {
+  organizations: ProductionDashboardOrganization[];
+  tooling: ProductionDashboardTooling[];
+  customers: ProductionDashboardCustomer[];
+  jobs: ProductionDashboardJob[];
+  onSaved: () => void;
+  preferredOrganizationId: string;
+}) {
+  const [organizationId, setOrganizationId] = useState(preferredOrganizationId);
+  const [ownerType, setOwnerType] = useState<(typeof PRODUCTION_TOOLING_OWNERS)[number]>("COMPANY");
+  const [status, setStatus] = useState("");
+  const organizationTooling = tooling.filter((tool) => tool.organizationId === organizationId);
+  const organizationJobs = jobs.filter((job) => job.organizationId === organizationId);
+
+  const createTool = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    try {
+      await requestProductionJson(
+        `/api/production/organizations/${encodeURIComponent(organizationId)}/tooling`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            toolNo: String(data.get("toolNo") ?? ""),
+            name: String(data.get("name") ?? ""),
+            category: String(data.get("category") ?? ""),
+            ownerType,
+            customerId: ownerType === "CUSTOMER" ? String(data.get("customerId") ?? "") : "",
+            storageLocation: String(data.get("storageLocation") ?? ""),
+            wearNotes: String(data.get("wearNotes") ?? ""),
+            notes: String(data.get("notes") ?? ""),
+          }),
+        },
+      );
+      form.reset();
+      setOwnerType("COMPANY");
+      setStatus("Tooling record created.");
+      onSaved();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Could not create tooling record.");
+    }
+  };
+
+  const updateTool = async (event: FormEvent<HTMLFormElement>, tool: ProductionDashboardTooling) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    try {
+      await requestProductionJson(
+        `/api/production/organizations/${encodeURIComponent(organizationId)}/tooling/${encodeURIComponent(tool.id)}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            status: String(data.get("status") ?? ""),
+            storageLocation: String(data.get("storageLocation") ?? ""),
+            wearNotes: String(data.get("wearNotes") ?? ""),
+            notes: String(data.get("notes") ?? ""),
+          }),
+        },
+      );
+      setStatus(`${tool.toolNo} updated.`);
+      onSaved();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Could not update tooling record.");
+    }
+  };
+
+  const recordToolEvent = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    const toolingId = String(data.get("toolingId") ?? "");
+    try {
+      await requestProductionJson(
+        `/api/production/organizations/${encodeURIComponent(organizationId)}/tooling/${encodeURIComponent(toolingId)}/events`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            eventType: String(data.get("eventType") ?? ""),
+            description: String(data.get("description") ?? ""),
+            jobId: String(data.get("jobId") ?? ""),
+          }),
+        },
+      );
+      form.reset();
+      setStatus("Tooling history recorded.");
+      onSaved();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Could not record tooling history.");
+    }
+  };
+
+  return (
+    <div className="production-board-stack">
+      <section className="production-panel production-list-panel">
+        <div className="production-panel-heading">
+          <div>
+            <span className="production-panel-kicker">DIES · PLATES · CYLINDERS · ANILOX</span>
+            <h2>Tooling register</h2>
+          </div>
+          <label>
+            <span className="sr-only">Production organization</span>
+            <select value={organizationId} onChange={(event) => setOrganizationId(event.target.value)}>
+              {organizations.map((organization) => (
+                <option key={organization.id} value={organization.id}>{organization.name}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <form className="production-reel-form production-tooling-entry-form" onSubmit={createTool}>
+          <label><span>Tool number</span><input name="toolNo" required maxLength={60} /></label>
+          <label><span>Name / description</span><input name="name" required maxLength={120} /></label>
+          <label>
+            <span>Tool type</span>
+            <select name="category" defaultValue={PRODUCTION_TOOLING_CATEGORIES[0]}>
+              {PRODUCTION_TOOLING_CATEGORIES.map((category) => (
+                <option key={category} value={category}>{category.replaceAll("_", " ")}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>Ownership</span>
+            <select
+              value={ownerType}
+              onChange={(event) => {
+                if (PRODUCTION_TOOLING_OWNERS.includes(event.target.value as typeof ownerType)) {
+                  setOwnerType(event.target.value as typeof ownerType);
+                }
+              }}
+            >
+              {PRODUCTION_TOOLING_OWNERS.map((owner) => (
+                <option key={owner} value={owner}>{owner === "COMPANY" ? "Company-owned" : "Customer-owned"}</option>
+              ))}
+            </select>
+          </label>
+          {ownerType === "CUSTOMER" && (
+            <label>
+              <span>Customer</span>
+              <select name="customerId" required defaultValue="">
+                <option value="" disabled>Select customer</option>
+                {customers.map((customer) => (
+                  <option key={customer.id} value={customer.id}>{customer.name}</option>
+                ))}
+              </select>
+            </label>
+          )}
+          <label><span>Storage location</span><input name="storageLocation" maxLength={120} /></label>
+          <label><span>Wear / condition notes</span><input name="wearNotes" maxLength={500} /></label>
+          <label><span>Additional notes</span><input name="notes" maxLength={500} /></label>
+          <button className="production-primary-button" disabled={!organizationId} type="submit">Register tool</button>
+        </form>
+        <form className="production-reel-form production-tooling-event-form" onSubmit={recordToolEvent}>
+          <label>
+            <span>Tool history</span>
+            <select name="toolingId" required defaultValue="">
+              <option value="" disabled>Select tool</option>
+              {organizationTooling.map((tool) => (
+                <option key={tool.id} value={tool.id}>{tool.toolNo} · {tool.name}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>History type</span>
+            <select name="eventType" defaultValue="USAGE">
+              {PRODUCTION_TOOLING_EVENT_TYPES.filter((type) => type !== "STATUS_CHANGE").map((type) => (
+                <option key={type} value={type}>{type}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>Job (required for usage)</span>
+            <select name="jobId" defaultValue="">
+              <option value="">No job reference</option>
+              {organizationJobs.map((job) => (
+                <option key={job.id} value={job.id}>{job.jobNo} · {job.jobName}</option>
+              ))}
+            </select>
+          </label>
+          <label><span>Work performed / details</span><input name="description" required maxLength={500} /></label>
+          <button className="production-primary-button" disabled={!organizationId} type="submit">Record history</button>
+        </form>
+        {status && <p className="production-status" role="status">{status}</p>}
+      </section>
+      <section className="production-panel production-list-panel">
+        <div className="production-panel-heading">
+          <div>
+            <span className="production-panel-kicker">OWNERSHIP · CONDITION · USAGE HISTORY</span>
+            <h2>Registered tooling</h2>
+          </div>
+          <span className="production-panel-total">{organizationTooling.length} tools</span>
+        </div>
+        {organizationTooling.length ? (
+          <div className="production-tooling-grid">
+            {organizationTooling.map((tool) => (
+              <article className="production-tooling-card" key={tool.id}>
+                <div className="production-panel-heading">
+                  <div>
+                    <span className="production-panel-kicker">{tool.category.replaceAll("_", " ")}</span>
+                    <h3>{tool.toolNo} · {tool.name}</h3>
+                  </div>
+                  <span className={`production-workflow-badge ${tool.status === "AVAILABLE" ? "is-complete" : ""}`}>
+                    {tool.status}
+                  </span>
+                </div>
+                <dl>
+                  <div><dt>Owner</dt><dd>{tool.ownerType === "CUSTOMER" ? tool.customerName ?? "Customer" : "Company"}</dd></div>
+                  <div><dt>Location</dt><dd>{tool.storageLocation || "Not recorded"}</dd></div>
+                  <div><dt>Usage count</dt><dd>{tool.usageCount.toLocaleString("en-KE")}</dd></div>
+                  <div><dt>Condition</dt><dd>{tool.wearNotes || "No wear notes"}</dd></div>
+                </dl>
+                <form className="production-reel-form" onSubmit={(event) => updateTool(event, tool)}>
+                  <label>
+                    <span>Status</span>
+                    <select name="status" defaultValue={tool.status}>
+                      {PRODUCTION_TOOLING_STATUSES.map((value) => <option key={value} value={value}>{value}</option>)}
+                    </select>
+                  </label>
+                  <label><span>Location</span><input name="storageLocation" defaultValue={tool.storageLocation} maxLength={120} /></label>
+                  <label><span>Wear notes</span><input name="wearNotes" defaultValue={tool.wearNotes} maxLength={500} /></label>
+                  <label><span>Notes</span><input name="notes" defaultValue={tool.notes} maxLength={500} /></label>
+                  <button className="production-table-action" type="submit">Save tool details</button>
+                </form>
+                <h4>Recent history</h4>
+                {tool.events.length ? (
+                  <ul className="production-tooling-events">
+                    {tool.events.map((entry) => (
+                      <li key={entry.id}>
+                        <strong>{entry.eventType}</strong>
+                        <span>{entry.description}</span>
+                        <small>
+                          {entry.jobNo ? `${entry.jobNo} · ` : ""}
+                          {entry.createdByName} · {new Date(entry.createdAt).toLocaleString("en-KE")}
+                        </small>
+                      </li>
+                    ))}
+                  </ul>
+                ) : <p className="production-chart-empty">No usage or maintenance history recorded.</p>}
+              </article>
+            ))}
+          </div>
+        ) : <p className="production-chart-empty">No tooling has been registered for this organization.</p>}
+      </section>
+    </div>
+  );
+}
+
+function ProductionInvoiceBoard({
+  organizations,
+  dispatches,
+  invoices,
+  preferredOrganizationId,
+  onSaved,
+}: {
+  organizations: ProductionDashboardOrganization[];
+  dispatches: ProductionDashboardDispatch[];
+  invoices: ProductionDashboardInvoice[];
+  preferredOrganizationId: string;
+  onSaved: () => void;
+}) {
+  const [organizationId, setOrganizationId] = useState(preferredOrganizationId);
+  const [selectedDispatchId, setSelectedDispatchId] = useState("");
+  const [dueDate, setDueDate] = useState("");
+  const [manualUnitPrice, setManualUnitPrice] = useState("");
+  const [manualCurrency, setManualCurrency] = useState<(typeof PRODUCTION_INVOICE_CURRENCIES)[number]>("KES");
+  const [customerFilter, setCustomerFilter] = useState("all");
+  const [editor, setEditor] = useState<{ invoiceId: string; mode: "payment" | "credit" } | null>(null);
+  const [paymentForm, setPaymentForm] = useState({
+    amount: "",
+    method: "BANK_TRANSFER" as (typeof PRODUCTION_PAYMENT_METHODS)[number],
+    reference: "",
+    notes: "",
+    paidAt: dateKey(new Date()),
+  });
+  const [creditForm, setCreditForm] = useState({ amount: "", reason: "", notes: "" });
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [status, setStatus] = useState("");
+  const [hasError, setHasError] = useState(false);
+
+  const organizationDispatches = dispatches.filter(
+    (dispatch) => dispatch.organizationId === organizationId,
+  );
+  const organizationInvoices = invoices.filter(
+    (invoice) => invoice.organizationId === organizationId,
+  );
+  const invoicedDispatchIds = new Set(organizationInvoices.map((invoice) => invoice.dispatchId));
+  const deliveredDispatches = organizationDispatches.filter(
+    (dispatch) => dispatch.status === "DELIVERED" && !invoicedDispatchIds.has(dispatch.id),
+  );
+  const selectedDispatch = deliveredDispatches.find(
+    (dispatch) => dispatch.id === selectedDispatchId,
+  );
+  const customers = Array.from(new Set(organizationInvoices.map((invoice) => invoice.customerName)))
+    .sort((left, right) => left.localeCompare(right));
+  const statementInvoices = organizationInvoices
+    .filter((invoice) => customerFilter === "all" || invoice.customerName === customerFilter)
+    .sort((left, right) => right.issuedAt.localeCompare(left.issuedAt));
+  const selectedInvoice = organizationInvoices.find((invoice) => invoice.id === selectedInvoiceId);
+
+  const changeOrganization = (nextOrganizationId: string) => {
+    setOrganizationId(nextOrganizationId);
+    setSelectedDispatchId("");
+    setDueDate("");
+    setManualUnitPrice("");
+    setCustomerFilter("all");
+    setEditor(null);
+    setSelectedInvoiceId("");
+    setStatus("");
+    setHasError(false);
+  };
+
+  const changeDispatch = (dispatchId: string) => {
+    const dispatch = deliveredDispatches.find((candidate) => candidate.id === dispatchId);
+    setSelectedDispatchId(dispatchId);
+    setManualUnitPrice(dispatch?.quotedUnitPrice ?? "");
+    setManualCurrency(
+      dispatch?.quoteCurrency && isProductionInvoiceCurrency(dispatch.quoteCurrency)
+        ? dispatch.quoteCurrency
+        : "KES",
+    );
+  };
+
+  const createInvoice = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!selectedDispatch) return;
+    setIsSaving(true);
+    setStatus("");
+    setHasError(false);
+    try {
+      const result = await requestProductionJson(
+        `/api/production/organizations/${encodeURIComponent(organizationId)}/invoices`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            dispatchId: selectedDispatch.id,
+            dueDate,
+            currency: selectedDispatch.quoteCurrency ?? manualCurrency,
+            unitPrice: selectedDispatch.quotedUnitPrice ?? manualUnitPrice,
+          }),
+        },
+      );
+      const invoice = isRecord(result.invoice) ? result.invoice : null;
+      setStatus(
+        typeof invoice?.invoiceNo === "string"
+          ? `Invoice ${invoice.invoiceNo} issued.`
+          : "Invoice issued.",
+      );
+      setSelectedDispatchId("");
+      setDueDate("");
+      setManualUnitPrice("");
+      onSaved();
+    } catch (error) {
+      setStatus(`Could not issue invoice: ${error instanceof Error ? error.message : String(error)}`);
+      setHasError(true);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const openEditor = (invoice: ProductionDashboardInvoice, mode: "payment" | "credit") => {
+    setEditor({ invoiceId: invoice.id, mode });
+    setPaymentForm({
+      amount: "",
+      method: "BANK_TRANSFER",
+      reference: "",
+      notes: "",
+      paidAt: dateKey(new Date()),
+    });
+    setCreditForm({ amount: "", reason: "", notes: "" });
+    setStatus("");
+    setHasError(false);
+  };
+
+  const submitPayment = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!editor || editor.mode !== "payment") return;
+    setIsSaving(true);
+    setStatus("");
+    setHasError(false);
+    try {
+      await requestProductionJson(
+        `/api/production/organizations/${encodeURIComponent(organizationId)}/invoices/${encodeURIComponent(editor.invoiceId)}/payments`,
+        { method: "POST", body: JSON.stringify(paymentForm) },
+      );
+      setStatus("Payment recorded against the invoice.");
+      setEditor(null);
+      onSaved();
+    } catch (error) {
+      setStatus(`Could not record payment: ${error instanceof Error ? error.message : String(error)}`);
+      setHasError(true);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const submitCreditNote = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!editor || editor.mode !== "credit") return;
+    setIsSaving(true);
+    setStatus("");
+    setHasError(false);
+    try {
+      await requestProductionJson(
+        `/api/production/organizations/${encodeURIComponent(organizationId)}/invoices/${encodeURIComponent(editor.invoiceId)}/credit-notes`,
+        { method: "POST", body: JSON.stringify(creditForm) },
+      );
+      setStatus("Credit note issued and applied to the invoice balance.");
+      setEditor(null);
+      onSaved();
+    } catch (error) {
+      setStatus(`Could not issue credit note: ${error instanceof Error ? error.message : String(error)}`);
+      setHasError(true);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const printInvoice = () => {
+    document.body.dataset.printTarget = "invoice";
+    window.print();
+  };
+
+  const customerBalances = Array.from(new Set(statementInvoices.map((invoice) => invoice.currency)))
+    .sort()
+    .map((currency) => {
+      const invoicesInCurrency = statementInvoices.filter((invoice) => invoice.currency === currency);
+      const bucketAmount = (predicate: (daysOverdue: number) => boolean) =>
+        invoicesInCurrency.reduce((total, invoice) => {
+          const balance = Number(invoice.totalAmount) -
+            Number(invoice.amountPaid) -
+            Number(invoice.amountCredited);
+          if (balance <= 0) return total;
+          const daysOverdue = Math.max(
+            0,
+            Math.floor((Date.now() - new Date(`${invoice.dueAt.slice(0, 10)}T00:00:00`).getTime()) / 86_400_000),
+          );
+          return predicate(daysOverdue) ? total + balance : total;
+        }, 0);
+      return {
+        currency,
+        current: bucketAmount((days) => days === 0),
+        days1To30: bucketAmount((days) => days >= 1 && days <= 30),
+        days31To60: bucketAmount((days) => days >= 31 && days <= 60),
+        days61To90: bucketAmount((days) => days >= 61 && days <= 90),
+        daysOver90: bucketAmount((days) => days > 90),
+      };
+    });
+
+  return (
+    <div className="production-invoice-board">
+      <section className="production-panel production-list-panel">
+        <div className="production-panel-heading">
+          <div>
+            <span className="production-panel-kicker">ACCOUNTS RECEIVABLE</span>
+            <h2>Issue a customer invoice</h2>
+          </div>
+          {organizations.length > 1 && (
+            <label className="production-organization-filter">
+              <span>Organization</span>
+              <select onChange={(event) => changeOrganization(event.target.value)} value={organizationId}>
+                {organizations.map((organization) => (
+                  <option key={organization.id} value={organization.id}>{organization.name}</option>
+                ))}
+              </select>
+            </label>
+          )}
+        </div>
+        <p className="production-invoice-disclaimer">
+          Invoices are created from delivered dispatches and approved quote prices. Tax and eTIMS handling are not configured; verify requirements before using these as statutory tax invoices.
+        </p>
+        <form className="production-reel-form" onSubmit={createInvoice}>
+          <div className="production-invoice-form-grid">
+            <label className="production-order-booking-field">
+              <span>Delivered dispatch</span>
+              <select
+                onChange={(event) => changeDispatch(event.target.value)}
+                required
+                value={selectedDispatchId}
+              >
+                <option value="">Select an uninvoiced delivery</option>
+                {deliveredDispatches.map((dispatch) => (
+                  <option key={dispatch.id} value={dispatch.id}>
+                    {dispatch.deliveryNoteNo} · {dispatch.jobNo} · {dispatch.customer}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="production-order-booking-field">
+              <span>Due date</span>
+              <input onChange={(event) => setDueDate(event.target.value)} required type="date" value={dueDate} />
+            </label>
+            {selectedDispatch?.quotedUnitPrice ? (
+              <div className="production-invoice-rate">
+                <span>Approved quote rate</span>
+                <strong>
+                  {formatInvoiceUnitPrice(selectedDispatch.quotedUnitPrice, selectedDispatch.quoteCurrency ?? "KES")} / unit
+                </strong>
+              </div>
+            ) : (
+              <>
+                <label className="production-order-booking-field">
+                  <span>Unit price (required when no quote price is available)</span>
+                  <input
+                    min="0.0001"
+                    onChange={(event) => setManualUnitPrice(event.target.value)}
+                    required
+                    step="0.0001"
+                    type="number"
+                    value={manualUnitPrice}
+                  />
+                </label>
+                <label className="production-order-booking-field">
+                  <span>Currency</span>
+                  <select
+                    onChange={(event) => {
+                      const currency = event.target.value;
+                      if (isProductionInvoiceCurrency(currency)) {
+                        setManualCurrency(currency);
+                      }
+                    }}
+                    value={manualCurrency}
+                  >
+                    {PRODUCTION_INVOICE_CURRENCIES.map((currency) => (
+                      <option key={currency} value={currency}>{currency}</option>
+                    ))}
+                  </select>
+                </label>
+              </>
+            )}
+          </div>
+          {selectedDispatch && (
+            <p className="production-reel-stock-note">
+              {selectedDispatch.jobNo} · {selectedDispatch.customer} · {selectedDispatch.lines.reduce((total, line) => total + line.quantity, 0).toLocaleString("en-KE")} delivered units
+              {selectedDispatch.quotedUnitPrice
+                ? " · Invoice rate will use the converted quote snapshot."
+                : " · Enter the agreed unit rate; this value will be stored as the invoice price snapshot."}
+            </p>
+          )}
+          <div className="production-supply-form-actions">
+            <span>Each delivered dispatch can be invoiced once; partial deliveries are invoiced separately.</span>
+            <button className="production-primary-button" disabled={isSaving || !deliveredDispatches.length} type="submit">
+              {isSaving ? "Issuing…" : "Issue invoice"}
+            </button>
+          </div>
+        </form>
+        {status && <p className="production-quote-message" role={hasError ? "alert" : "status"}>{status}</p>}
+      </section>
+
+      <section className="production-panel production-list-panel">
+        <div className="production-panel-heading">
+          <div>
+            <span className="production-panel-kicker">CUSTOMER STATEMENT & AGING</span>
+            <h2>{customerFilter === "all" ? "All customer balances" : customerFilter}</h2>
+          </div>
+          <label className="production-organization-filter">
+            <span>Customer statement</span>
+            <select onChange={(event) => setCustomerFilter(event.target.value)} value={customerFilter}>
+              <option value="all">All customers</option>
+              {customers.map((customer) => <option key={customer} value={customer}>{customer}</option>)}
+            </select>
+          </label>
+        </div>
+        {customerBalances.length ? (
+          <div className="production-invoice-aging-grid">
+            {customerBalances.map((balance) => (
+              <article className="production-invoice-aging-card" key={balance.currency}>
+                <strong>{balance.currency} aging</strong>
+                <span>Current · {formatQuoteAmount(String(balance.current), balance.currency)}</span>
+                <span>1–30 days · {formatQuoteAmount(String(balance.days1To30), balance.currency)}</span>
+                <span>31–60 days · {formatQuoteAmount(String(balance.days31To60), balance.currency)}</span>
+                <span>61–90 days · {formatQuoteAmount(String(balance.days61To90), balance.currency)}</span>
+                <span>Over 90 days · {formatQuoteAmount(String(balance.daysOver90), balance.currency)}</span>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p className="production-chart-empty">Customer statements and aging will appear when invoices are issued.</p>
+        )}
+      </section>
+
+      <section className="production-panel production-list-panel">
+        <div className="production-panel-heading">
+          <div>
+            <span className="production-panel-kicker">INVOICE REGISTER</span>
+            <h2>{customerFilter === "all" ? "Invoices and collections" : `Statement · ${customerFilter}`}</h2>
+          </div>
+          <span className="production-panel-total">{statementInvoices.length} invoices</span>
+        </div>
+        {statementInvoices.length ? (
+          <div className="production-invoice-list">
+            {statementInvoices.map((invoice) => {
+              const balance = Math.max(
+                0,
+                Number(invoice.totalAmount) - Number(invoice.amountPaid) - Number(invoice.amountCredited),
+              );
+              return (
+                <article className="production-invoice-card" key={invoice.id}>
+                  <div className="production-warehouse-dispatch-heading">
+                    <div>
+                      <strong>{invoice.invoiceNo} · {invoice.customerName}</strong>
+                      <span>{invoice.jobNo} · {invoice.jobName} · {invoice.deliveryNoteNo}</span>
+                    </div>
+                    <span className={`production-schedule-status${invoice.status === "PAID" || invoice.status === "CREDITED" ? " status-completed" : ""}`}>
+                      {invoice.status.replaceAll("_", " ")}
+                    </span>
+                  </div>
+                  <div className="production-invoice-amount-grid">
+                    <div><span>Issued / due</span><strong>{new Date(invoice.issuedAt).toLocaleDateString("en-KE")} / {new Date(invoice.dueAt).toLocaleDateString("en-KE")}</strong></div>
+                    <div><span>Delivered quantity</span><strong>{invoice.quantity.toLocaleString("en-KE")} units</strong></div>
+                    <div><span>Invoice total</span><strong>{formatQuoteAmount(invoice.totalAmount, invoice.currency)}</strong></div>
+                    <div><span>Collected</span><strong>{formatQuoteAmount(invoice.amountPaid, invoice.currency)}</strong></div>
+                    <div><span>Credited</span><strong>{formatQuoteAmount(invoice.amountCredited, invoice.currency)}</strong></div>
+                    <div><span>Balance due</span><strong>{formatQuoteAmount(String(balance), invoice.currency)}</strong></div>
+                  </div>
+                  {invoice.customerPO && <p className="production-invoice-reference">Customer PO: {invoice.customerPO}</p>}
+                  {(invoice.payments.length > 0 || invoice.creditNotes.length > 0) && (
+                    <details className="production-invoice-transactions">
+                      <summary>{invoice.payments.length} payments · {invoice.creditNotes.length} credit notes</summary>
+                      <ul>
+                        {invoice.payments.map((payment) => (
+                          <li key={payment.paymentNo}>
+                            {payment.paymentNo} · {payment.method.replaceAll("_", " ")} · {formatQuoteAmount(payment.amount, invoice.currency)} · {new Date(payment.paidAt).toLocaleDateString("en-KE")}
+                            {payment.reference && ` · ${payment.reference}`}
+                          </li>
+                        ))}
+                        {invoice.creditNotes.map((credit) => (
+                          <li key={credit.creditNoteNo}>
+                            {credit.creditNoteNo} · credit {formatQuoteAmount(credit.amount, invoice.currency)} · {credit.reason}
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  )}
+                  <div className="production-warehouse-dispatch-actions">
+                    <button className="production-table-action" onClick={() => setSelectedInvoiceId(invoice.id)} type="button">
+                      View / print invoice
+                    </button>
+                    {balance > 0 && (
+                      <>
+                        <button className="production-table-action" onClick={() => openEditor(invoice, "payment")} type="button">
+                          Record payment
+                        </button>
+                        <button className="production-table-action" onClick={() => openEditor(invoice, "credit")} type="button">
+                          Issue credit note
+                        </button>
+                      </>
+                    )}
+                  </div>
+                  {editor?.invoiceId === invoice.id && (
+                    editor.mode === "payment" ? (
+                      <form className="production-invoice-adjustment-form" onSubmit={submitPayment}>
+                        <label className="production-order-booking-field">
+                          <span>Payment amount ({invoice.currency})</span>
+                          <input min="0.01" onChange={(event) => setPaymentForm((current) => ({ ...current, amount: event.target.value }))} required step="0.01" type="number" value={paymentForm.amount} />
+                        </label>
+                        <label className="production-order-booking-field">
+                          <span>Method</span>
+                          <select
+                            onChange={(event) => {
+                              const method = event.target.value;
+                              if (isProductionPaymentMethod(method)) {
+                                setPaymentForm((current) => ({ ...current, method }));
+                              }
+                            }}
+                            value={paymentForm.method}
+                          >
+                            {PRODUCTION_PAYMENT_METHODS.map((method) => (
+                              <option key={method} value={method}>{method.replaceAll("_", " ")}</option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="production-order-booking-field">
+                          <span>Payment date</span>
+                          <input onChange={(event) => setPaymentForm((current) => ({ ...current, paidAt: event.target.value }))} required type="date" value={paymentForm.paidAt} />
+                        </label>
+                        <label className="production-order-booking-field">
+                          <span>Reference</span>
+                          <input maxLength={120} onChange={(event) => setPaymentForm((current) => ({ ...current, reference: event.target.value }))} value={paymentForm.reference} />
+                        </label>
+                        <label className="production-order-booking-field">
+                          <span>Notes</span>
+                          <input maxLength={500} onChange={(event) => setPaymentForm((current) => ({ ...current, notes: event.target.value }))} value={paymentForm.notes} />
+                        </label>
+                        <div className="production-supply-form-actions">
+                          <button className="production-table-action" onClick={() => setEditor(null)} type="button">Cancel</button>
+                          <button className="production-primary-button" disabled={isSaving} type="submit">{isSaving ? "Saving…" : "Save payment"}</button>
+                        </div>
+                      </form>
+                    ) : (
+                      <form className="production-invoice-adjustment-form" onSubmit={submitCreditNote}>
+                        <label className="production-order-booking-field">
+                          <span>Credit amount ({invoice.currency})</span>
+                          <input min="0.01" onChange={(event) => setCreditForm((current) => ({ ...current, amount: event.target.value }))} required step="0.01" type="number" value={creditForm.amount} />
+                        </label>
+                        <label className="production-order-booking-field">
+                          <span>Reason</span>
+                          <input maxLength={500} onChange={(event) => setCreditForm((current) => ({ ...current, reason: event.target.value }))} required value={creditForm.reason} />
+                        </label>
+                        <label className="production-order-booking-field">
+                          <span>Notes</span>
+                          <input maxLength={500} onChange={(event) => setCreditForm((current) => ({ ...current, notes: event.target.value }))} value={creditForm.notes} />
+                        </label>
+                        <div className="production-supply-form-actions">
+                          <button className="production-table-action" onClick={() => setEditor(null)} type="button">Cancel</button>
+                          <button className="production-primary-button" disabled={isSaving} type="submit">{isSaving ? "Saving…" : "Issue credit note"}</button>
+                        </div>
+                      </form>
+                    )
+                  )}
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="production-empty-state">
+            <span className="production-empty-mark" aria-hidden="true"><FiDollarSign /></span>
+            <h3>No invoices for this statement</h3>
+            <p>Delivered orders can be invoiced above; payment and credit activity will appear in the customer statement.</p>
+          </div>
+        )}
+      </section>
+
+      {selectedInvoice && (
+        <section className="production-print-invoice">
+          <div className="production-delivery-note-heading">
+            <div>
+              <span>PACKSTUDIO · CUSTOMER INVOICE</span>
+              <h2>{selectedInvoice.invoiceNo}</h2>
+            </div>
+            <button className="production-primary-button production-no-print" onClick={printInvoice} type="button">
+              Print invoice
+            </button>
+          </div>
+          <dl className="production-delivery-note-details">
+            <div><dt>Customer</dt><dd>{selectedInvoice.customerName}</dd></div>
+            <div><dt>Job</dt><dd>{selectedInvoice.jobNo} · {selectedInvoice.jobName}</dd></div>
+            <div><dt>Customer PO</dt><dd>{selectedInvoice.customerPO || "—"}</dd></div>
+            <div><dt>Issue date</dt><dd>{new Date(selectedInvoice.issuedAt).toLocaleDateString("en-KE")}</dd></div>
+            <div><dt>Due date</dt><dd>{new Date(selectedInvoice.dueAt).toLocaleDateString("en-KE")}</dd></div>
+            <div><dt>Delivery note</dt><dd>{selectedInvoice.deliveryNoteNo}</dd></div>
+          </dl>
+          <table className="production-delivery-note-table">
+            <thead><tr><th>Description</th><th>Qty</th><th>Unit price</th><th>Amount</th></tr></thead>
+            <tbody>
+              <tr>
+                <td>Carton order · {selectedInvoice.jobName}</td>
+                <td>{selectedInvoice.quantity.toLocaleString("en-KE")}</td>
+                <td>{formatInvoiceUnitPrice(selectedInvoice.unitPrice, selectedInvoice.currency)}</td>
+                <td>{formatQuoteAmount(selectedInvoice.totalAmount, selectedInvoice.currency)}</td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr><th colSpan={3}>Invoice total (tax treatment not configured)</th><th>{formatQuoteAmount(selectedInvoice.totalAmount, selectedInvoice.currency)}</th></tr>
+              <tr><th colSpan={3}>Payments / credits</th><th>{formatQuoteAmount(String(Number(selectedInvoice.amountPaid) + Number(selectedInvoice.amountCredited)), selectedInvoice.currency)}</th></tr>
+              <tr><th colSpan={3}>Balance due</th><th>{formatQuoteAmount(String(Number(selectedInvoice.totalAmount) - Number(selectedInvoice.amountPaid) - Number(selectedInvoice.amountCredited)), selectedInvoice.currency)}</th></tr>
+            </tfoot>
+          </table>
+          <p className="production-invoice-disclaimer">
+            Operational invoice record only. VAT and KRA eTIMS requirements have not been configured or verified.
+          </p>
+        </section>
+      )}
+    </div>
+  );
 }
 
 function ProductionQuotesBoard({
@@ -4545,12 +7329,28 @@ export default function ProductionDashboard({
   suppliers,
   purchaseOrders,
   stockMovements,
+  paperReels,
+  reelMovements,
+  warehousePallets,
+  dispatches,
+  invoices,
+  tooling,
+  customers,
+  machines,
+  maintenancePlans,
+  maintenanceTickets,
+  employees,
+  rosterShifts,
+  leaveRequests,
+  safetyTrainings,
   quotes,
   isAdmin,
   canManageOrganizations,
 }: Props) {
   const router = useRouter();
   const [view, setView] = useState<DashboardView>("overview");
+  const [expandedNavGroup, setExpandedNavGroup] = useState<WorkspaceNavGroup | null>("orders");
+  const [workflowQueuesExpanded, setWorkflowQueuesExpanded] = useState(false);
   const [organizationFilter, setOrganizationFilter] = useState("all");
   const [selectedJob, setSelectedJob] = useState<ProductionDashboardJob | null>(null);
   const [isBookingOrder, setIsBookingOrder] = useState(false);
@@ -4593,6 +7393,15 @@ export default function ProductionDashboard({
       ),
     [isAdmin, organizations],
   );
+  const navigateTo = (nextView: DashboardView) => {
+    setView(nextView);
+    const group = WORKSPACE_ITEMS.find((item) => item.id === nextView)?.group;
+    if (group) {
+      setExpandedNavGroup(group);
+    } else if (PRODUCTION_WORKFLOW_STAGES.some((stage) => stage === nextView)) {
+      setWorkflowQueuesExpanded(true);
+    }
+  };
   const canBookOrders = orderBookingOrganizations.some(
     (organization) => organizationFilter === "all" || organization.id === organizationFilter,
   ) || isAdmin;
@@ -4618,6 +7427,16 @@ export default function ProductionDashboard({
     (organization) => organization.role === "PRODUCTION" &&
       (organizationFilter === "all" || organization.id === organizationFilter),
   );
+  const visibleWorkspaceItems = WORKSPACE_ITEMS.filter((item) => {
+    if (item.id === "origination" && !designerOrganizationIds.size) return false;
+    if (
+      ["planning", "execution", "quality", "procurement", "inventory", "reels", "warehouse", "invoicing", "tooling", "maintenance", "hr"].includes(item.id) &&
+      !productionOrganizationIds.size
+    ) return false;
+    if (item.id === "quotes" && !quoteOrganizations.length) return false;
+    if (item.id === "job-sheet" && !canManageJobs) return false;
+    return true;
+  });
   const planningOrganizationId =
     organizations.find((organization) =>
       organization.role === "PRODUCTION" &&
@@ -4675,6 +7494,12 @@ export default function ProductionDashboard({
       : view === "jobs" ? "All production jobs"
         : view === "origination" ? "Origination"
           : view === "quotes" ? "Costing & quotes"
+            : view === "reels" ? "Paper reel traceability"
+              : view === "warehouse" ? "Warehouse & dispatch"
+            : view === "invoicing" ? "Invoicing & collections"
+            : view === "tooling" ? "Tooling management"
+              : view === "maintenance" ? "Maintenance (CMMS)"
+                : view === "hr" ? "HR & safety"
           : view === "planning" ? "Production planning & scheduling"
             : view === "execution" ? "Shop floor execution"
             : view === "quality" ? "Quality management"
@@ -4687,6 +7512,12 @@ export default function ProductionDashboard({
       : view === "jobs" ? "Track and open jobs across your production organizations."
         : view === "origination" ? "Review planned jobs for your designer organizations and attach their artwork."
           : view === "quotes" ? "Cost carton products, manage quotation approvals, and convert approved quotes into orders."
+            : view === "reels" ? STAGE_DETAILS.reels
+              : view === "warehouse" ? STAGE_DETAILS.warehouse
+            : view === "invoicing" ? STAGE_DETAILS.invoicing
+            : view === "tooling" ? STAGE_DETAILS.tooling
+              : view === "maintenance" ? STAGE_DETAILS.maintenance
+                : view === "hr" ? STAGE_DETAILS.hr
           : view === "planning" ? STAGE_DETAILS.planning
             : view === "execution" ? STAGE_DETAILS.execution
             : view === "quality" ? STAGE_DETAILS.quality
@@ -4697,11 +7528,11 @@ export default function ProductionDashboard({
 
   const openJob = (job: ProductionDashboardJob) => {
     setSelectedJob(job);
-    setView("job-sheet");
+    navigateTo("job-sheet");
   };
   const openNewJobSheet = () => {
     setSelectedJob(null);
-    setView("job-sheet");
+    navigateTo("job-sheet");
   };
 
   return (
@@ -4715,59 +7546,82 @@ export default function ProductionDashboard({
         </div>
 
         <nav className="production-side-nav" aria-label="Production navigation">
-          <p className="production-nav-label">WORKSPACE</p>
-          {WORKSPACE_ITEMS
-            .filter((item) => item.id !== "origination" || designerOrganizationIds.size > 0)
-            .filter((item) =>
-              (item.id !== "procurement" && item.id !== "inventory") ||
-              productionOrganizationIds.size > 0,
-            )
-            .filter((item) => item.id !== "execution" || productionOrganizationIds.size > 0)
-            .filter((item) => item.id !== "quality" || productionOrganizationIds.size > 0)
-            .filter((item) => item.id !== "quotes" || quoteOrganizations.length > 0)
-            .filter((item) => item.id !== "job-sheet" || canManageJobs)
-            .map((item) => (
-              <button
-                aria-current={view === item.id ? "page" : undefined}
-                className={`production-nav-item${view === item.id ? " is-active" : ""}`}
-                key={item.id}
-                onClick={() => setView(item.id)}
-                type="button"
-              >
-                <span className="production-nav-icon" aria-hidden="true"><item.icon /></span>
-                {item.label}
-                {item.id === "jobs" && <span className="production-nav-count">{visibleJobs.length}</span>}
-                {item.id === "origination" && (
-                  <span className="production-nav-count">{originationJobs.length}</span>
-                )}
-              </button>
-            ))}
-
-          <p className="production-nav-label production-nav-workflow-label">WORKFLOW</p>
-          {PRODUCTION_WORKFLOW_STAGES.map((stage) => {
-            if (stage === "Origination" && designerOrganizationIds.size > 0) return null;
-            const StageIcon = WORKFLOW_STAGE_ICONS[stage];
-
+          {WORKSPACE_GROUPS.map((group) => {
+            const groupItems = visibleWorkspaceItems.filter((item) => item.group === group.id);
+            if (!groupItems.length) return null;
+            const isExpanded = expandedNavGroup === group.id;
+            const contentId = `production-nav-${group.id}`;
             return (
-              <button
-                aria-current={view === stage ? "page" : undefined}
-                className={`production-nav-item${view === stage ? " is-active" : ""}`}
-                key={stage}
-                onClick={() => setView(
-                  stage === "Origination" && designerOrganizationIds.size > 0
-                    ? "origination"
-                    : stage,
+              <section className="production-nav-group" key={group.id}>
+                <button
+                  aria-controls={contentId}
+                  aria-expanded={isExpanded}
+                  className="production-nav-group-toggle"
+                  onClick={() => setExpandedNavGroup(isExpanded ? null : group.id)}
+                  type="button"
+                >
+                  <span>{group.label}</span>
+                  <span className="production-nav-group-count">{groupItems.length}</span>
+                  <FiChevronDown className={isExpanded ? "is-expanded" : ""} aria-hidden="true" />
+                </button>
+                {isExpanded && (
+                  <div className="production-nav-group-items" id={contentId}>
+                    {groupItems.map((item) => (
+                      <button
+                        aria-current={view === item.id ? "page" : undefined}
+                        className={`production-nav-item${view === item.id ? " is-active" : ""}`}
+                        key={item.id}
+                        onClick={() => navigateTo(item.id)}
+                        type="button"
+                      >
+                        <span className="production-nav-icon" aria-hidden="true"><item.icon /></span>
+                        {item.label}
+                        {item.id === "jobs" && <span className="production-nav-count">{visibleJobs.length}</span>}
+                        {item.id === "origination" && <span className="production-nav-count">{originationJobs.length}</span>}
+                      </button>
+                    ))}
+                  </div>
                 )}
-                type="button"
-              >
-                <span className="production-nav-stage" aria-hidden="true"><StageIcon /></span>
-                {stage}
-                <span className="production-nav-count">
-                  {stageCounts.find((entry) => entry.stage === stage)?.count ?? 0}
-                </span>
-              </button>
+              </section>
             );
           })}
+
+          <section className="production-nav-group">
+            <button
+              aria-controls="production-workflow-queues"
+              aria-expanded={workflowQueuesExpanded}
+              className="production-nav-group-toggle"
+              onClick={() => setWorkflowQueuesExpanded((expanded) => !expanded)}
+              type="button"
+            >
+              <span>Workflow queues</span>
+              <span className="production-nav-group-count">{PRODUCTION_WORKFLOW_STAGES.length}</span>
+              <FiChevronDown className={workflowQueuesExpanded ? "is-expanded" : ""} aria-hidden="true" />
+            </button>
+            {workflowQueuesExpanded && (
+              <div className="production-nav-group-items" id="production-workflow-queues">
+                {PRODUCTION_WORKFLOW_STAGES.map((stage) => {
+                  if (stage === "Origination" && designerOrganizationIds.size > 0) return null;
+                  const StageIcon = WORKFLOW_STAGE_ICONS[stage];
+                  return (
+                    <button
+                      aria-current={view === stage ? "page" : undefined}
+                      className={`production-nav-item${view === stage ? " is-active" : ""}`}
+                      key={stage}
+                      onClick={() => navigateTo(stage)}
+                      type="button"
+                    >
+                      <span className="production-nav-stage" aria-hidden="true"><StageIcon /></span>
+                      {stage}
+                      <span className="production-nav-count">
+                        {stageCounts.find((entry) => entry.stage === stage)?.count ?? 0}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </section>
         </nav>
 
         <div className="production-sidebar-footer">
@@ -4952,7 +7806,7 @@ export default function ProductionDashboard({
                           <button
                             className="production-stage-bar-row"
                             key={stage}
-                            onClick={() => setView(stage)}
+                            onClick={() => navigateTo(stage)}
                             type="button"
                           >
                             <span>{stage}</span>
@@ -5034,7 +7888,7 @@ export default function ProductionDashboard({
                         <span className="production-panel-kicker">LATEST UPDATES</span>
                         <h2>Recent production jobs</h2>
                       </div>
-                      <button className="production-text-action" onClick={() => setView("jobs")} type="button">
+                      <button className="production-text-action" onClick={() => navigateTo("jobs")} type="button">
                         View all jobs
                       </button>
                     </div>
@@ -5174,6 +8028,83 @@ export default function ProductionDashboard({
                   preferredOrganizationId={planningOrganizationId}
                   stockMovements={stockMovements}
                 />
+              ) : view === "reels" ? (
+                <PaperReelBoard
+                  jobs={jobs}
+                  materials={materials}
+                  onSaved={() => router.refresh()}
+                  organizations={organizations.filter((organization) =>
+                    productionOrganizationIds.has(organization.id),
+                  )}
+                  paperReels={paperReels}
+                  preferredOrganizationId={planningOrganizationId}
+                  purchaseOrders={purchaseOrders}
+                  reelMovements={reelMovements}
+                  suppliers={suppliers}
+                />
+              ) : view === "warehouse" ? (
+                <WarehouseDispatchBoard
+                  key={planningOrganizationId}
+                  dispatches={dispatches}
+                  jobs={jobs}
+                  onSaved={() => router.refresh()}
+                  organizations={organizations.filter((organization) =>
+                    productionOrganizationIds.has(organization.id),
+                  )}
+                  preferredOrganizationId={planningOrganizationId}
+                  schedules={schedules}
+                  warehousePallets={warehousePallets}
+                />
+              ) : view === "tooling" ? (
+                <ToolingManagementBoard
+                  key={planningOrganizationId}
+                  customers={customers}
+                  jobs={jobs}
+                  onSaved={() => router.refresh()}
+                  organizations={organizations.filter((organization) =>
+                    productionOrganizationIds.has(organization.id),
+                  )}
+                  preferredOrganizationId={planningOrganizationId}
+                  tooling={tooling}
+                />
+              ) : view === "maintenance" ? (
+                <MaintenanceBoard
+                  key={planningOrganizationId}
+                  machines={machines}
+                  maintenancePlans={maintenancePlans}
+                  maintenanceTickets={maintenanceTickets}
+                  jobs={jobs}
+                  schedules={schedules}
+                  materials={materials}
+                  onSaved={() => router.refresh()}
+                  organizations={organizations.filter((organization) =>
+                    productionOrganizationIds.has(organization.id),
+                  )}
+                  preferredOrganizationId={planningOrganizationId}
+                />
+              ) : view === "hr" ? (
+                <ProductionHrBoard
+                  employees={employees}
+                  leaveRequests={leaveRequests}
+                  onSaved={() => router.refresh()}
+                  organizations={organizations.filter((organization) =>
+                    productionOrganizationIds.has(organization.id),
+                  )}
+                  preferredOrganizationId={planningOrganizationId}
+                  rosterShifts={rosterShifts}
+                  safetyTrainings={safetyTrainings}
+                />
+              ) : view === "invoicing" ? (
+                <ProductionInvoiceBoard
+                  key={planningOrganizationId}
+                  dispatches={dispatches}
+                  invoices={invoices}
+                  onSaved={() => router.refresh()}
+                  organizations={organizations.filter((organization) =>
+                    productionOrganizationIds.has(organization.id),
+                  )}
+                  preferredOrganizationId={planningOrganizationId}
+                />
               ) : (
                 <section className="production-panel production-list-panel">
                   <div className="production-panel-heading">
@@ -5237,6 +8168,453 @@ export default function ProductionDashboard({
         open={isCreatingCustomer}
         organizations={productOrganizations}
       />
+    </div>
+  );
+}
+
+function ProductionHrBoard({
+  organizations,
+  preferredOrganizationId,
+  employees,
+  rosterShifts,
+  leaveRequests,
+  safetyTrainings,
+  onSaved,
+}: {
+  organizations: ProductionDashboardOrganization[];
+  preferredOrganizationId: string;
+  employees: ProductionDashboardEmployee[];
+  rosterShifts: ProductionDashboardShift[];
+  leaveRequests: ProductionDashboardLeaveRequest[];
+  safetyTrainings: ProductionDashboardSafetyTraining[];
+  onSaved: () => void;
+}) {
+  const [organizationId, setOrganizationId] = useState(
+    organizations.some((organization) => organization.id === preferredOrganizationId)
+      ? preferredOrganizationId
+      : organizations[0]?.id ?? "",
+  );
+  const [message, setMessage] = useState("");
+  const [hasError, setHasError] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const orgEmployees = employees.filter((employee) => employee.organizationId === organizationId);
+  const activeEmployees = orgEmployees.filter((employee) => employee.status === "ACTIVE");
+  const orgShifts = rosterShifts.filter((shift) => shift.organizationId === organizationId);
+  const orgLeaveRequests = leaveRequests.filter((request) => request.organizationId === organizationId);
+  const orgTrainings = safetyTrainings.filter((training) => training.organizationId === organizationId);
+  const openLeaveCount = orgLeaveRequests.filter((request) => request.status === "PENDING").length;
+  const todayKey = dateKey(new Date());
+  const expiringTrainingCount = orgTrainings.filter((training) =>
+    training.expiresAt && training.expiresAt.slice(0, 10) <= todayKey,
+  ).length;
+
+  const submitJson = async (
+    event: FormEvent<HTMLFormElement>,
+    endpoint: string,
+    body: Record<string, string>,
+    success: string,
+  ) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    setIsSaving(true);
+    setMessage("");
+    setHasError(false);
+    try {
+      await requestProductionJson(endpoint, {
+        method: "POST",
+        body: JSON.stringify(body),
+      });
+      form.reset();
+      setMessage(success);
+      onSaved();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : String(error));
+      setHasError(true);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const addEmployee = (event: FormEvent<HTMLFormElement>) => {
+    const data = new FormData(event.currentTarget);
+    return submitJson(
+      event,
+      `/api/production/organizations/${encodeURIComponent(organizationId)}/hr/employees`,
+      {
+        employeeNo: String(data.get("employeeNo") ?? ""),
+        name: String(data.get("name") ?? ""),
+        department: String(data.get("department") ?? ""),
+        jobTitle: String(data.get("jobTitle") ?? ""),
+        hiredAt: String(data.get("hiredAt") ?? ""),
+      },
+      "Employee added to the register.",
+    );
+  };
+
+  const createShift = (event: FormEvent<HTMLFormElement>) => {
+    const data = new FormData(event.currentTarget);
+    return submitJson(
+      event,
+      `/api/production/organizations/${encodeURIComponent(organizationId)}/hr/shifts`,
+      {
+        employeeId: String(data.get("employeeId") ?? ""),
+        shiftName: String(data.get("shiftName") ?? ""),
+        workCenter: String(data.get("workCenter") ?? ""),
+        startsAt: new Date(String(data.get("startsAt"))).toISOString(),
+        endsAt: new Date(String(data.get("endsAt"))).toISOString(),
+        breakMinutes: String(data.get("breakMinutes") ?? "0"),
+        notes: String(data.get("notes") ?? ""),
+      },
+      "Roster shift scheduled.",
+    );
+  };
+
+  const recordAttendance = async (
+    event: FormEvent<HTMLFormElement>,
+    shift: ProductionDashboardShift,
+  ) => {
+    const data = new FormData(event.currentTarget);
+    const clockIn = String(data.get("clockedInAt") ?? "");
+    const clockOut = String(data.get("clockedOutAt") ?? "");
+    return submitJson(
+      event,
+      `/api/production/organizations/${encodeURIComponent(organizationId)}/hr/shifts/${encodeURIComponent(shift.id)}/attendance`,
+      {
+        clockedInAt: new Date(clockIn).toISOString(),
+        clockedOutAt: clockOut ? new Date(clockOut).toISOString() : "",
+        overtimeMinutes: String(data.get("overtimeMinutes") ?? "0"),
+        notes: String(data.get("notes") ?? ""),
+      },
+      "Attendance recorded.",
+    );
+  };
+
+  const closeAttendance = async (
+    event: FormEvent<HTMLFormElement>,
+    shift: ProductionDashboardShift,
+  ) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    setIsSaving(true);
+    setMessage("");
+    setHasError(false);
+    try {
+      await requestProductionJson(
+        `/api/production/organizations/${encodeURIComponent(organizationId)}/hr/shifts/${encodeURIComponent(shift.id)}/attendance`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            clockedOutAt: new Date(String(data.get("clockedOutAt"))).toISOString(),
+            overtimeMinutes: String(data.get("overtimeMinutes") ?? "0"),
+            notes: String(data.get("notes") ?? ""),
+          }),
+        },
+      );
+      setMessage("Attendance clock-out recorded.");
+      onSaved();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : String(error));
+      setHasError(true);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const requestLeave = (event: FormEvent<HTMLFormElement>) => {
+    const data = new FormData(event.currentTarget);
+    return submitJson(
+      event,
+      `/api/production/organizations/${encodeURIComponent(organizationId)}/hr/leave-requests`,
+      {
+        employeeId: String(data.get("employeeId") ?? ""),
+        leaveType: String(data.get("leaveType") ?? "ANNUAL"),
+        startsAt: String(data.get("startsAt") ?? ""),
+        endsAt: String(data.get("endsAt") ?? ""),
+        reason: String(data.get("reason") ?? ""),
+      },
+      "Leave request submitted for review.",
+    );
+  };
+
+  const reviewLeave = async (event: FormEvent<HTMLFormElement>, request: ProductionDashboardLeaveRequest) => {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    const submitter = (event.nativeEvent as SubmitEvent).submitter;
+    const status = submitter instanceof HTMLButtonElement ? submitter.value : "";
+    setIsSaving(true);
+    setMessage("");
+    setHasError(false);
+    try {
+      await requestProductionJson(
+        `/api/production/organizations/${encodeURIComponent(organizationId)}/hr/leave-requests/${encodeURIComponent(request.id)}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            status,
+            reviewNotes: String(data.get("reviewNotes") ?? ""),
+          }),
+        },
+      );
+      setMessage(`Leave request ${status.toLowerCase()}.`);
+      onSaved();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : String(error));
+      setHasError(true);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const addTraining = (event: FormEvent<HTMLFormElement>) => {
+    const data = new FormData(event.currentTarget);
+    return submitJson(
+      event,
+      `/api/production/organizations/${encodeURIComponent(organizationId)}/hr/trainings`,
+      {
+        employeeId: String(data.get("employeeId") ?? ""),
+        trainingName: String(data.get("trainingName") ?? ""),
+        provider: String(data.get("provider") ?? ""),
+        completedAt: String(data.get("completedAt") ?? ""),
+        expiresAt: String(data.get("expiresAt") ?? ""),
+        notes: String(data.get("notes") ?? ""),
+      },
+      "Safety training record saved.",
+    );
+  };
+
+  return (
+    <div className="production-board-stack production-hr-board">
+      <section className="production-panel">
+        <div className="production-panel-heading">
+          <div>
+            <span className="production-panel-kicker">PEOPLE OPERATIONS</span>
+            <h2>Workforce, attendance &amp; safety</h2>
+          </div>
+          <label className="production-hr-organization">
+            <span>Production organization</span>
+            <select
+              aria-label="Production organization"
+              onChange={(event) => setOrganizationId(event.target.value)}
+              value={organizationId}
+            >
+              {organizations.map((organization) => (
+                <option key={organization.id} value={organization.id}>{organization.name}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <p className="production-reel-explainer">
+          Record employees, rosters, actual attendance and manually confirmed overtime. Payroll calculations and statutory deductions are not configured.
+        </p>
+        {message && (
+          <p className={hasError ? "production-order-booking-error" : "production-order-booking-status"} role={hasError ? "alert" : "status"}>
+            {message}
+          </p>
+        )}
+        <div className="production-hr-metrics">
+          <div><strong>{activeEmployees.length}</strong><span>Active employees</span></div>
+          <div><strong>{orgShifts.length}</strong><span>Rostered shifts</span></div>
+          <div><strong>{openLeaveCount}</strong><span>Leave awaiting review</span></div>
+          <div><strong>{expiringTrainingCount}</strong><span>Training expired / due</span></div>
+        </div>
+      </section>
+
+      <section className="production-panel">
+        <div className="production-panel-heading">
+          <div>
+            <span className="production-panel-kicker">EMPLOYEE REGISTER</span>
+            <h2>Employees</h2>
+          </div>
+          <span className="production-panel-total">{orgEmployees.length} employees</span>
+        </div>
+        <form className="production-reel-form production-hr-form" onSubmit={addEmployee}>
+          <label><span>Employee number</span><input name="employeeNo" required maxLength={60} /></label>
+          <label><span>Full name</span><input name="name" required maxLength={120} /></label>
+          <label><span>Department</span><input name="department" required maxLength={80} /></label>
+          <label><span>Job title</span><input name="jobTitle" required maxLength={100} /></label>
+          <label><span>Hire date</span><input name="hiredAt" type="date" required /></label>
+          <button className="production-primary-button" disabled={!organizationId || isSaving} type="submit">Add employee</button>
+        </form>
+        {orgEmployees.length ? (
+          <div className="production-table-scroll">
+            <table className="production-data-table">
+              <thead><tr><th>Employee</th><th>Department</th><th>Position</th><th>Hire date</th><th>Status</th></tr></thead>
+              <tbody>{orgEmployees.map((employee) => (
+                <tr key={employee.id}>
+                  <td><strong>{employee.employeeNo}</strong><small>{employee.name}</small></td>
+                  <td>{employee.department}</td>
+                  <td>{employee.jobTitle}</td>
+                  <td>{dateOnlyLabel(employee.hiredAt)}</td>
+                  <td>{employee.status}</td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
+        ) : <p className="production-chart-empty">No employees in this organization yet.</p>}
+      </section>
+
+      <section className="production-panel">
+        <div className="production-panel-heading">
+          <div>
+            <span className="production-panel-kicker">ROSTER &amp; TIME CAPTURE</span>
+            <h2>Shift roster and attendance</h2>
+          </div>
+          <span className="production-panel-total">{orgShifts.length} shifts</span>
+        </div>
+        <form className="production-reel-form production-hr-form" onSubmit={createShift}>
+          <label>
+            <span>Employee</span>
+            <select name="employeeId" required defaultValue="">
+              <option value="" disabled>Select employee</option>
+              {activeEmployees.map((employee) => <option key={employee.id} value={employee.id}>{employee.employeeNo} · {employee.name}</option>)}
+            </select>
+          </label>
+          <label><span>Shift name</span><input name="shiftName" required maxLength={80} placeholder="Day shift" /></label>
+          <label><span>Work center</span><input name="workCenter" required maxLength={80} /></label>
+          <label><span>Starts</span><input name="startsAt" type="datetime-local" required /></label>
+          <label><span>Ends</span><input name="endsAt" type="datetime-local" required /></label>
+          <label><span>Break (minutes)</span><input name="breakMinutes" type="number" min="0" max="600" defaultValue="0" required /></label>
+          <label className="production-hr-wide"><span>Roster notes</span><input name="notes" maxLength={500} /></label>
+          <button className="production-primary-button" disabled={!activeEmployees.length || isSaving} type="submit">Schedule shift</button>
+        </form>
+        {orgShifts.length ? (
+          <div className="production-hr-shifts">
+            {orgShifts.map((shift) => (
+              <article className="production-hr-shift" key={shift.id}>
+                <div className="production-panel-heading">
+                  <div>
+                    <h3>{shift.employee.name} <span>· {shift.employee.employeeNo}</span></h3>
+                    <p>{shift.shiftName} · {shift.workCenter} · {shift.employee.department}</p>
+                  </div>
+                  <span className="production-panel-total">{shift.status}</span>
+                </div>
+                <p className="production-reel-explainer">
+                  {new Date(shift.startsAt).toLocaleString()} – {new Date(shift.endsAt).toLocaleString()} · {shift.breakMinutes} min break
+                </p>
+                {!shift.attendance ? (
+                  <form className="production-reel-form production-hr-form" onSubmit={(event) => recordAttendance(event, shift)}>
+                    <label><span>Clock in</span><input name="clockedInAt" type="datetime-local" defaultValue={localDateTimeValue(shift.startsAt)} required /></label>
+                    <label><span>Clock out (optional)</span><input name="clockedOutAt" type="datetime-local" /></label>
+                    <label><span>Overtime minutes</span><input name="overtimeMinutes" type="number" min="0" max="1440" defaultValue="0" required /></label>
+                    <label className="production-hr-wide"><span>Attendance notes</span><input name="notes" maxLength={500} /></label>
+                    <button className="production-primary-button" disabled={isSaving} type="submit">Record attendance</button>
+                  </form>
+                ) : (
+                  <div className="production-hr-attendance">
+                    <p>
+                      Clocked in {new Date(shift.attendance.clockedInAt).toLocaleString()}
+                      {shift.attendance.clockedOutAt && <> · out {new Date(shift.attendance.clockedOutAt).toLocaleString()}</>}
+                      {" · "}{shift.attendance.overtimeMinutes} overtime minutes
+                    </p>
+                    {shift.attendance.notes && <p>{shift.attendance.notes}</p>}
+                    {!shift.attendance.clockedOutAt && (
+                      <form className="production-reel-form production-hr-form" onSubmit={(event) => closeAttendance(event, shift)}>
+                        <label><span>Clock out</span><input name="clockedOutAt" type="datetime-local" defaultValue={localDateTimeValue()} required /></label>
+                        <label><span>Overtime minutes</span><input name="overtimeMinutes" type="number" min="0" max="1440" defaultValue={String(shift.attendance.overtimeMinutes)} required /></label>
+                        <label className="production-hr-wide"><span>Attendance notes</span><input name="notes" maxLength={500} defaultValue={shift.attendance.notes} /></label>
+                        <button className="production-primary-button" disabled={isSaving} type="submit">Close attendance</button>
+                      </form>
+                    )}
+                  </div>
+                )}
+              </article>
+            ))}
+          </div>
+        ) : <p className="production-chart-empty">No roster shifts scheduled.</p>}
+      </section>
+
+      <section className="production-panel">
+        <div className="production-panel-heading">
+          <div>
+            <span className="production-panel-kicker">LEAVE MANAGEMENT</span>
+            <h2>Leave requests</h2>
+          </div>
+          <span className="production-panel-total">{openLeaveCount} pending</span>
+        </div>
+        <form className="production-reel-form production-hr-form" onSubmit={requestLeave}>
+          <label>
+            <span>Employee</span>
+            <select name="employeeId" required defaultValue="">
+              <option value="" disabled>Select employee</option>
+              {activeEmployees.map((employee) => <option key={employee.id} value={employee.id}>{employee.employeeNo} · {employee.name}</option>)}
+            </select>
+          </label>
+          <label><span>Leave type</span><select name="leaveType">{PRODUCTION_LEAVE_TYPES.map((type) => <option value={type} key={type}>{type}</option>)}</select></label>
+          <label><span>Start date</span><input name="startsAt" type="date" required /></label>
+          <label><span>End date</span><input name="endsAt" type="date" required /></label>
+          <label className="production-hr-wide"><span>Reason</span><input name="reason" required maxLength={1000} /></label>
+          <button className="production-primary-button" disabled={!activeEmployees.length || isSaving} type="submit">Submit leave request</button>
+        </form>
+        {orgLeaveRequests.length ? (
+          <div className="production-hr-shifts">
+            {orgLeaveRequests.map((request) => (
+              <article className="production-hr-shift" key={request.id}>
+                <div className="production-panel-heading">
+                  <div>
+                    <h3>{request.employee.name} <span>· {request.employee.employeeNo}</span></h3>
+                    <p>{request.leaveType} · {dateOnlyLabel(request.startsAt)} – {dateOnlyLabel(request.endsAt)}</p>
+                  </div>
+                  <span className="production-panel-total">{request.status}</span>
+                </div>
+                <p>{request.reason}</p>
+                {request.status === "PENDING" ? (
+                  <form className="production-hr-review" onSubmit={(event) => reviewLeave(event, request)}>
+                    <label><span>Review notes (required for rejection)</span><input name="reviewNotes" maxLength={1000} /></label>
+                    <button className="production-primary-button" disabled={isSaving} name="decision" value="APPROVED" type="submit">Approve</button>
+                    <button className="production-table-action" disabled={isSaving} name="decision" value="REJECTED" type="submit">Reject</button>
+                  </form>
+                ) : request.reviewNotes && <p className="production-reel-explainer">Review: {request.reviewNotes}</p>}
+              </article>
+            ))}
+          </div>
+        ) : <p className="production-chart-empty">No leave requests recorded.</p>}
+      </section>
+
+      <section className="production-panel">
+        <div className="production-panel-heading">
+          <div>
+            <span className="production-panel-kicker">HSE &amp; COMPETENCY</span>
+            <h2>Safety training</h2>
+          </div>
+          <span className="production-panel-total">{expiringTrainingCount} expired / due</span>
+        </div>
+        <form className="production-reel-form production-hr-form" onSubmit={addTraining}>
+          <label>
+            <span>Employee</span>
+            <select name="employeeId" required defaultValue="">
+              <option value="" disabled>Select employee</option>
+              {orgEmployees.map((employee) => <option key={employee.id} value={employee.id}>{employee.employeeNo} · {employee.name}</option>)}
+            </select>
+          </label>
+          <label><span>Training</span><input name="trainingName" required maxLength={160} /></label>
+          <label><span>Provider</span><input name="provider" maxLength={120} /></label>
+          <label><span>Completed</span><input name="completedAt" type="date" required /></label>
+          <label><span>Expires (optional)</span><input name="expiresAt" type="date" /></label>
+          <label className="production-hr-wide"><span>Notes</span><input name="notes" maxLength={1000} /></label>
+          <button className="production-primary-button" disabled={!orgEmployees.length || isSaving} type="submit">Save training record</button>
+        </form>
+        {orgTrainings.length ? (
+          <div className="production-table-scroll">
+            <table className="production-data-table">
+              <thead><tr><th>Employee</th><th>Training</th><th>Provider</th><th>Completed</th><th>Expiry</th><th>State</th></tr></thead>
+              <tbody>{orgTrainings.map((training) => {
+                const isDue = Boolean(training.expiresAt && training.expiresAt.slice(0, 10) <= todayKey);
+                return (
+                  <tr key={training.id}>
+                    <td><strong>{training.employee.employeeNo}</strong><small>{training.employee.name}</small></td>
+                    <td>{training.trainingName}</td>
+                    <td>{training.provider || "—"}</td>
+                    <td>{dateOnlyLabel(training.completedAt)}</td>
+                    <td>{training.expiresAt ? dateOnlyLabel(training.expiresAt) : "No expiry"}</td>
+                    <td>{isDue ? "EXPIRED / DUE" : "CURRENT"}</td>
+                  </tr>
+                );
+              })}</tbody>
+            </table>
+          </div>
+        ) : <p className="production-chart-empty">No safety training records yet.</p>}
+      </section>
     </div>
   );
 }

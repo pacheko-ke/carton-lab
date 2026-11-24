@@ -206,6 +206,14 @@ movements. Inventory shows ledger-derived on-hand quantities and reorder points;
 job-linked material issues track raw-material consumption into WIP, and stock
 issues are rejected when they would make inventory negative.
 
+Paper Reel Traceability registers received paper against an organization paper
+grade and, optionally, a received purchase-order line. Reels receive generated
+IDs and barcodes and retain supplier batch, width, GSM, storage location, and
+parent/remnant lineage. Job issues and returns are job-linked and update both
+the reel ledger and material stock; remnant splits transfer weight between reel
+records without counting stock twice. Paper stock cannot be issued or adjusted
+through the generic material form.
+
 Quality Management records incoming, in-process, final, and customer-return
 inspections against jobs and optional scheduled operations. Each inspection
 captures carton checkpoints, targets, observed results, sample and reject
@@ -214,6 +222,41 @@ nonconformance; Production members can document root cause, disposition, and
 corrective action, then close it with verification notes. Inspection and
 nonconformance registers are organization-scoped and retain operator and
 resolution attribution.
+
+Warehouse & Dispatch receives finished cartons only after a completed Packing
+report, a passing final inspection, and resolution of open nonconformances.
+Receipts create uniquely labeled pallets with bay/location and available
+quantities bounded by packed output and the order quantity. Dispatches assign a
+vehicle, driver, and route, create a printable delivery note, and decrement
+pallet balances transactionally. Delivery confirmation records the recipient's
+typed acknowledgement and delivery notes.
+
+Invoicing & Collections issues one invoice per delivered dispatch using the
+converted quote price where available; legacy orders require an explicit unit
+price and currency. Payments are append-only and support partial collection,
+while reasoned credit notes reduce only the outstanding balance. Customer
+statements and aging buckets are available by currency. Tax calculation and
+KRA eTIMS submission are intentionally not configured; verify current
+requirements before treating these records as statutory tax invoices.
+
+Tooling Management tracks organization-owned and customer-owned dies, print
+plates, cylinders, and anilox rolls. Each record includes its storage location,
+availability/maintenance/retired status, usage count, wear notes, and append-only
+usage, repair, inspection, and status history. Job-linked usage is limited to
+available tools and increments the usage count transactionally.
+
+Maintenance (CMMS) registers machine/work-center assets, recurring preventive
+plans, breakdown and scheduled-maintenance tickets, linked downtime, and
+resolution history. Spare parts are issued from active non-paper inventory to
+open tickets through the stock ledger with a serializable balance check.
+Downtime can be linked to a scheduled operation and job; a complete OEE
+calculation remains pending runtime and ideal-speed capture.
+
+HR & Safety maintains employee records, production shift rosters, attendance
+and explicitly recorded overtime, pending leave approvals, and safety-training
+completion and expiry. Payroll calculations, statutory deductions, and
+production-incentive rules are intentionally excluded until their policies are
+verified and approved.
 
 Costing & Quotes supports customer/RFQ references, multi-item quotations, and
 versioned quote revisions. Cost estimates use an explicitly entered developed

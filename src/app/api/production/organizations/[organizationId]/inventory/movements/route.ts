@@ -42,10 +42,16 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   const material = await prisma.productionMaterial.findFirst({
     where: { id: body.materialId, organizationId, active: true },
-    select: { id: true },
+    select: { id: true, category: true },
   });
   if (!material) {
     return NextResponse.json({ error: "Select an active material from this organization" }, { status: 404 });
+  }
+  if (material.category === "PAPER") {
+    return NextResponse.json(
+      { error: "Paper stock must be issued and adjusted through Paper Reel Traceability." },
+      { status: 409 },
+    );
   }
 
   try {

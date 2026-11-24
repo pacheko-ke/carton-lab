@@ -2738,6 +2738,72 @@ input {
   overflow-y: auto;
 }
 
+.production-nav-group {
+  display: grid;
+  gap: 3px;
+}
+
+.production-nav-group-toggle {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: #8299ae;
+  cursor: pointer;
+  font: inherit;
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.production-nav-group-toggle:hover {
+  background: rgba(20, 42, 64, 0.45);
+  color: #dce8f2;
+}
+
+.production-nav-group-toggle > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.production-nav-group-toggle > svg {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
+  margin-left: auto;
+  transition: transform 150ms ease;
+}
+
+.production-nav-group-toggle > svg.is-expanded {
+  transform: rotate(180deg);
+}
+
+.production-nav-group-count {
+  min-width: 16px;
+  color: #61798f;
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.production-nav-group-items {
+  display: grid;
+  gap: 3px;
+  padding-left: 4px;
+}
+
+.production-nav-group-items .production-nav-item {
+  min-height: 38px;
+}
+
 .production-nav-label {
   margin: 0 10px 8px;
   color: #71859a;
@@ -3698,6 +3764,689 @@ input {
   flex: 1;
 }
 
+.production-reel-explainer,
+.production-reel-stock-note {
+  margin: 8px 0 13px;
+  color: #8ea1b4;
+  font-size: 11px;
+}
+
+.production-reel-form,
+.production-reel-movement-form {
+  display: grid;
+  gap: 13px;
+  padding: 14px;
+  border: 1px solid rgba(165, 190, 214, 0.12);
+  border-radius: 9px;
+  background: rgba(12, 20, 29, 0.45);
+}
+
+.production-board-stack {
+  display: grid;
+  gap: 18px;
+}
+
+.production-reel-form > label {
+  display: grid;
+  gap: 6px;
+  color: #a9bacb;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.production-reel-form > label input,
+.production-reel-form > label select {
+  width: 100%;
+  min-height: 36px;
+  padding: 8px 10px;
+  border: 1px solid rgba(165, 190, 214, 0.16);
+  border-radius: 6px;
+  background: #101923;
+  color: #eef4fa;
+  font: inherit;
+}
+
+.production-tooling-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  gap: 14px;
+}
+
+.production-tooling-entry-form {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: end;
+}
+
+.production-tooling-event-form {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: end;
+  margin-top: 12px;
+}
+
+.production-tooling-card {
+  display: grid;
+  align-content: start;
+  gap: 13px;
+  min-width: 0;
+  padding: 15px;
+  border: 1px solid rgba(165, 190, 214, 0.12);
+  border-radius: 9px;
+  background: rgba(12, 20, 29, 0.45);
+}
+
+.production-tooling-card h3,
+.production-tooling-card h4 {
+  margin: 0;
+  color: #edf4fa;
+}
+
+.production-tooling-card h3 {
+  font-size: 14px;
+}
+
+.production-tooling-card h4 {
+  font-size: 12px;
+}
+
+.production-tooling-card dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.production-tooling-card dl div {
+  min-width: 0;
+}
+
+.production-tooling-card dt {
+  color: #8ea1b4;
+  font-size: 10px;
+}
+
+.production-tooling-card dd {
+  margin: 3px 0 0;
+  overflow-wrap: anywhere;
+  color: #e0e9f1;
+  font-size: 12px;
+}
+
+.production-tooling-events {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.production-tooling-events li {
+  display: grid;
+  gap: 3px;
+  padding: 9px;
+  border-left: 2px solid rgba(78, 196, 220, 0.6);
+  background: rgba(165, 190, 214, 0.04);
+  color: #cbd6e1;
+  font-size: 11px;
+}
+
+.production-tooling-events small {
+  color: #8ea1b4;
+}
+
+.production-maintenance-form {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: end;
+}
+
+.production-maintenance-form + h3 {
+  margin-top: 20px;
+}
+
+.production-hr-board {
+  max-width: 1280px;
+}
+
+.production-hr-organization {
+  display: grid;
+  min-width: min(260px, 100%);
+  gap: 5px;
+  color: #a9bacb;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.production-hr-organization select {
+  min-height: 36px;
+  padding: 8px 10px;
+  border: 1px solid rgba(165, 190, 214, 0.16);
+  border-radius: 6px;
+  background: #101923;
+  color: #eef4fa;
+  font: inherit;
+}
+
+.production-hr-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.production-hr-metrics > div {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid rgba(165, 190, 214, 0.12);
+  border-radius: 8px;
+  background: rgba(165, 190, 214, 0.04);
+}
+
+.production-hr-metrics strong {
+  color: #eef4fa;
+  font-size: 20px;
+}
+
+.production-hr-metrics span {
+  color: #8ea1b4;
+  font-size: 11px;
+}
+
+.production-hr-form {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 185px), 1fr));
+  align-items: end;
+}
+
+.production-hr-wide {
+  grid-column: 1 / -1;
+}
+
+.production-hr-shifts {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.production-hr-shift {
+  display: grid;
+  gap: 10px;
+  padding: 13px;
+  border: 1px solid rgba(165, 190, 214, 0.12);
+  border-radius: 9px;
+  background: rgba(12, 20, 29, 0.38);
+}
+
+.production-hr-shift h3 {
+  margin: 0;
+  color: #eef4fa;
+  font-size: 14px;
+}
+
+.production-hr-shift h3 span,
+.production-hr-shift p {
+  color: #9aabbb;
+}
+
+.production-hr-shift p {
+  margin: 0;
+  font-size: 11px;
+}
+
+.production-hr-attendance {
+  display: grid;
+  gap: 8px;
+}
+
+.production-hr-review {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: end;
+  gap: 10px;
+}
+
+.production-hr-review label {
+  display: grid;
+  gap: 6px;
+  color: #a9bacb;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.production-hr-review input {
+  min-height: 36px;
+  padding: 8px 10px;
+  border: 1px solid rgba(165, 190, 214, 0.16);
+  border-radius: 6px;
+  background: #101923;
+  color: #eef4fa;
+  font: inherit;
+}
+
+.production-maintenance-machine-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(95px, 1fr));
+  gap: 6px;
+  min-width: 250px;
+}
+
+.production-maintenance-machine-form input,
+.production-maintenance-machine-form select {
+  min-width: 0;
+  min-height: 32px;
+  padding: 6px;
+  border: 1px solid rgba(165, 190, 214, 0.16);
+  border-radius: 5px;
+  background: #101923;
+  color: #eef4fa;
+  font: inherit;
+}
+
+.production-maintenance-tickets {
+  display: grid;
+  gap: 13px;
+}
+
+.production-maintenance-ticket {
+  display: grid;
+  gap: 12px;
+  padding: 15px;
+  border: 1px solid rgba(165, 190, 214, 0.12);
+  border-radius: 9px;
+  background: rgba(12, 20, 29, 0.45);
+}
+
+.production-maintenance-ticket h3 {
+  margin: 0;
+  color: #edf4fa;
+  font-size: 14px;
+}
+
+.production-maintenance-ticket p {
+  margin: 0;
+  color: #cbd6e1;
+  font-size: 12px;
+}
+
+.production-maintenance-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  color: #8ea1b4;
+  font-size: 11px;
+}
+
+.production-maintenance-update-form {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: end;
+}
+
+.production-maintenance-parts-form {
+  grid-template-columns: minmax(220px, 2fr) minmax(100px, 1fr) auto;
+  align-items: end;
+}
+
+.production-reel-form-grid,
+.production-reel-movement-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 11px;
+}
+
+.production-reel-movement-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.production-reel-stock-note {
+  margin: 0;
+  color: #9be4f1;
+}
+
+.production-reel-form textarea,
+.production-reel-movement-form textarea {
+  min-height: 65px;
+  resize: vertical;
+}
+
+.production-reel-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.production-reel-row-actions .production-table-action {
+  padding: 5px 7px;
+}
+
+.production-reel-table {
+  min-width: 1120px;
+}
+
+.production-reel-barcode {
+  font-family: var(--font-geist-mono), monospace;
+  letter-spacing: 0.04em;
+}
+
+.production-warehouse-board {
+  display: grid;
+  gap: 18px;
+}
+
+.production-warehouse-form-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 11px;
+}
+
+.production-warehouse-pallet-picklist {
+  display: grid;
+  gap: 9px;
+  padding: 14px;
+  border: 1px solid rgba(165, 190, 214, 0.12);
+  border-radius: 9px;
+}
+
+.production-warehouse-pallet-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 9px 10px;
+  border: 1px solid rgba(165, 190, 214, 0.1);
+  border-radius: 7px;
+  background: rgba(15, 25, 36, 0.6);
+}
+
+.production-warehouse-pallet-option > span,
+.production-warehouse-dispatch-heading > div {
+  display: grid;
+  gap: 4px;
+}
+
+.production-warehouse-pallet-option small,
+.production-warehouse-dispatch-heading span,
+.production-warehouse-recipient {
+  color: #8ea1b4;
+  font-size: 11px;
+}
+
+.production-warehouse-pallet-option input {
+  width: 110px;
+}
+
+.production-warehouse-dispatch-list {
+  display: grid;
+  gap: 11px;
+}
+
+.production-warehouse-dispatch-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(165, 190, 214, 0.12);
+  border-radius: 9px;
+  background: rgba(12, 20, 29, 0.45);
+}
+
+.production-warehouse-dispatch-heading,
+.production-warehouse-dispatch-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.production-warehouse-dispatch-meta {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  color: #b7c5d3;
+  font-size: 11px;
+}
+
+.production-warehouse-delivery-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: end;
+  gap: 11px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(165, 190, 214, 0.12);
+}
+
+.production-warehouse-delivery-form .production-supply-form-actions {
+  grid-column: 1 / -1;
+}
+
+.production-delivery-note,
+.production-pallet-label {
+  color: #17212b;
+  background: #fff;
+  border-radius: 8px;
+  padding: 28px;
+}
+
+.production-delivery-note-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  border-bottom: 2px solid #1e2d3a;
+  padding-bottom: 16px;
+}
+
+.production-delivery-note-heading span,
+.production-pallet-label > div > span {
+  color: #526170;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.production-delivery-note h2,
+.production-pallet-label h2 {
+  margin: 7px 0 0;
+  color: #17212b;
+}
+
+.production-delivery-note-details,
+.production-pallet-label dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 15px;
+  margin: 20px 0;
+}
+
+.production-delivery-note-details div,
+.production-pallet-label dl div {
+  display: grid;
+  gap: 4px;
+}
+
+.production-delivery-note dt,
+.production-pallet-label dt {
+  color: #637181;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.production-delivery-note dd,
+.production-pallet-label dd {
+  margin: 0;
+  color: #17212b;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.production-delivery-note-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.production-delivery-note-table th,
+.production-delivery-note-table td {
+  padding: 9px;
+  border-bottom: 1px solid #d5dde5;
+  text-align: left;
+}
+
+.production-delivery-note-signature {
+  display: grid;
+  gap: 8px;
+  margin-top: 26px;
+  padding-top: 14px;
+  border-top: 1px solid #d5dde5;
+}
+
+.production-pallet-label {
+  max-width: 700px;
+  border: 2px solid #17212b;
+}
+
+.production-invoice-board {
+  display: grid;
+  gap: 18px;
+}
+
+.production-invoice-disclaimer {
+  margin: 8px 0 13px;
+  padding: 10px 12px;
+  border: 1px solid rgba(239, 177, 80, 0.3);
+  border-radius: 7px;
+  background: rgba(165, 105, 23, 0.1);
+  color: #efc47e;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.production-invoice-form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: end;
+  gap: 11px;
+}
+
+.production-invoice-rate {
+  display: grid;
+  align-content: center;
+  gap: 5px;
+  min-height: 61px;
+  color: #8ea1b4;
+  font-size: 11px;
+}
+
+.production-invoice-rate strong {
+  color: #9be4f1;
+  font-size: 14px;
+}
+
+.production-invoice-aging-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(205px, 1fr));
+  gap: 10px;
+}
+
+.production-invoice-aging-card {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(165, 190, 214, 0.12);
+  border-radius: 8px;
+  background: rgba(12, 20, 29, 0.45);
+  color: #b7c5d3;
+  font-size: 11px;
+}
+
+.production-invoice-aging-card strong {
+  color: #eef4fa;
+  font-size: 13px;
+}
+
+.production-invoice-list {
+  display: grid;
+  gap: 11px;
+}
+
+.production-invoice-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(165, 190, 214, 0.12);
+  border-radius: 9px;
+  background: rgba(12, 20, 29, 0.45);
+}
+
+.production-invoice-amount-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.production-invoice-amount-grid > div {
+  display: grid;
+  gap: 4px;
+}
+
+.production-invoice-amount-grid span,
+.production-invoice-reference {
+  color: #8ea1b4;
+  font-size: 10px;
+}
+
+.production-invoice-amount-grid strong {
+  color: #dce8f3;
+  font-size: 12px;
+}
+
+.production-invoice-reference {
+  margin: 0;
+}
+
+.production-invoice-transactions {
+  color: #b7c5d3;
+  font-size: 11px;
+}
+
+.production-invoice-transactions summary {
+  cursor: pointer;
+  color: #8ea1b4;
+}
+
+.production-invoice-transactions ul {
+  display: grid;
+  gap: 6px;
+  padding-left: 18px;
+}
+
+.production-invoice-adjustment-form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: end;
+  gap: 11px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(165, 190, 214, 0.12);
+}
+
+.production-invoice-adjustment-form .production-supply-form-actions {
+  grid-column: 1 / -1;
+}
+
+.production-print-invoice {
+  color: #17212b;
+  background: #fff;
+  border-radius: 8px;
+  padding: 28px;
+}
+
+.production-print-invoice h2 {
+  margin: 7px 0 0;
+  color: #17212b;
+}
+
+.production-print-invoice .production-invoice-disclaimer {
+  color: #526170;
+  border-color: #d5dde5;
+  background: #f7f9fb;
+}
+
 .production-supply-receipt {
   display: grid;
   gap: 12px;
@@ -4428,6 +5177,27 @@ input {
     grid-template-columns: 226px minmax(0, 1fr);
   }
 
+  .production-reel-form-grid,
+  .production-reel-movement-grid,
+  .production-tooling-entry-form,
+  .production-tooling-event-form,
+  .production-maintenance-form,
+  .production-maintenance-update-form,
+  .production-maintenance-parts-form,
+  .production-hr-review,
+  .production-warehouse-form-grid,
+  .production-invoice-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .production-warehouse-dispatch-meta {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .production-invoice-adjustment-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .production-kpi-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -4449,8 +5219,30 @@ input {
   }
 
   .production-quote-header-grid,
-  .production-quote-line-grid {
+  .production-quote-line-grid,
+  .production-reel-form-grid,
+  .production-reel-movement-grid,
+  .production-tooling-entry-form,
+  .production-tooling-event-form,
+  .production-maintenance-form,
+  .production-maintenance-update-form,
+  .production-maintenance-parts-form,
+  .production-hr-review,
+  .production-warehouse-form-grid,
+  .production-warehouse-delivery-form,
+  .production-delivery-note-details,
+  .production-pallet-label dl,
+  .production-invoice-form-grid,
+  .production-invoice-adjustment-form {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .production-warehouse-dispatch-meta {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .production-invoice-amount-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .production-quality-check-row {
@@ -4482,11 +5274,11 @@ input {
 
   .production-side-nav {
     flex: none;
-    flex-flow: row nowrap;
-    gap: 5px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    padding-bottom: 9px;
+    max-height: 38dvh;
+    gap: 7px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 4px 0 9px;
   }
 
   .production-nav-label,
@@ -4496,7 +5288,6 @@ input {
 
   .production-nav-item {
     min-height: 36px;
-    flex: 0 0 auto;
     gap: 7px;
     padding: 0 9px;
     font-size: 10px;
@@ -4651,5 +5442,41 @@ input {
 
   .production-dashboard-content.is-job-sheet-view {
     height: calc(100dvh - 176px);
+  }
+}
+
+@media print {
+  body[data-print-target] * {
+    visibility: hidden !important;
+  }
+
+  body[data-print-target="delivery-note"] .production-delivery-note,
+  body[data-print-target="delivery-note"] .production-delivery-note * {
+    visibility: visible !important;
+  }
+
+  body[data-print-target="pallet-label"] .production-pallet-label,
+  body[data-print-target="pallet-label"] .production-pallet-label * {
+    visibility: visible !important;
+  }
+
+  body[data-print-target="invoice"] .production-print-invoice,
+  body[data-print-target="invoice"] .production-print-invoice * {
+    visibility: visible !important;
+  }
+
+  body[data-print-target="delivery-note"] .production-delivery-note,
+  body[data-print-target="pallet-label"] .production-pallet-label,
+  body[data-print-target="invoice"] .production-print-invoice {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    max-width: none;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .production-no-print {
+    display: none !important;
   }
 }

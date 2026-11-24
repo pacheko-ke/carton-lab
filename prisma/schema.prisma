@@ -45,6 +45,13 @@ model User {
   createdProductionNonconformances    ProductionNonconformance[]         @relation("ProductionNonconformanceCreator")
   updatedProductionNonconformances    ProductionNonconformance[]         @relation("ProductionNonconformanceUpdater")
   resolvedProductionNonconformances   ProductionNonconformance[]         @relation("ProductionNonconformanceResolver")
+  createdProductionPaperReels         ProductionPaperReel[]                @relation("ProductionPaperReelCreator")
+  createdProductionReelMovements      ProductionReelMovement[]              @relation("ProductionReelMovementCreator")
+  createdProductionWarehousePallets   ProductionWarehousePallet[]           @relation("ProductionWarehousePalletCreator")
+  createdProductionDispatches        ProductionDispatch[]                  @relation("ProductionDispatchCreator")
+  createdProductionInvoices          ProductionInvoice[]                   @relation("ProductionInvoiceCreator")
+  createdProductionInvoicePayments   ProductionInvoicePayment[]            @relation("ProductionInvoicePaymentCreator")
+  createdProductionCreditNotes       ProductionCreditNote[]                @relation("ProductionCreditNoteCreator")
   createdProductionQuotes             ProductionQuote[]                   @relation("ProductionQuoteCreator")
   updatedProductionQuotes             ProductionQuote[]                   @relation("ProductionQuoteUpdater")
   approvedProductionQuotes            ProductionQuote[]                   @relation("ProductionQuoteApprover")
@@ -55,6 +62,19 @@ model User {
   createdProductionStockMovements     ProductionStockMovement[]          @relation("ProductionStockMovementCreator")
   createdProductionJobFlags           ProductionJobFlag[]                @relation("ProductionJobFlagCreator")
   resolvedProductionJobFlags          ProductionJobFlag[]                @relation("ProductionJobFlagResolver")
+  createdProductionTooling            ProductionTooling[]                 @relation("ProductionToolingCreator")
+  createdProductionToolingEvents      ProductionToolingEvent[]            @relation("ProductionToolingEventCreator")
+  createdProductionMachines           ProductionMachine[]                  @relation("ProductionMachineCreator")
+  createdProductionMaintenancePlans   ProductionMaintenancePlan[]          @relation("ProductionMaintenancePlanCreator")
+  createdProductionMaintenanceTickets ProductionMaintenanceTicket[]        @relation("ProductionMaintenanceTicketCreator")
+  closedProductionMaintenanceTickets  ProductionMaintenanceTicket[]        @relation("ProductionMaintenanceTicketCloser")
+  issuedProductionMaintenanceParts   ProductionMaintenancePart[]           @relation("ProductionMaintenancePartIssuer")
+  createdProductionEmployees        ProductionEmployee[]                   @relation("ProductionEmployeeCreator")
+  createdProductionRosterShifts     ProductionRosterShift[]                 @relation("ProductionRosterShiftCreator")
+  createdProductionAttendances      ProductionAttendance[]                 @relation("ProductionAttendanceCreator")
+  createdProductionLeaveRequests    ProductionLeaveRequest[]                @relation("ProductionLeaveRequestCreator")
+  reviewedProductionLeaveRequests   ProductionLeaveRequest[]                @relation("ProductionLeaveRequestReviewer")
+  createdProductionSafetyTrainings  ProductionSafetyTraining[]              @relation("ProductionSafetyTrainingCreator")
   uploadedProductionFiles             ProductionAttachment[]             @relation("ProductionAttachmentUploader")
 }
 
@@ -237,6 +257,21 @@ model ProductionOrganization {
   suppliers          ProductionSupplier[]
   purchaseOrders     ProductionPurchaseOrder[]
   stockMovements     ProductionStockMovement[]
+  paperReels         ProductionPaperReel[]
+  reelMovements      ProductionReelMovement[]
+  warehousePallets   ProductionWarehousePallet[]
+  dispatches         ProductionDispatch[]
+  invoices           ProductionInvoice[]
+  tooling            ProductionTooling[]
+  toolingEvents      ProductionToolingEvent[]
+  machines           ProductionMachine[]
+  maintenancePlans   ProductionMaintenancePlan[]
+  maintenanceTickets ProductionMaintenanceTicket[]
+  employees          ProductionEmployee[]
+  rosterShifts       ProductionRosterShift[]
+  attendances        ProductionAttendance[]
+  leaveRequests      ProductionLeaveRequest[]
+  safetyTrainings    ProductionSafetyTraining[]
 
   @@index([name])
 }
@@ -252,6 +287,110 @@ model ProductionOrganizationMembership {
 
   @@id([organizationId, userId])
   @@index([userId])
+}
+
+model ProductionEmployee {
+  id              String                 @id @default(cuid())
+  organizationId  String
+  createdByUserId String?
+  employeeNo      String
+  name            String
+  department      String
+  jobTitle        String
+  status          String                 @default("ACTIVE")
+  hiredAt         DateTime
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+  organization    ProductionOrganization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy       User?                  @relation("ProductionEmployeeCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  shifts          ProductionRosterShift[]
+  leaveRequests   ProductionLeaveRequest[]
+  safetyTrainings ProductionSafetyTraining[]
+
+  @@unique([organizationId, employeeNo])
+  @@index([organizationId, status, name])
+}
+
+model ProductionRosterShift {
+  id              String                 @id @default(cuid())
+  organizationId  String
+  employeeId      String
+  createdByUserId String?
+  shiftName       String
+  workCenter      String
+  startsAt        DateTime
+  endsAt          DateTime
+  breakMinutes    Int                    @default(0)
+  status          String                 @default("PLANNED")
+  notes           String                 @default("")
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+  organization    ProductionOrganization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  employee        ProductionEmployee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  createdBy       User?                  @relation("ProductionRosterShiftCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  attendance      ProductionAttendance?
+
+  @@index([organizationId, startsAt, status])
+  @@index([employeeId, startsAt])
+}
+
+model ProductionAttendance {
+  id              String                 @id @default(cuid())
+  organizationId  String
+  rosterShiftId   String                 @unique
+  createdByUserId String?
+  clockedInAt     DateTime
+  clockedOutAt    DateTime?
+  overtimeMinutes Int                    @default(0)
+  notes           String                 @default("")
+  recordedAt      DateTime               @default(now())
+  organization    ProductionOrganization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  rosterShift     ProductionRosterShift  @relation(fields: [rosterShiftId], references: [id], onDelete: Cascade)
+  createdBy       User?                  @relation("ProductionAttendanceCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, clockedInAt])
+}
+
+model ProductionLeaveRequest {
+  id              String                 @id @default(cuid())
+  organizationId  String
+  employeeId      String
+  createdByUserId String?
+  reviewedByUserId String?
+  leaveType       String
+  startsAt        DateTime
+  endsAt          DateTime
+  reason          String
+  status          String                 @default("PENDING")
+  reviewNotes     String                 @default("")
+  createdAt       DateTime               @default(now())
+  reviewedAt      DateTime?
+  organization    ProductionOrganization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  employee        ProductionEmployee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  createdBy       User?                  @relation("ProductionLeaveRequestCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  reviewedBy      User?                  @relation("ProductionLeaveRequestReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, status, startsAt])
+  @@index([employeeId, startsAt, endsAt])
+}
+
+model ProductionSafetyTraining {
+  id              String                 @id @default(cuid())
+  organizationId  String
+  employeeId      String
+  createdByUserId String?
+  trainingName    String
+  provider        String                 @default("")
+  completedAt     DateTime
+  expiresAt       DateTime?
+  notes           String                 @default("")
+  createdAt       DateTime               @default(now())
+  organization    ProductionOrganization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  employee        ProductionEmployee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  createdBy       User?                  @relation("ProductionSafetyTrainingCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, expiresAt])
+  @@index([employeeId, completedAt])
 }
 
 model ProductionJob {
@@ -270,6 +409,12 @@ model ProductionJob {
   stockMovements     ProductionStockMovement[]
   qualityInspections ProductionQualityInspection[]
   nonconformances    ProductionNonconformance[]
+  reelMovements      ProductionReelMovement[]
+  warehousePallets   ProductionWarehousePallet[]
+  dispatches         ProductionDispatch[]
+  invoices           ProductionInvoice[]
+  toolingEvents      ProductionToolingEvent[]
+  maintenanceTickets ProductionMaintenanceTicket[]
   quote              ProductionQuote?                @relation(fields: [quoteId], references: [id], onDelete: SetNull)
 
   @@index([organizationId, updatedAt])
@@ -295,6 +440,7 @@ model ProductionOperationSchedule {
   createdBy          User?                         @relation("ProductionOperationScheduleCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
   runs               ProductionOperationRun[]
   qualityInspections ProductionQualityInspection[]
+  maintenanceTickets ProductionMaintenanceTicket[]
 
   @@unique([jobId, operation])
   @@index([organizationId, scheduledStartAt])
@@ -376,6 +522,148 @@ model ProductionNonconformance {
   @@index([inspectionId])
 }
 
+model ProductionTooling {
+  id              String                 @id @default(cuid())
+  organizationId  String
+  createdByUserId String?
+  customerId      String?
+  toolNo          String
+  name            String
+  category        String
+  ownerType       String                 @default("COMPANY")
+  storageLocation String                 @default("")
+  status          String                 @default("AVAILABLE")
+  usageCount      Int                    @default(0)
+  wearNotes       String                 @default("")
+  notes           String                 @default("")
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+  organization    ProductionOrganization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy       User?                  @relation("ProductionToolingCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  customer        ProductionCustomer?    @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  events          ProductionToolingEvent[]
+
+  @@unique([organizationId, toolNo])
+  @@index([organizationId, category, status])
+  @@index([customerId])
+}
+
+model ProductionToolingEvent {
+  id              String                 @id @default(cuid())
+  organizationId  String
+  toolingId       String
+  createdByUserId String?
+  jobId           String?
+  eventType       String
+  description     String
+  createdAt       DateTime               @default(now())
+  organization    ProductionOrganization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tooling         ProductionTooling      @relation(fields: [toolingId], references: [id], onDelete: Cascade)
+  createdBy       User?                  @relation("ProductionToolingEventCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  job             ProductionJob?         @relation(fields: [jobId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt])
+  @@index([toolingId, createdAt])
+  @@index([jobId])
+}
+
+model ProductionMachine {
+  id              String                        @id @default(cuid())
+  organizationId  String
+  createdByUserId String?
+  machineNo       String
+  name            String
+  machineType     String
+  workCenter      String
+  location        String                        @default("")
+  status          String                        @default("ACTIVE")
+  createdAt       DateTime                      @default(now())
+  updatedAt       DateTime                      @updatedAt
+  organization    ProductionOrganization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy       User?                         @relation("ProductionMachineCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  plans           ProductionMaintenancePlan[]
+  tickets         ProductionMaintenanceTicket[]
+
+  @@unique([organizationId, machineNo])
+  @@index([organizationId, workCenter, status])
+}
+
+model ProductionMaintenancePlan {
+  id               String                 @id @default(cuid())
+  organizationId   String
+  machineId        String
+  createdByUserId  String?
+  taskName         String
+  intervalDays     Int
+  nextDueAt        DateTime
+  lastCompletedAt DateTime?
+  instructions     String                 @default("")
+  active           Boolean                @default(true)
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  organization     ProductionOrganization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  machine          ProductionMachine      @relation(fields: [machineId], references: [id], onDelete: Cascade)
+  createdBy        User?                  @relation("ProductionMaintenancePlanCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  tickets          ProductionMaintenanceTicket[]
+
+  @@index([organizationId, active, nextDueAt])
+  @@index([machineId, active, nextDueAt])
+}
+
+model ProductionMaintenanceTicket {
+  id                  String                      @id @default(cuid())
+  organizationId      String
+  machineId           String
+  planId              String?
+  jobId               String?
+  operationScheduleId String?
+  createdByUserId     String?
+  closedByUserId      String?
+  ticketNo            String
+  ticketType          String
+  priority            String                      @default("MEDIUM")
+  status              String                      @default("OPEN")
+  description         String
+  resolution          String                      @default("")
+  downtimeMinutes     Int                         @default(0)
+  openedAt            DateTime                    @default(now())
+  closedAt            DateTime?
+  createdAt           DateTime                    @default(now())
+  updatedAt           DateTime                    @updatedAt
+  organization        ProductionOrganization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  machine             ProductionMachine           @relation(fields: [machineId], references: [id], onDelete: Cascade)
+  plan                ProductionMaintenancePlan?  @relation(fields: [planId], references: [id], onDelete: SetNull)
+  job                 ProductionJob?              @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  operationSchedule   ProductionOperationSchedule? @relation(fields: [operationScheduleId], references: [id], onDelete: SetNull)
+  createdBy           User?                       @relation("ProductionMaintenanceTicketCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  closedBy            User?                       @relation("ProductionMaintenanceTicketCloser", fields: [closedByUserId], references: [id], onDelete: SetNull)
+  parts               ProductionMaintenancePart[]
+
+  @@unique([organizationId, ticketNo])
+  @@index([organizationId, status, openedAt])
+  @@index([machineId, openedAt])
+  @@index([planId])
+  @@index([jobId])
+  @@index([operationScheduleId])
+}
+
+model ProductionMaintenancePart {
+  id              String                     @id @default(cuid())
+  ticketId        String
+  materialId      String
+  stockMovementId String                     @unique
+  issuedByUserId  String?
+  quantity        Decimal                    @db.Decimal(14, 3)
+  issuedAt        DateTime                   @default(now())
+  ticket          ProductionMaintenanceTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  material        ProductionMaterial         @relation(fields: [materialId], references: [id], onDelete: Restrict)
+  stockMovement   ProductionStockMovement    @relation(fields: [stockMovementId], references: [id], onDelete: Restrict)
+  issuedBy        User?                      @relation("ProductionMaintenancePartIssuer", fields: [issuedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([ticketId, issuedAt])
+  @@index([materialId, issuedAt])
+}
+
 model ProductionMaterial {
   id                 String                        @id @default(cuid())
   organizationId     String
@@ -392,6 +680,8 @@ model ProductionMaterial {
   createdBy          User?                         @relation("ProductionMaterialCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
   purchaseOrderLines ProductionPurchaseOrderLine[]
   stockMovements     ProductionStockMovement[]
+  paperReels         ProductionPaperReel[]
+  maintenanceParts   ProductionMaintenancePart[]
 
   @@unique([organizationId, code])
   @@index([organizationId, name])
@@ -413,6 +703,7 @@ model ProductionSupplier {
   organization    ProductionOrganization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   createdBy       User?                     @relation("ProductionSupplierCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
   purchaseOrders  ProductionPurchaseOrder[]
+  paperReels      ProductionPaperReel[]
 
   @@unique([organizationId, code])
   @@index([organizationId, name])
@@ -448,6 +739,7 @@ model ProductionPurchaseOrderLine {
   purchaseOrder   ProductionPurchaseOrder   @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
   material        ProductionMaterial        @relation(fields: [materialId], references: [id], onDelete: Restrict)
   stockMovements  ProductionStockMovement[]
+  paperReels      ProductionPaperReel[]
 
   @@unique([purchaseOrderId, materialId])
   @@index([materialId])
@@ -470,10 +762,203 @@ model ProductionStockMovement {
   job                 ProductionJob?               @relation(fields: [jobId], references: [id], onDelete: SetNull)
   purchaseOrderLine   ProductionPurchaseOrderLine? @relation(fields: [purchaseOrderLineId], references: [id], onDelete: SetNull)
   createdBy           User?                        @relation("ProductionStockMovementCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  maintenancePart     ProductionMaintenancePart?
 
   @@index([organizationId, materialId, createdAt])
   @@index([organizationId, jobId, createdAt])
   @@index([purchaseOrderLineId])
+}
+
+model ProductionPaperReel {
+  id                    String                       @id @default(cuid())
+  organizationId        String
+  materialId            String
+  supplierId            String?
+  purchaseOrderLineId   String?
+  parentReelId          String?
+  createdByUserId       String?
+  reelNo                String
+  barcode               String                       @unique
+  batchNo               String                       @default("")
+  widthMm               Decimal                      @db.Decimal(10, 2)
+  gsm                   Decimal                      @db.Decimal(10, 3)
+  receivedWeightKg      Decimal                      @db.Decimal(14, 3)
+  availableWeightKg     Decimal                      @db.Decimal(14, 3)
+  status                String                       @default("AVAILABLE")
+  storageLocation       String                       @default("")
+  notes                 String                       @default("")
+  receivedAt            DateTime                     @default(now())
+  createdAt             DateTime                     @default(now())
+  updatedAt             DateTime                     @updatedAt
+  organization          ProductionOrganization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  material              ProductionMaterial           @relation(fields: [materialId], references: [id], onDelete: Restrict)
+  supplier              ProductionSupplier?          @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  purchaseOrderLine     ProductionPurchaseOrderLine? @relation(fields: [purchaseOrderLineId], references: [id], onDelete: SetNull)
+  parentReel            ProductionPaperReel?         @relation("ProductionReelAncestry", fields: [parentReelId], references: [id], onDelete: SetNull)
+  childReels            ProductionPaperReel[]        @relation("ProductionReelAncestry")
+  createdBy             User?                        @relation("ProductionPaperReelCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  movements             ProductionReelMovement[]     @relation("ProductionReelMovementReel")
+  relatedMovements      ProductionReelMovement[]     @relation("ProductionReelMovementRelatedReel")
+
+  @@unique([organizationId, reelNo])
+  @@index([organizationId, status, createdAt])
+  @@index([materialId, batchNo])
+  @@index([supplierId, receivedAt])
+  @@index([purchaseOrderLineId])
+  @@index([parentReelId])
+}
+
+model ProductionReelMovement {
+  id               String                 @id @default(cuid())
+  organizationId   String
+  reelId           String
+  relatedReelId    String?
+  jobId            String?
+  createdByUserId  String?
+  type             String
+  deltaKg          Decimal                @db.Decimal(14, 3)
+  notes            String                 @default("")
+  createdAt        DateTime               @default(now())
+  organization     ProductionOrganization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  reel             ProductionPaperReel    @relation("ProductionReelMovementReel", fields: [reelId], references: [id], onDelete: Cascade)
+  relatedReel      ProductionPaperReel?   @relation("ProductionReelMovementRelatedReel", fields: [relatedReelId], references: [id], onDelete: SetNull)
+  job              ProductionJob?         @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  createdBy        User?                  @relation("ProductionReelMovementCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([reelId, createdAt])
+  @@index([organizationId, jobId, createdAt])
+  @@index([relatedReelId])
+}
+
+model ProductionWarehousePallet {
+  id                 String                 @id @default(cuid())
+  organizationId     String
+  jobId              String
+  createdByUserId    String?
+  palletNo           String
+  quantityReceived   Int
+  quantityAvailable  Int
+  location           String
+  notes              String                 @default("")
+  receivedAt         DateTime               @default(now())
+  organization       ProductionOrganization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  job                ProductionJob         @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  createdBy          User?                  @relation("ProductionWarehousePalletCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  dispatchLines      ProductionDispatchLine[]
+
+  @@unique([organizationId, palletNo])
+  @@index([organizationId, location, receivedAt])
+  @@index([jobId, receivedAt])
+}
+
+model ProductionDispatch {
+  id                  String                      @id @default(cuid())
+  organizationId      String
+  jobId               String
+  createdByUserId     String?
+  dispatchNo          String
+  deliveryNoteNo      String
+  status              String                      @default("DISPATCHED")
+  vehicleRegistration String
+  driverName          String
+  route               String                      @default("")
+  notes               String                      @default("")
+  dispatchedAt        DateTime                    @default(now())
+  deliveredAt         DateTime?
+  receivedBy          String                      @default("")
+  deliveryNotes       String                      @default("")
+  organization        ProductionOrganization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  job                 ProductionJob               @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  createdBy           User?                       @relation("ProductionDispatchCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  lines               ProductionDispatchLine[]
+  invoice             ProductionInvoice?
+
+  @@unique([organizationId, dispatchNo])
+  @@unique([deliveryNoteNo])
+  @@index([organizationId, status, dispatchedAt])
+  @@index([jobId, dispatchedAt])
+}
+
+model ProductionDispatchLine {
+  id         String                   @id @default(cuid())
+  dispatchId String
+  palletId   String
+  quantity   Int
+  dispatch   ProductionDispatch      @relation(fields: [dispatchId], references: [id], onDelete: Cascade)
+  pallet     ProductionWarehousePallet @relation(fields: [palletId], references: [id], onDelete: Restrict)
+
+  @@unique([dispatchId, palletId])
+  @@index([palletId])
+}
+
+model ProductionInvoice {
+  id             String                     @id @default(cuid())
+  organizationId String
+  jobId          String
+  dispatchId     String                     @unique
+  customerId     String?
+  createdByUserId String?
+  invoiceNo      String
+  customerName   String
+  jobNo          String
+  customerPO     String                     @default("")
+  status         String                     @default("OPEN")
+  currency       String                     @default("KES")
+  quantity       Int
+  unitPrice      Decimal                    @db.Decimal(14, 4)
+  totalAmount    Decimal                    @db.Decimal(14, 2)
+  amountPaid     Decimal                    @default(0) @db.Decimal(14, 2)
+  amountCredited Decimal                    @default(0) @db.Decimal(14, 2)
+  issuedAt       DateTime                   @default(now())
+  dueAt          DateTime
+  notes          String                     @default("")
+  createdAt      DateTime                   @default(now())
+  updatedAt      DateTime                   @updatedAt
+  organization   ProductionOrganization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  job            ProductionJob              @relation(fields: [jobId], references: [id], onDelete: Restrict)
+  dispatch       ProductionDispatch         @relation(fields: [dispatchId], references: [id], onDelete: Restrict)
+  customer       ProductionCustomer?        @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  createdBy      User?                      @relation("ProductionInvoiceCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  payments       ProductionInvoicePayment[]
+  creditNotes    ProductionCreditNote[]
+
+  @@unique([organizationId, invoiceNo])
+  @@index([organizationId, status, dueAt])
+  @@index([customerId, issuedAt])
+  @@index([jobId, issuedAt])
+}
+
+model ProductionInvoicePayment {
+  id              String            @id @default(cuid())
+  invoiceId       String
+  createdByUserId String?
+  paymentNo       String            @unique
+  amount          Decimal           @db.Decimal(14, 2)
+  method          String
+  reference       String            @default("")
+  notes           String            @default("")
+  paidAt          DateTime          @default(now())
+  createdAt       DateTime          @default(now())
+  invoice         ProductionInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  createdBy       User?             @relation("ProductionInvoicePaymentCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([invoiceId, paidAt])
+}
+
+model ProductionCreditNote {
+  id              String            @id @default(cuid())
+  invoiceId       String
+  createdByUserId String?
+  creditNoteNo    String            @unique
+  amount          Decimal           @db.Decimal(14, 2)
+  reason          String
+  notes           String            @default("")
+  issuedAt        DateTime          @default(now())
+  createdAt       DateTime          @default(now())
+  invoice         ProductionInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  createdBy       User?             @relation("ProductionCreditNoteCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([invoiceId, issuedAt])
 }
 
 model ProductionItem {
@@ -516,6 +1001,8 @@ model ProductionCustomer {
   createdBy       User?            @relation("ProductionCustomerCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
   items           ProductionItem[]
   quotes          ProductionQuote[]
+  invoices        ProductionInvoice[]
+  tooling         ProductionTooling[]
 
   @@index([name])
 }

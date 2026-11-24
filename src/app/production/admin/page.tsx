@@ -24,7 +24,9 @@ import ProductionDashboard, {
   type ProductionDashboardOrganization,
   type ProductionDashboardMaterial,
   type ProductionDashboardNonconformance,
+  type ProductionDashboardPaperReel,
   type ProductionDashboardQuote,
+  type ProductionDashboardReelMovement,
   type ProductionDashboardQualityMetrics,
   type ProductionDashboardQualityInspection,
   type ProductionDashboardPurchaseOrder,
@@ -32,6 +34,18 @@ import ProductionDashboard, {
   type ProductionDashboardSchedule,
   type ProductionDashboardStockMovement,
   type ProductionDashboardSupplier,
+  type ProductionDashboardWarehousePallet,
+  type ProductionDashboardDispatch,
+  type ProductionDashboardInvoice,
+  type ProductionDashboardTooling,
+  type ProductionDashboardCustomer,
+  type ProductionDashboardMachine,
+  type ProductionDashboardMaintenancePlan,
+  type ProductionDashboardMaintenanceTicket,
+  type ProductionDashboardEmployee,
+  type ProductionDashboardShift,
+  type ProductionDashboardLeaveRequest,
+  type ProductionDashboardSafetyTraining,
 } from "./production-dashboard";
 
 function textValue(data: unknown, key: string): string {
@@ -60,6 +74,15 @@ function sizeValue(data: unknown): string {
   if (dimensions.every((dimension) => !dimension)) return "";
   const unit = textValue(data, "unit") === "in" ? "in" : "mm";
   return `${dimensions.map((dimension) => dimension || "—").join(" × ")} ${unit}`;
+}
+
+function isProductionInvoiceStatus(
+  value: string,
+): value is ProductionDashboardInvoice["status"] {
+  return value === "OPEN" ||
+    value === "PARTIALLY_PAID" ||
+    value === "PAID" ||
+    value === "CREDITED";
 }
 
 export default function ProductionAdminPage() {
@@ -509,6 +532,532 @@ async function AuthenticatedProductionAdminPage() {
     createdAt: movement.createdAt.toISOString(),
     jobNo: movement.job ? textValue(movement.job.data, "jobNo") : "",
   }));
+  const [paperReelRows, reelMovementRows] = productionOrganizationIds.length
+    ? await Promise.all([
+        prisma.productionPaperReel.findMany({
+          where: { organizationId: { in: productionOrganizationIds } },
+          orderBy: [{ status: "asc" }, { receivedAt: "desc" }],
+          take: 500,
+          select: {
+            id: true,
+            organizationId: true,
+            materialId: true,
+            supplierId: true,
+            purchaseOrderLineId: true,
+            parentReelId: true,
+            reelNo: true,
+            barcode: true,
+            batchNo: true,
+            widthMm: true,
+            gsm: true,
+            receivedWeightKg: true,
+            availableWeightKg: true,
+            status: true,
+            storageLocation: true,
+            notes: true,
+            receivedAt: true,
+            material: { select: { id: true, code: true, name: true } },
+            supplier: { select: { id: true, name: true } },
+            purchaseOrderLine: {
+              select: { purchaseOrder: { select: { orderNo: true } } },
+            },
+            parentReel: { select: { id: true, reelNo: true } },
+          },
+        }),
+        prisma.productionReelMovement.findMany({
+          where: { organizationId: { in: productionOrganizationIds } },
+          orderBy: { createdAt: "desc" },
+          take: 300,
+          select: {
+            id: true,
+            organizationId: true,
+            reelId: true,
+            relatedReelId: true,
+            jobId: true,
+            type: true,
+            deltaKg: true,
+            notes: true,
+            createdAt: true,
+            reel: { select: { reelNo: true } },
+            relatedReel: { select: { reelNo: true } },
+            job: { select: { data: true } },
+            createdBy: { select: { name: true } },
+          },
+        }),
+      ])
+    : [[], []];
+  const dashboardPaperReels: ProductionDashboardPaperReel[] = paperReelRows.map((reel) => ({
+    ...reel,
+    widthMm: reel.widthMm.toString(),
+    gsm: reel.gsm.toString(),
+    receivedWeightKg: reel.receivedWeightKg.toString(),
+    availableWeightKg: reel.availableWeightKg.toString(),
+    receivedAt: reel.receivedAt.toISOString(),
+    purchaseOrderNo: reel.purchaseOrderLine?.purchaseOrder.orderNo ?? null,
+  }));
+  const dashboardReelMovements: ProductionDashboardReelMovement[] = reelMovementRows.map((movement) => ({
+    ...movement,
+    reelNo: movement.reel.reelNo,
+    relatedReelNo: movement.relatedReel?.reelNo ?? null,
+    jobNo: movement.job ? textValue(movement.job.data, "jobNo") : "",
+    jobName: movement.job ? textValue(movement.job.data, "jobName") : "",
+    deltaKg: movement.deltaKg.toString(),
+    createdAt: movement.createdAt.toISOString(),
+    createdByName: movement.createdBy?.name || "Production user",
+  }));
+  const [toolingRows, customerRows] = productionOrganizationIds.length
+    ? await Promise.all([
+        prisma.productionTooling.findMany({
+          where: { organizationId: { in: productionOrganizationIds } },
+          orderBy: [{ status: "asc" }, { toolNo: "asc" }],
+          take: 500,
+          select: {
+            id: true,
+            organizationId: true,
+            toolNo: true,
+            name: true,
+            category: true,
+            ownerType: true,
+            customerId: true,
+            storageLocation: true,
+            status: true,
+            usageCount: true,
+            wearNotes: true,
+            notes: true,
+            updatedAt: true,
+            customer: { select: { name: true } },
+            events: {
+              orderBy: { createdAt: "desc" },
+              take: 20,
+              select: {
+                id: true,
+                eventType: true,
+                description: true,
+                createdAt: true,
+                jobId: true,
+                job: { select: { data: true } },
+                createdBy: { select: { name: true } },
+              },
+            },
+          },
+        }),
+        prisma.productionCustomer.findMany({
+          orderBy: { name: "asc" },
+          take: 500,
+          select: { id: true, name: true, contactPerson: true, phone: true, email: true, address: true },
+        }),
+      ])
+    : [[], []];
+  const dashboardTooling: ProductionDashboardTooling[] = toolingRows.map((tool) => ({
+    ...tool,
+    customerName: tool.customer?.name ?? null,
+    updatedAt: tool.updatedAt.toISOString(),
+    events: tool.events.map((event) => ({
+      id: event.id,
+      eventType: event.eventType,
+      description: event.description,
+      createdAt: event.createdAt.toISOString(),
+      jobId: event.jobId,
+      jobNo: event.job ? textValue(event.job.data, "jobNo") : "",
+      createdByName: event.createdBy?.name || "Production user",
+    })),
+  }));
+  const dashboardCustomers: ProductionDashboardCustomer[] = customerRows;
+  const [machineRows, maintenancePlanRows, maintenanceTicketRows] =
+    productionOrganizationIds.length
+      ? await Promise.all([
+          prisma.productionMachine.findMany({
+            where: { organizationId: { in: productionOrganizationIds } },
+            orderBy: [{ status: "asc" }, { machineNo: "asc" }],
+            take: 300,
+            select: {
+              id: true,
+              organizationId: true,
+              machineNo: true,
+              name: true,
+              machineType: true,
+              workCenter: true,
+              location: true,
+              status: true,
+            },
+          }),
+          prisma.productionMaintenancePlan.findMany({
+            where: { organizationId: { in: productionOrganizationIds } },
+            orderBy: [{ active: "desc" }, { nextDueAt: "asc" }],
+            take: 500,
+            select: {
+              id: true,
+              organizationId: true,
+              machineId: true,
+              taskName: true,
+              intervalDays: true,
+              nextDueAt: true,
+              lastCompletedAt: true,
+              instructions: true,
+              active: true,
+              machine: { select: { machineNo: true, name: true } },
+            },
+          }),
+          prisma.productionMaintenanceTicket.findMany({
+            where: { organizationId: { in: productionOrganizationIds } },
+            orderBy: [{ status: "asc" }, { openedAt: "desc" }],
+            take: 500,
+            select: {
+              id: true,
+              organizationId: true,
+              machineId: true,
+              planId: true,
+              jobId: true,
+              operationScheduleId: true,
+              ticketNo: true,
+              ticketType: true,
+              priority: true,
+              status: true,
+              description: true,
+              resolution: true,
+              downtimeMinutes: true,
+              openedAt: true,
+              closedAt: true,
+              machine: { select: { machineNo: true, name: true } },
+              plan: { select: { taskName: true } },
+              job: { select: { data: true } },
+              operationSchedule: { select: { operation: true } },
+              createdBy: { select: { name: true } },
+              closedBy: { select: { name: true } },
+              parts: {
+                orderBy: { issuedAt: "desc" },
+                select: {
+                  id: true,
+                  quantity: true,
+                  issuedAt: true,
+                  material: { select: { id: true, code: true, name: true, unit: true } },
+                  issuedBy: { select: { name: true } },
+                },
+              },
+            },
+          }),
+        ])
+      : [[], [], []];
+  const dashboardMachines: ProductionDashboardMachine[] = machineRows;
+  const dashboardMaintenancePlans: ProductionDashboardMaintenancePlan[] =
+    maintenancePlanRows.map((plan) => ({
+      ...plan,
+      nextDueAt: plan.nextDueAt.toISOString(),
+      lastCompletedAt: plan.lastCompletedAt?.toISOString() ?? null,
+      machineNo: plan.machine.machineNo,
+      machineName: plan.machine.name,
+    }));
+  const dashboardMaintenanceTickets: ProductionDashboardMaintenanceTicket[] =
+    maintenanceTicketRows.map((ticket) => ({
+      id: ticket.id,
+      organizationId: ticket.organizationId,
+      machineId: ticket.machineId,
+      planId: ticket.planId,
+      jobId: ticket.jobId,
+      operationScheduleId: ticket.operationScheduleId,
+      ticketNo: ticket.ticketNo,
+      ticketType: ticket.ticketType,
+      priority: ticket.priority,
+      status: ticket.status,
+      description: ticket.description,
+      resolution: ticket.resolution,
+      downtimeMinutes: ticket.downtimeMinutes,
+      openedAt: ticket.openedAt.toISOString(),
+      closedAt: ticket.closedAt?.toISOString() ?? null,
+      machineNo: ticket.machine.machineNo,
+      machineName: ticket.machine.name,
+      planName: ticket.plan?.taskName ?? null,
+      jobNo: ticket.job ? textValue(ticket.job.data, "jobNo") : "",
+      operation: ticket.operationSchedule?.operation ?? "",
+      createdByName: ticket.createdBy?.name || "Production user",
+      closedByName: ticket.closedBy?.name || "",
+      parts: ticket.parts.map((part) => ({
+        id: part.id,
+        quantity: part.quantity.toString(),
+        issuedAt: part.issuedAt.toISOString(),
+        material: part.material,
+        issuedByName: part.issuedBy?.name || "Production user",
+      })),
+    }));
+  const [employeeRows, rosterShiftRows, leaveRequestRows, safetyTrainingRows] =
+    productionOrganizationIds.length
+      ? await Promise.all([
+          prisma.productionEmployee.findMany({
+            where: { organizationId: { in: productionOrganizationIds } },
+            orderBy: [{ status: "asc" }, { name: "asc" }],
+            take: 1000,
+            select: {
+              id: true,
+              organizationId: true,
+              employeeNo: true,
+              name: true,
+              department: true,
+              jobTitle: true,
+              status: true,
+              hiredAt: true,
+            },
+          }),
+          prisma.productionRosterShift.findMany({
+            where: { organizationId: { in: productionOrganizationIds } },
+            orderBy: { startsAt: "desc" },
+            take: 1000,
+            select: {
+              id: true,
+              organizationId: true,
+              employeeId: true,
+              shiftName: true,
+              workCenter: true,
+              startsAt: true,
+              endsAt: true,
+              breakMinutes: true,
+              status: true,
+              notes: true,
+              employee: { select: { employeeNo: true, name: true, department: true } },
+              attendance: {
+                select: {
+                  clockedInAt: true,
+                  clockedOutAt: true,
+                  overtimeMinutes: true,
+                  notes: true,
+                },
+              },
+            },
+          }),
+          prisma.productionLeaveRequest.findMany({
+            where: { organizationId: { in: productionOrganizationIds } },
+            orderBy: [{ status: "asc" }, { startsAt: "asc" }],
+            take: 1000,
+            select: {
+              id: true,
+              organizationId: true,
+              employeeId: true,
+              leaveType: true,
+              startsAt: true,
+              endsAt: true,
+              reason: true,
+              status: true,
+              reviewNotes: true,
+              createdAt: true,
+              reviewedAt: true,
+              employee: { select: { employeeNo: true, name: true, department: true } },
+              reviewedBy: { select: { name: true } },
+            },
+          }),
+          prisma.productionSafetyTraining.findMany({
+            where: { organizationId: { in: productionOrganizationIds } },
+            orderBy: [{ expiresAt: "asc" }, { completedAt: "desc" }],
+            take: 1000,
+            select: {
+              id: true,
+              organizationId: true,
+              employeeId: true,
+              trainingName: true,
+              provider: true,
+              completedAt: true,
+              expiresAt: true,
+              notes: true,
+              employee: { select: { employeeNo: true, name: true, department: true } },
+            },
+          }),
+        ])
+      : [[], [], [], []];
+  const dashboardEmployees: ProductionDashboardEmployee[] = employeeRows.map((employee) => ({
+    ...employee,
+    hiredAt: employee.hiredAt.toISOString(),
+  }));
+  const dashboardRosterShifts: ProductionDashboardShift[] = rosterShiftRows.map((shift) => ({
+    ...shift,
+    startsAt: shift.startsAt.toISOString(),
+    endsAt: shift.endsAt.toISOString(),
+    attendance: shift.attendance
+      ? {
+          ...shift.attendance,
+          clockedInAt: shift.attendance.clockedInAt.toISOString(),
+          clockedOutAt: shift.attendance.clockedOutAt?.toISOString() ?? null,
+        }
+      : null,
+  }));
+  const dashboardLeaveRequests: ProductionDashboardLeaveRequest[] = leaveRequestRows.map((request) => ({
+    ...request,
+    startsAt: request.startsAt.toISOString(),
+    endsAt: request.endsAt.toISOString(),
+    createdAt: request.createdAt.toISOString(),
+    reviewedAt: request.reviewedAt?.toISOString() ?? null,
+  }));
+  const dashboardSafetyTrainings: ProductionDashboardSafetyTraining[] = safetyTrainingRows.map((training) => ({
+    ...training,
+    completedAt: training.completedAt.toISOString(),
+    expiresAt: training.expiresAt?.toISOString() ?? null,
+  }));
+  const [warehousePalletRows, dispatchRows] = productionOrganizationIds.length
+    ? await Promise.all([
+        prisma.productionWarehousePallet.findMany({
+          where: { organizationId: { in: productionOrganizationIds } },
+          orderBy: { receivedAt: "desc" },
+          take: 500,
+          select: {
+            id: true,
+            organizationId: true,
+            jobId: true,
+            palletNo: true,
+            quantityReceived: true,
+            quantityAvailable: true,
+            location: true,
+            notes: true,
+            receivedAt: true,
+            job: { select: { data: true } },
+          },
+        }),
+        prisma.productionDispatch.findMany({
+          where: { organizationId: { in: productionOrganizationIds } },
+          orderBy: { dispatchedAt: "desc" },
+          take: 300,
+          select: {
+            id: true,
+            organizationId: true,
+            jobId: true,
+            dispatchNo: true,
+            deliveryNoteNo: true,
+            status: true,
+            vehicleRegistration: true,
+            driverName: true,
+            route: true,
+            notes: true,
+            dispatchedAt: true,
+            deliveredAt: true,
+            receivedBy: true,
+            deliveryNotes: true,
+            job: {
+              select: {
+                data: true,
+                quote: {
+                  select: {
+                    currency: true,
+                    lines: { select: { itemCode: true, unitPrice: true } },
+                  },
+                },
+              },
+            },
+            lines: {
+              orderBy: { pallet: { palletNo: "asc" } },
+              select: {
+                quantity: true,
+                pallet: { select: { id: true, palletNo: true, location: true } },
+              },
+            },
+          },
+        }),
+      ])
+    : [[], []];
+  const dashboardWarehousePallets: ProductionDashboardWarehousePallet[] =
+    warehousePalletRows.map((pallet) => ({
+      ...pallet,
+      jobNo: textValue(pallet.job.data, "jobNo"),
+      jobName: textValue(pallet.job.data, "jobName"),
+      customer: textValue(pallet.job.data, "customer"),
+      receivedAt: pallet.receivedAt.toISOString(),
+    }));
+  const dashboardDispatches: ProductionDashboardDispatch[] = dispatchRows.map((dispatch) => {
+    if (dispatch.status !== "DISPATCHED" && dispatch.status !== "DELIVERED") {
+      throw new Error(`Dispatch ${dispatch.id} has an invalid shipment status.`);
+    }
+    const itemCode = textValue(dispatch.job.data, "itemCode");
+    const quotedLine = dispatch.job.quote?.lines.find((line) => line.itemCode === itemCode);
+    return {
+      ...dispatch,
+      status: dispatch.status,
+      jobNo: textValue(dispatch.job.data, "jobNo"),
+      jobName: textValue(dispatch.job.data, "jobName"),
+      customer: textValue(dispatch.job.data, "customer"),
+      quotedUnitPrice: quotedLine?.unitPrice.toString() ?? null,
+      quoteCurrency: dispatch.job.quote?.currency ?? null,
+      dispatchedAt: dispatch.dispatchedAt.toISOString(),
+      deliveredAt: dispatch.deliveredAt?.toISOString() ?? null,
+      lines: dispatch.lines.map((line) => ({
+        palletId: line.pallet.id,
+        palletNo: line.pallet.palletNo,
+        location: line.pallet.location,
+        quantity: line.quantity,
+      })),
+    };
+  });
+  const invoiceRows = productionOrganizationIds.length
+    ? await prisma.productionInvoice.findMany({
+        where: { organizationId: { in: productionOrganizationIds } },
+        orderBy: { issuedAt: "desc" },
+        take: 500,
+        select: {
+          id: true,
+          organizationId: true,
+          jobId: true,
+          dispatchId: true,
+          invoiceNo: true,
+          customerName: true,
+          jobNo: true,
+          customerPO: true,
+          status: true,
+          currency: true,
+          quantity: true,
+          unitPrice: true,
+          totalAmount: true,
+          amountPaid: true,
+          amountCredited: true,
+          issuedAt: true,
+          dueAt: true,
+          job: { select: { data: true } },
+          dispatch: { select: { dispatchNo: true, deliveryNoteNo: true } },
+          payments: {
+            orderBy: { paidAt: "desc" },
+            select: {
+              paymentNo: true,
+              amount: true,
+              method: true,
+              reference: true,
+              notes: true,
+              paidAt: true,
+            },
+          },
+          creditNotes: {
+            orderBy: { issuedAt: "desc" },
+            select: {
+              creditNoteNo: true,
+              amount: true,
+              reason: true,
+              notes: true,
+              issuedAt: true,
+            },
+          },
+        },
+      })
+    : [];
+  const dashboardInvoices: ProductionDashboardInvoice[] = invoiceRows.map((invoice) => {
+    if (!isProductionInvoiceStatus(invoice.status)) {
+      throw new Error(`Invoice ${invoice.id} has an invalid payment status.`);
+    }
+    return {
+      ...invoice,
+      status: invoice.status,
+      jobName: textValue(invoice.job.data, "jobName"),
+      unitPrice: invoice.unitPrice.toString(),
+      totalAmount: invoice.totalAmount.toString(),
+      amountPaid: invoice.amountPaid.toString(),
+      amountCredited: invoice.amountCredited.toString(),
+      issuedAt: invoice.issuedAt.toISOString(),
+      dueAt: invoice.dueAt.toISOString(),
+      dispatchNo: invoice.dispatch.dispatchNo,
+      deliveryNoteNo: invoice.dispatch.deliveryNoteNo,
+      payments: invoice.payments.map((payment) => ({
+        ...payment,
+        amount: payment.amount.toString(),
+        paidAt: payment.paidAt.toISOString(),
+      })),
+      creditNotes: invoice.creditNotes.map((creditNote) => ({
+        ...creditNote,
+        amount: creditNote.amount.toString(),
+        issuedAt: creditNote.issuedAt.toISOString(),
+      })),
+    };
+  });
   const quoteOrganizationIds = organizations
     .filter((organization) =>
       organization.role === "ORDER_BOOKER" || organization.role === "PRODUCTION",
@@ -642,6 +1191,20 @@ async function AuthenticatedProductionAdminPage() {
       suppliers={dashboardSuppliers}
       purchaseOrders={dashboardPurchaseOrders}
       stockMovements={dashboardStockMovements}
+      paperReels={dashboardPaperReels}
+      reelMovements={dashboardReelMovements}
+      warehousePallets={dashboardWarehousePallets}
+      dispatches={dashboardDispatches}
+      invoices={dashboardInvoices}
+      tooling={dashboardTooling}
+      customers={dashboardCustomers}
+      machines={dashboardMachines}
+      maintenancePlans={dashboardMaintenancePlans}
+      maintenanceTickets={dashboardMaintenanceTickets}
+      employees={dashboardEmployees}
+      rosterShifts={dashboardRosterShifts}
+      leaveRequests={dashboardLeaveRequests}
+      safetyTrainings={dashboardSafetyTrainings}
       quotes={dashboardQuotes}
       isAdmin={isAdmin}
       canManageOrganizations={isAdminEmail(user.email)}
