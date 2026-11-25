@@ -669,11 +669,13 @@ type DashboardView =
   | "maintenance"
   | "hr"
   | "job-sheet"
+  | "order-detail"
   | "printing-detail"
   | ProductionWorkflowStage;
 
 type WorkspaceNavGroup =
   | "orders"
+  | "order-booking"
   | "customers"
   | "products"
   | "production"
@@ -704,6 +706,7 @@ const STAGE_DETAILS: Record<ProductionWorkflowStage | "planning" | "execution" |
 
 const WORKSPACE_GROUPS: Array<{ id: WorkspaceNavGroup; label: string }> = [
   { id: "orders", label: "Overview & orders" },
+  { id: "order-booking", label: "Order Booking" },
   { id: "customers", label: "Customers" },
   { id: "products", label: "Products" },
   { id: "production", label: "Production" },
@@ -714,13 +717,14 @@ const WORKSPACE_GROUPS: Array<{ id: WorkspaceNavGroup; label: string }> = [
 ];
 
 const WORKSPACE_ITEMS: Array<{
-  id: "overview" | "jobs" | "origination" | "quotes" | "planning" | "execution" | "quality" | "Printing" | "customers" | "products" | "procurement" | "inventory" | "reels" | "warehouse" | "invoicing" | "tooling" | "maintenance" | "hr" | "job-sheet";
+  id: "overview" | "jobs" | "Order Booking" | "origination" | "quotes" | "planning" | "execution" | "quality" | "Printing" | "customers" | "products" | "procurement" | "inventory" | "reels" | "warehouse" | "invoicing" | "tooling" | "maintenance" | "hr" | "job-sheet";
   label: string;
   icon: IconType;
   group: WorkspaceNavGroup;
 }> = [
   { id: "overview", label: "Overview", icon: FiGrid, group: "orders" },
   { id: "jobs", label: "All jobs", icon: FiBriefcase, group: "orders" },
+  { id: "Order Booking", label: "Order Booking", icon: FiClipboard, group: "order-booking" },
   { id: "origination", label: "Origination", icon: FiPenTool, group: "production" },
   { id: "quotes", label: "Costing & quotes", icon: FiDollarSign, group: "orders" },
   { id: "customers", label: "Customers", icon: FiUsers, group: "customers" },
@@ -779,6 +783,7 @@ function JobTable({
   onArtworkUploaded,
   onCreate,
   actionLabel = "Open",
+  numberLabel = "Job sheet no.",
   emptyHeading = "No shared jobs here yet",
   emptyDescription = "Create a job sheet or choose another organization or stage.",
   showArtwork = false,
@@ -794,6 +799,7 @@ function JobTable({
   canOpenJobSheet?: boolean;
   canOpenJobSheetForJob?: (job: ProductionDashboardJob) => boolean;
   actionLabel?: string;
+  numberLabel?: string;
   emptyHeading?: string;
   emptyDescription?: string;
   showArtwork?: boolean;
@@ -825,7 +831,7 @@ function JobTable({
       <table className="production-jobs-table">
         <thead>
           <tr>
-            <th scope="col">Job sheet no.</th>
+            <th scope="col">{numberLabel}</th>
             <th scope="col">Job</th>
             <th scope="col">Carton spec</th>
             <th scope="col">Size</th>
@@ -7615,6 +7621,7 @@ export default function ProductionDashboard({
     ) return false;
     if (item.id === "quotes" && !quoteOrganizations.length) return false;
     if (item.id === "job-sheet" && !canManageJobs) return false;
+    if (item.id === "Order Booking" && !canBookOrders) return false;
     if (item.id === "Printing" && !productionOrganizationIds.size) return false;
     if (["customers", "products"].includes(item.id) && !canBookOrders) return false;
     return true;
@@ -7690,6 +7697,7 @@ export default function ProductionDashboard({
       : view === "jobs" ? "All production jobs"
         : view === "customers" ? "Customers"
         : view === "products" ? "Products"
+        : view === "order-detail" ? "Order details"
         : view === "job-sheet" ? "Production job sheet"
         : view === "printing-detail" ? "Printing job"
         : view === "origination" ? "Origination"
@@ -7715,6 +7723,8 @@ export default function ProductionDashboard({
           ? "Manage customer accounts and contact details."
           : view === "products"
             ? "Manage product specifications and customer-linked carton items."
+            : view === "order-detail"
+              ? "Review the booked customer order and its product and delivery details."
         : view === "job-sheet"
           ? "View production job-sheet details without opening an embedded page."
         : view === "printing-detail"
@@ -7782,12 +7792,13 @@ export default function ProductionDashboard({
         setPrintingAttachments([]);
       }).finally(() => setPrintingLoading(false));
     } else {
-      setView("job-sheet");
+      const isOrderBooking = view === "Order Booking";
+      setView(isOrderBooking ? "order-detail" : "job-sheet");
       setJobSheetLoading(true);
       setJobSheetData(null);
       void fetch(`/api/production/jobs/${encodeURIComponent(job.id)}`, { cache: "no-store" })
         .then(async (response) => {
-          if (!response.ok) throw new Error("Could not load job sheet.");
+          if (!response.ok) throw new Error(isOrderBooking ? "Could not load order details." : "Could not load job sheet.");
           return response.json();
         })
         .then((result) => {
@@ -7878,7 +7889,7 @@ export default function ProductionDashboard({
               <span>Workflow queues</span>
               <span className="production-nav-group-count">
                 {PRODUCTION_WORKFLOW_STAGES.filter((stage) =>
-                  stage !== "Dispatch" && stage !== "Printing"
+                  stage !== "Dispatch" && stage !== "Printing" && stage !== "Order Booking"
                 ).length}
               </span>
               <FiChevronDown className={workflowQueuesExpanded ? "is-expanded" : ""} aria-hidden="true" />
@@ -7886,7 +7897,7 @@ export default function ProductionDashboard({
             {workflowQueuesExpanded && (
               <div className="production-nav-group-items" id="production-workflow-queues">
                 {PRODUCTION_WORKFLOW_STAGES.map((stage) => {
-                  if (stage === "Dispatch" || stage === "Printing") return null;
+                  if (stage === "Dispatch" || stage === "Printing" || stage === "Order Booking") return null;
                   if (stage === "Origination" && designerOrganizationIds.size > 0) return null;
                   const StageIcon = WORKFLOW_STAGE_ICONS[stage];
                   return (
@@ -7992,7 +8003,54 @@ export default function ProductionDashboard({
         </header>
 
         <main className="production-dashboard-content">
-          {view === "job-sheet" ? (
+          {view === "order-detail" ? (
+            <div className="production-page-content">
+              <section className="production-panel production-list-panel">
+                <div className="production-panel-heading">
+                  <div>
+                    <span className="production-panel-kicker">BOOKED ORDER</span>
+                    <h2>{selectedJob?.jobNo || "Order details"}</h2>
+                  </div>
+                  <button
+                    className="production-table-action"
+                    onClick={() => setView("Order Booking")}
+                    type="button"
+                  >
+                    Back to Order Booking
+                  </button>
+                </div>
+                {jobSheetLoading ? (
+                  <p className="production-quote-message" role="status">Loading order details…</p>
+                ) : (
+                  <div className="production-printing-details">
+                    {[
+                      ["Order no.", typeof jobSheetData?.jobNo === "string" ? jobSheetData.jobNo : selectedJob?.jobNo],
+                      ["Customer", typeof jobSheetData?.customer === "string" ? jobSheetData.customer : selectedJob?.customer],
+                      ["Customer PO", typeof jobSheetData?.customerPO === "string" ? jobSheetData.customerPO : ""],
+                      ["Product", typeof jobSheetData?.jobName === "string" ? jobSheetData.jobName : selectedJob?.jobName],
+                      ["Item code", typeof jobSheetData?.itemCode === "string" ? jobSheetData.itemCode : ""],
+                      ["Carton type", typeof jobSheetData?.boxType === "string" ? jobSheetData.boxType : selectedJob?.cartonSpec],
+                      ["Size", selectedJob?.size],
+                      ["Order quantity", typeof jobSheetData?.orderQty === "string"
+                        ? Number(jobSheetData.orderQty).toLocaleString("en-KE")
+                        : selectedJob?.orderQty?.toLocaleString("en-KE")],
+                      ["Order date", typeof jobSheetData?.orderDate === "string" ? jobSheetData.orderDate : ""],
+                      ["Delivery date", typeof jobSheetData?.deliveryDate === "string" ? jobSheetData.deliveryDate : selectedJob?.deliveryDate],
+                      ["Workflow stage", typeof jobSheetData?.workflowStage === "string" ? jobSheetData.workflowStage : selectedJob?.workflowStage],
+                      ["Top liner", typeof jobSheetData?.topLiner === "string" ? jobSheetData.topLiner : ""],
+                      ["Medium", typeof jobSheetData?.medium === "string" ? jobSheetData.medium : ""],
+                      ["Bottom liner", typeof jobSheetData?.bottomLiner === "string" ? jobSheetData.bottomLiner : ""],
+                    ].map(([label, value]) => (
+                      <div className="production-printing-detail" key={label}>
+                        <span>{label}</span>
+                        <strong>{value || "—"}</strong>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            </div>
+          ) : view === "job-sheet" ? (
             <div className="production-page-content">
               <section className="production-panel production-list-panel">
                 <div className="production-panel-heading">
@@ -8632,9 +8690,20 @@ export default function ProductionDashboard({
                         ? printingJobs
                         : visibleJobs.filter((job) => job.workflowStage === view)}
                     onOpen={openJob}
-                    actionLabel={view === "Printing" ? "Open printing job" : "Open job"}
-                    canOpenJobSheet={canManageJobs}
-                    canOpenJobSheetForJob={(job) => productionOrganizationIds.has(job.organizationId)}
+                    actionLabel={view === "Order Booking"
+                      ? "Open order"
+                      : view === "Printing"
+                        ? "Open printing job"
+                        : "Open job"}
+                    numberLabel={view === "Order Booking" ? "Order no." : "Job sheet no."}
+                    emptyHeading={view === "Order Booking" ? "No booked orders" : undefined}
+                    emptyDescription={view === "Order Booking"
+                      ? "Orders booked for your organizations will appear here."
+                      : undefined}
+                    canOpenJobSheet={view === "Order Booking" || canManageJobs}
+                    canOpenJobSheetForJob={(job) =>
+                      view === "Order Booking" || productionOrganizationIds.has(job.organizationId)
+                    }
                     canResolveJobFlag={(job) => productionOrganizationIds.has(job.organizationId)}
                     onFlagChanged={() => router.refresh()}
                   />
