@@ -15,14 +15,14 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className="h-full" suppressHydrationWarning>
+    <html lang="en" className="h-full" data-theme="dark" suppressHydrationWarning>
       <body className="h-full">
         <Script id="packstudio-theme-init" strategy="beforeInteractive">
           {`try {
   const savedTheme = localStorage.getItem("packstudio-theme");
   const theme = savedTheme === "light" || savedTheme === "dark"
     ? savedTheme
-    : window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    : "dark";
   document.documentElement.dataset.theme = theme;
   document.documentElement.style.colorScheme = theme;
 } catch {
