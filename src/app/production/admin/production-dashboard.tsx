@@ -21,6 +21,7 @@ import {
   FiBell,
   FiBriefcase,
   FiCalendar,
+  FiCheckCircle,
   FiCheckSquare,
   FiChevronDown,
   FiClipboard,
@@ -39,6 +40,7 @@ import {
   FiShoppingCart,
   FiTruck,
   FiTool,
+  FiTrash2,
   FiUsers,
   FiX,
 } from "react-icons/fi";
@@ -5710,6 +5712,7 @@ function ArtworkUploadButton({
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [status, setStatus] = useState("");
   const [hasError, setHasError] = useState(false);
 
@@ -5764,8 +5767,48 @@ function ArtworkUploadButton({
     }
   };
 
+  const deleteArtwork = async () => {
+    if (!window.confirm(`Delete the artwork attached to ${job.jobNo || "this job"}?`)) return;
+
+    setIsDeleting(true);
+    setStatus("Deleting artwork…");
+    setHasError(false);
+    try {
+      await requestProductionJson(
+        `/api/production/jobs/${encodeURIComponent(job.id)}/artwork`,
+        { method: "DELETE" },
+      );
+      setStatus("Artwork deleted.");
+      onUploaded?.();
+    } catch (error) {
+      console.error("Could not delete artwork from the production job:", error);
+      setStatus(`Could not delete artwork: ${error instanceof Error ? error.message : String(error)}`);
+      setHasError(true);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   if (job.artworkCount > 0) {
-    return <span className="production-artwork-attached">Artwork attached</span>;
+    return (
+      <div className="production-artwork-upload">
+        <span className="production-artwork-attached">
+          <FiCheckCircle aria-hidden="true" />
+          Artwork attached
+        </span>
+        <button
+          aria-label={`Delete artwork for ${job.jobNo || "job"}`}
+          className="production-table-action production-artwork-delete-button"
+          disabled={isDeleting}
+          onClick={() => void deleteArtwork()}
+          type="button"
+        >
+          <FiTrash2 aria-hidden="true" />
+          {isDeleting ? "Deleting…" : "Delete artwork"}
+        </button>
+        {status && <small aria-live="polite" role={hasError ? "alert" : "status"}>{status}</small>}
+      </div>
+    );
   }
 
   return (

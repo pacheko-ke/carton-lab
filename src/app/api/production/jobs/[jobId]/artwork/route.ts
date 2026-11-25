@@ -1,5 +1,5 @@
 import { Prisma } from "@prisma/client";
-import { get } from "@vercel/blob";
+import { del, get } from "@vercel/blob";
 import { canAttachProductionArtwork, getArtworkContentType, MAX_ARTWORK_FILE_BYTES, sanitizeArtworkFileName } from "@/lib/production-data";
 import {
   getAuthorizedProductionJob,
@@ -42,6 +42,74 @@ export async function GET(_request: Request, { params }: RouteContext) {
 
   return NextResponse.json(
     { attachments },
+    { headers: { "Cache-Control": "private, no-store" } },
+  );
+}
+
+export async function DELETE(_request: Request, { params }: RouteContext) {
+  const user = await getVerifiedProductionUser();
+  if (!user) {
+    return NextResponse.json(
+      { error: "Verified account required" },
+      { status: 401 },
+    );
+  }
+
+  const { jobId } = await params;
+  const isAdmin = isProductionAdmin(user);
+  const access = await getAuthorizedProductionJob(user.id, jobId, isAdmin);
+  if (!access) {
+    return NextResponse.json({ error: "Production job not found" }, { status: 404 });
+  }
+  if (!isAdmin && !canAttachProductionArtwork(access.membership.role)) {
+    return NextResponse.json(
+      { error: "Designer role required to delete artwork" },
+      { status: 403 },
+    );
+  }
+  if (!isPrivateBlobStorageConfigured()) {
+    return NextResponse.json(
+      { error: "Private Vercel Blob storage is not configured." },
+      { status: 503 },
+    );
+  }
+
+  const attachment = await prisma.productionAttachment.findFirst({
+    where: { jobId },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, pathname: true },
+  });
+  if (!attachment) {
+    return NextResponse.json({ error: "Artwork not found" }, { status: 404 });
+  }
+
+  try {
+    await del(attachment.pathname);
+  } catch (error) {
+    console.error("Could not delete artwork from private blob storage.", error);
+    return NextResponse.json(
+      { error: "Could not delete artwork from storage. The attachment was left unchanged." },
+      { status: 502 },
+    );
+  }
+
+  try {
+    const result = await prisma.productionAttachment.deleteMany({
+      where: { id: attachment.id, jobId },
+    });
+    if (!result.count) {
+      return NextResponse.json({ error: "Artwork not found" }, { status: 404 });
+    }
+  } catch (error) {
+    console.error("Could not remove the artwork record after deleting its blob.", error);
+    return NextResponse.json(
+      { error: "Artwork storage was deleted, but its record could not be removed. Retry the delete." },
+      { status: 500 },
+    );
+  }
+
+  return NextResponse.json(
+    { deleted: true },
     { headers: { "Cache-Control": "private, no-store" } },
   );
 }

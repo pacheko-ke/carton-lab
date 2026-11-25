@@ -5662,9 +5662,30 @@ input {
 }
 
 .production-artwork-attached {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   color: #b6cadd;
   font-size: 11px;
   font-weight: 600;
+}
+
+.production-artwork-delete-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #ff8b8b;
+}
+
+.production-artwork-delete-button:hover {
+  color: #ffc1c1;
+}
+
+.production-artwork-attached svg,
+.production-artwork-delete-button svg {
+  width: 13px;
+  height: 13px;
+  flex: none;
 }
 
 .production-printing-artwork p {
@@ -6610,6 +6631,14 @@ input {
 
 :root[data-theme="light"] .production-artwork-attached {
   color: #526579;
+}
+
+:root[data-theme="light"] .production-artwork-delete-button {
+  color: #b42318;
+}
+
+:root[data-theme="light"] .production-artwork-delete-button:hover {
+  color: #8f1d14;
 }
 
 :root[data-theme="light"] .production-dashboard-shell .production-order-booking-error,
