@@ -670,6 +670,7 @@ type Props = {
   cartonTypes: string[];
   organizations: ProductionDashboardOrganization[];
   jobs: ProductionDashboardJob[];
+  originationJobs: ProductionDashboardJob[];
   schedules: ProductionDashboardSchedule[];
   operationRuns: ProductionDashboardRun[];
   qualityInspections: ProductionDashboardQualityInspection[];
@@ -919,6 +920,15 @@ function JobTable({
                 <td>
                   {showArtwork ? (
                     <div className="production-job-row-actions">
+                      {canOpenJobSheet && (canOpenJobSheetForJob?.(job) ?? true) && (
+                        <button
+                          className="production-table-action"
+                          onClick={() => onOpen(job)}
+                          type="button"
+                        >
+                          {actionLabel}
+                        </button>
+                      )}
                       <ArtworkUploadButton job={job} onUploaded={onArtworkUploaded} />
                       {onEditPrintDetails && (
                         <button
@@ -958,9 +968,9 @@ const ORIGINATION_PRINT_FIELD_DETAILS: Record<
   OriginationPrintField,
   { label: string; maxLength: number; multiline?: boolean }
 > = {
-  printing: { label: "Printing", maxLength: 10 },
+  printing: { label: "Job print status", maxLength: 10 },
   printMethod: { label: "Printing method", maxLength: 80 },
-  printColor: { label: "Print colour", maxLength: 80 },
+  printColor: { label: "Individual print colours (one per line)", maxLength: 300, multiline: true },
   inkType: { label: "Ink type", maxLength: 60 },
   artwork: { label: "Artwork description", maxLength: 80 },
   artworkRef: { label: "Artwork reference", maxLength: 80 },
@@ -1009,22 +1019,37 @@ function OriginationPrintDetailsForm({
           throw new Error("The server returned invalid job details.");
         }
         const jobData = result.job.data;
+        const storedPrinting = typeof jobData.printing === "string"
+          ? jobData.printing.trim()
+          : "";
+        const normalizedPrinting = storedPrinting.toLowerCase();
+        const printing = normalizedPrinting === "plain" ||
+          normalizedPrinting === "no" ||
+          normalizedPrinting === "none" ||
+          normalizedPrinting === "unprinted"
+          ? "Plain"
+          : storedPrinting
+            ? "Printed"
+            : "";
+        const hasPrinting = printing === "Printed";
         if (active) {
           setDetails({
-            printing: typeof jobData.printing === "string" ? jobData.printing : "",
-            printMethod: typeof jobData.printMethod === "string" ? jobData.printMethod : "",
-            printColor: typeof jobData.printColor === "string" ? jobData.printColor : "",
-            inkType: typeof jobData.inkType === "string" ? jobData.inkType : "",
-            artwork: typeof jobData.artwork === "string" ? jobData.artwork : "",
-            artworkRef: typeof jobData.artworkRef === "string" ? jobData.artworkRef : "",
-            plateRef: typeof jobData.plateRef === "string" ? jobData.plateRef : "",
-            printArea: typeof jobData.printArea === "string" ? jobData.printArea : "",
-            registration: typeof jobData.registration === "string" ? jobData.registration : "",
-            registrationTolerance: typeof jobData.registrationTolerance === "string"
+            printing,
+            printMethod: hasPrinting && typeof jobData.printMethod === "string" ? jobData.printMethod : "",
+            printColor: hasPrinting && typeof jobData.printColor === "string"
+              ? jobData.printColor.split(/\r?\n|,\s*/).filter(Boolean).join("\n")
+              : "",
+            inkType: hasPrinting && typeof jobData.inkType === "string" ? jobData.inkType : "",
+            artwork: hasPrinting && typeof jobData.artwork === "string" ? jobData.artwork : "",
+            artworkRef: hasPrinting && typeof jobData.artworkRef === "string" ? jobData.artworkRef : "",
+            plateRef: hasPrinting && typeof jobData.plateRef === "string" ? jobData.plateRef : "",
+            printArea: hasPrinting && typeof jobData.printArea === "string" ? jobData.printArea : "",
+            registration: hasPrinting && typeof jobData.registration === "string" ? jobData.registration : "",
+            registrationTolerance: hasPrinting && typeof jobData.registrationTolerance === "string"
               ? jobData.registrationTolerance
               : "",
-            printPosition: typeof jobData.printPosition === "string" ? jobData.printPosition : "",
-            printInstructions: typeof jobData.printInstructions === "string"
+            printPosition: hasPrinting && typeof jobData.printPosition === "string" ? jobData.printPosition : "",
+            printInstructions: hasPrinting && typeof jobData.printInstructions === "string"
               ? jobData.printInstructions
               : "",
           });
@@ -1049,10 +1074,13 @@ function OriginationPrintDetailsForm({
     setError("");
     setIsSaving(true);
     try {
-      await requestProductionJson(`/api/production/jobs/${encodeURIComponent(job.id)}`, {
+      const result = await requestProductionJson(`/api/production/jobs/${encodeURIComponent(job.id)}`, {
         method: "PATCH",
         body: JSON.stringify({ data: details }),
       });
+      if (!isRecord(result.job) || result.job.id !== job.id) {
+        throw new Error("Print details were not saved to the selected job.");
+      }
       onSaved();
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Could not save print details.");
@@ -1073,26 +1101,74 @@ function OriginationPrintDetailsForm({
         <div className="production-origination-print-fields">
           {PRODUCTION_ORIGINATION_PRINT_FIELDS.map((field) => {
             const metadata = ORIGINATION_PRINT_FIELD_DETAILS[field];
+            if (field !== "printing" && details.printing !== "Printed") return null;
+
             return (
               <label className="production-order-booking-field" key={field}>
                 {metadata.label}
-                {metadata.multiline ? (
+                {field === "printing" ? (
+                  <select
+                    onChange={(event) => {
+                      const printing = event.currentTarget.value;
+                      setDetails((current) => ({
+                        ...current,
+                        printing,
+                        ...(printing === "Printed"
+                          ? {}
+                          : {
+                              printMethod: "",
+                              printColor: "",
+                              inkType: "",
+                              artwork: "",
+                              artworkRef: "",
+                              plateRef: "",
+                              printArea: "",
+                              registration: "",
+                              registrationTolerance: "",
+                              printPosition: "",
+                              printInstructions: "",
+                            }),
+                      }));
+                    }}
+                    required
+                    value={details.printing}
+                  >
+                    <option value="">Select plain or printed</option>
+                    <option value="Plain">Plain</option>
+                    <option value="Printed">Printed</option>
+                  </select>
+                ) : metadata.multiline ? (
                   <textarea
                     maxLength={metadata.maxLength}
-                    onChange={(event) => setDetails((current) => ({
-                      ...current,
-                      [field]: event.currentTarget.value,
-                    }))}
-                    rows={3}
+                    onChange={(event) => {
+                      const value = event.currentTarget.value;
+                      setDetails((current) => ({
+                        ...current,
+                        [field]: value,
+                      }));
+                    }}
+                    placeholder={
+                      field === "printColor"
+                        ? "One colour per line (e.g. Red, Black)"
+                        : undefined
+                    }
+                    required={
+                      details.printing === "Printed" &&
+                      (field === "printColor" || field === "printInstructions")
+                    }
+                    rows={field === "printColor" ? 4 : 3}
                     value={details[field]}
                   />
                 ) : (
                   <input
                     maxLength={metadata.maxLength}
-                    onChange={(event) => setDetails((current) => ({
-                      ...current,
-                      [field]: event.currentTarget.value,
-                    }))}
+                    onChange={(event) => {
+                      const value = event.currentTarget.value;
+                      setDetails((current) => ({
+                        ...current,
+                        [field]: value,
+                      }));
+                    }}
                     value={details[field]}
                   />
                 )}
@@ -1731,8 +1807,8 @@ const JOB_SHEET_FIELD_LABELS: Record<string, string> = {
   topLiner: "Top liner",
   medium: "Medium",
   bottomLiner: "Bottom liner",
-  printing: "Printing",
-  printColor: "Print colour",
+  printing: "Print status",
+  printColor: "Print colours",
   printMethod: "Printing method",
   artwork: "Artwork description",
   printPosition: "Print position",
@@ -8993,6 +9069,7 @@ export default function ProductionDashboard({
   cartonTypes,
   organizations,
   jobs,
+  originationJobs: originationQueueJobs,
   schedules,
   operationRuns,
   qualityInspections,
@@ -9020,10 +9097,16 @@ export default function ProductionDashboard({
   isAdmin,
   canManageOrganizations,
 }: Props) {
+  const hasDesignerRole = !isAdmin &&
+    organizations.some((organization) => organization.role === "DESIGNER");
   const router = useRouter();
-  const [view, setView] = useState<DashboardView>("overview");
+  const [view, setView] = useState<DashboardView>(
+    hasDesignerRole ? "origination" : "overview",
+  );
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [expandedNavGroup, setExpandedNavGroup] = useState<WorkspaceNavGroup | null>("orders");
+  const [expandedNavGroup, setExpandedNavGroup] = useState<WorkspaceNavGroup | null>(
+    hasDesignerRole ? "production" : "orders",
+  );
   const [organizationFilter, setOrganizationFilter] = useState("all");
   const [selectedJob, setSelectedJob] = useState<ProductionDashboardJob | null>(null);
   const [editingOriginationJob, setEditingOriginationJob] = useState<ProductionDashboardJob | null>(null);
@@ -9088,6 +9171,7 @@ export default function ProductionDashboard({
     [isAdmin, organizations],
   );
   const navigateTo = (nextView: DashboardView) => {
+    if (hasDesignerRole && nextView !== "origination") return;
     setView(nextView);
     setIsMobileMenuOpen(false);
     const group = WORKSPACE_ITEMS.find((item) => item.id === nextView)?.group;
@@ -9101,9 +9185,9 @@ export default function ProductionDashboard({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isMobileMenuOpen]);
-  const canBookOrders = orderBookingOrganizations.some(
+  const canBookOrders = !hasDesignerRole && (orderBookingOrganizations.some(
     (organization) => organizationFilter === "all" || organization.id === organizationFilter,
-  ) || isAdmin;
+  ) || isAdmin);
   const defaultOrderBookingOrganizationId =
     orderBookingOrganizations.find((organization) => organization.id === organizationFilter)?.id ??
     orderBookingOrganizations[0]?.id ??
@@ -9116,18 +9200,19 @@ export default function ProductionDashboard({
     ? orderBookingOrganizations
     : orderBookingOrganizations.filter((organization) => organization.id === organizationFilter);
   const originationJobs = useMemo(
-    () => visibleJobs.filter(
-      (job) => isProductionOriginationQueueStage(job.workflowStage) &&
-        designerOrganizationIds.has(job.organizationId),
+    () => originationQueueJobs.filter((job) =>
+      organizationFilter === "all" || job.organizationId === organizationFilter,
     ),
-    [visibleJobs, designerOrganizationIds],
+    [originationQueueJobs, organizationFilter],
   );
   const canManageJobs = isAdmin || organizations.some(
     (organization) => organization.role === "PRODUCTION" &&
       (organizationFilter === "all" || organization.id === organizationFilter),
   );
   const visibleWorkspaceItems = WORKSPACE_ITEMS.filter((item) => {
+    if (hasDesignerRole && item.id !== "origination") return false;
     if (item.id === "origination" && !designerOrganizationIds.size) return false;
+    if (hasDesignerRole && ["Order Booking", "customers", "products"].includes(item.id)) return false;
     if (
       ["planning", "execution", "quality", "procurement", "inventory", "reels", "warehouse", "invoicing", "tooling", "maintenance", "hr"].includes(item.id) &&
       !productionOrganizationIds.size
@@ -9379,7 +9464,7 @@ export default function ProductionDashboard({
         : view === "printing-detail"
           ? "Printing details and artwork for the selected job."
           : view === "origination"
-            ? "Review planned jobs for your designer organizations and attach their artwork."
+            ? "Review Origination jobs across organizations, update print details, and attach artwork."
             : view === "quotes"
               ? "Cost carton products, manage quotation approvals, and convert approved quotes into orders."
               : view === "planning"
@@ -9411,6 +9496,12 @@ export default function ProductionDashboard({
                                         : "";
 
   const openJob = useCallback((job: ProductionDashboardJob) => {
+    if (hasDesignerRole) {
+      if (!isProductionOriginationQueueStage(job.workflowStage)) return;
+      setEditingOriginationJob(job);
+      return;
+    }
+
     setSelectedJob(job);
     setIsSchedulingCorrugator(false);
     setJobSheetError("");
@@ -9482,7 +9573,7 @@ export default function ProductionDashboard({
         })
         .finally(() => setJobSheetLoading(false));
     }
-  }, [view]);
+  }, [hasDesignerRole, view]);
   const openJobRef = useRef(openJob);
   useEffect(() => {
     openJobRef.current = openJob;
@@ -9491,13 +9582,13 @@ export default function ProductionDashboard({
     const url = new URL(window.location.href);
     const jobId = url.searchParams.get("jobId");
     if (!jobId || handledJobDeepLink.current === jobId) return;
-    const job = jobs.find((entry) => entry.id === jobId);
+    const job = [...jobs, ...originationQueueJobs].find((entry) => entry.id === jobId);
     if (!job) return;
     handledJobDeepLink.current = jobId;
     openJobRef.current(job);
     url.searchParams.delete("jobId");
     window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
-  }, [jobs]);
+  }, [jobs, originationQueueJobs]);
 
   const printJobSheet = () => {
     document.body.dataset.printTarget = "job-sheet";
@@ -9882,10 +9973,10 @@ export default function ProductionDashboard({
                   <div className="production-quote-actions production-no-print">
                     <button
                       className="production-table-action"
-                      onClick={() => setView("jobs")}
+                      onClick={() => navigateTo(hasDesignerRole ? "origination" : "jobs")}
                       type="button"
                     >
-                      Back to jobs
+                      {hasDesignerRole ? "Back to Origination" : "Back to jobs"}
                     </button>
                     <button
                       className="production-table-action"
@@ -10563,13 +10654,14 @@ export default function ProductionDashboard({
                     />
                   ) : (
                     <JobTable
-                      emptyDescription="Jobs from booking through board production for your designer organizations will appear here."
+                      emptyDescription="Jobs from booking through board production across organizations will appear here."
                       emptyHeading="No planned jobs"
                       jobs={originationJobs}
+                      actionLabel={hasDesignerRole ? "Open Origination" : undefined}
                       onOpen={openJob}
                       onArtworkUploaded={() => router.refresh()}
                       onFlagChanged={() => router.refresh()}
-                      onEditPrintDetails={setEditingOriginationJob}
+                      onEditPrintDetails={hasDesignerRole ? undefined : setEditingOriginationJob}
                       canFlagJobs
                       canResolveJobFlag={(job) => productionOrganizationIds.has(job.organizationId)}
                       showArtwork

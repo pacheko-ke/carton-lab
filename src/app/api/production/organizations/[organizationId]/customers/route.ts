@@ -5,6 +5,7 @@ import {
 import {
   getProductionOrganizationMembership,
   getVerifiedProductionUser,
+  isProductionDesigner,
   isProductionAdmin,
 } from "@/lib/production-access";
 import { prisma } from "@/lib/prisma";
@@ -29,6 +30,11 @@ async function getOrderBooker(organizationId: string) {
   }
 
   const isAdmin = isProductionAdmin(user);
+  if (!isAdmin && await isProductionDesigner(user.id)) {
+    return {
+      response: NextResponse.json({ error: "Designer access is limited to Origination" }, { status: 403 }),
+    };
+  }
   const membership = await getProductionOrganizationMembership(user.id, organizationId, isAdmin);
   if (!membership) {
     return { response: NextResponse.json({ error: "Organization access denied" }, { status: 403 }) };

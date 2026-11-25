@@ -513,7 +513,7 @@ const JOB_SHEET_FIELD_LIMITS: Record<string, number> = {
   bct: 40,
   printing: 10,
   printMethod: 80,
-  printColor: 80,
+  printColor: 300,
   inkType: 60,
   artworkRef: 80,
   plateRef: 80,
@@ -572,6 +572,21 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+export function getProductionOriginationPrintDetails(
+  value: unknown,
+): Record<string, string> {
+  if (!isRecord(value)) return {};
+
+  return PRODUCTION_ORIGINATION_PRINT_FIELDS.reduce<Record<string, string>>(
+    (details, field) => {
+      const fieldValue = value[field];
+      if (typeof fieldValue === "string") details[field] = fieldValue;
+      return details;
+    },
+    {},
+  );
+}
+
 export function validateProductionJobData(
   value: unknown,
 ): value is Record<string, unknown> {
@@ -618,10 +633,22 @@ export function validateProductionJobData(
 export function validateProductionOriginationPrintDetails(
   value: unknown,
 ): value is Record<string, unknown> {
-  return isRecord(value) &&
-    Object.keys(value).length > 0 &&
-    Object.keys(value).every((key) => PRODUCTION_ORIGINATION_PRINT_FIELD_SET.has(key)) &&
-    validateProductionJobData(value);
+  if (!isRecord(value) ||
+    Object.keys(value).length === 0 ||
+    !Object.keys(value).every((key) => PRODUCTION_ORIGINATION_PRINT_FIELD_SET.has(key))) {
+    return false;
+  }
+  if (!validateProductionJobData(value)) return false;
+  if (!("printing" in value)) return true;
+  if (value.printing !== "Plain" && value.printing !== "Printed") return false;
+  if (value.printing === "Plain") return true;
+
+  return (
+    typeof value.printColor === "string" &&
+    value.printColor.split(/\r?\n/).some((color) => color.trim()) &&
+    typeof value.printInstructions === "string" &&
+    Boolean(value.printInstructions.trim())
+  );
 }
 
 export function canEditProductionJobs(role: string): boolean {

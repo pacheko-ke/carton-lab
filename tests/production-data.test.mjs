@@ -6,6 +6,7 @@ import {
   canEditProductionJobs,
   canFlagProductionJobs,
   canResolveProductionJobFlags,
+  getProductionOriginationPrintDetails,
   isProductionOriginationQueueStage,
   getArtworkContentType,
   MAX_ARTWORK_FILE_BYTES,
@@ -75,6 +76,54 @@ test("limits Origination job updates to valid printing details", () => {
     }),
     false,
   );
+  assert.equal(
+    validateProductionOriginationPrintDetails({
+      printing: "Plain",
+    }),
+    true,
+  );
+  assert.equal(
+    validateProductionOriginationPrintDetails({
+      printing: "Printed",
+      printColor: "Blue\nRed",
+      printInstructions: "Align to the artwork.",
+    }),
+    true,
+  );
+  assert.equal(
+    validateProductionOriginationPrintDetails({
+      printing: "Printed",
+      printColor: "Blue",
+    }),
+    false,
+  );
+  assert.equal(
+    validateProductionOriginationPrintDetails({
+      printing: "Printed",
+      printColor: " \n ",
+      printInstructions: "Align to the artwork.",
+    }),
+    false,
+  );
+});
+
+test("returns only string-valued Origination print details", () => {
+  assert.deepEqual(
+    getProductionOriginationPrintDetails({
+      printing: "Printed",
+      printColor: "Blue",
+      printInstructions: "Align to the artwork.",
+      customer: "Private customer",
+      orderQty: "1200",
+      artworkRef: 42,
+    }),
+    {
+      printing: "Printed",
+      printColor: "Blue",
+      printInstructions: "Align to the artwork.",
+    },
+  );
+  assert.deepEqual(getProductionOriginationPrintDetails(null), {});
 });
 
 test("limits artwork files to 5 MiB and accepts supported artwork formats", () => {

@@ -16,14 +16,19 @@ export async function GET() {
         orderBy: { name: "asc" },
         select: { id: true, name: true },
       })).map((organization) => ({ ...organization, role: "PRODUCTION" }))
-    : (await prisma.productionOrganizationMembership.findMany({
+    : await prisma.productionOrganizationMembership.findMany({
         where: { userId: user.id },
         select: {
           role: true,
           organization: { select: { id: true, name: true } },
         },
-      })).map(({ role, organization }) => ({ ...organization, role }))
-      .sort((left, right) => left.name.localeCompare(right.name));
+      }).then((memberships) => {
+        const hasDesignerRole = memberships.some(({ role }) => role === "DESIGNER");
+        return memberships
+          .filter(({ role }) => !hasDesignerRole || role === "DESIGNER")
+          .map(({ role, organization }) => ({ ...organization, role }))
+          .sort((left, right) => left.name.localeCompare(right.name));
+      });
 
   return NextResponse.json(
     { organizations },

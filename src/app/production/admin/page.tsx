@@ -15,6 +15,7 @@ import {
   isProductionNonconformanceDisposition,
   isProductionNonconformanceSeverity,
   isProductionNonconformanceStatus,
+  isProductionOriginationQueueStage,
   isProductionWorkflowStage,
   PRODUCTION_WORKFLOW_STAGES,
   isRecord,
@@ -77,6 +78,20 @@ function sizeValue(data: unknown): string {
   return `${dimensions.map((dimension) => dimension || "—").join(" × ")} ${unit}`;
 }
 
+const dashboardJobSelection = {
+  id: true,
+  organizationId: true,
+  data: true,
+  updatedAt: true,
+  flag: {
+    select: {
+      reason: true,
+      resolvedAt: true,
+    },
+  },
+  _count: { select: { attachments: true } },
+} as const;
+
 function isProductionInvoiceStatus(
   value: string,
 ): value is ProductionDashboardInvoice["status"] {
@@ -104,7 +119,7 @@ async function AuthenticatedProductionAdminPage() {
   await connection();
   const user = await requireVerifiedUser();
   const isAdmin = isProductionAdmin(user);
-  const organizations: ProductionDashboardOrganization[] = isAdmin
+  const membershipOrganizations: ProductionDashboardOrganization[] = isAdmin
     ? (await prisma.productionOrganization.findMany({
         orderBy: { name: "asc" },
         select: { id: true, name: true },
@@ -123,8 +138,18 @@ async function AuthenticatedProductionAdminPage() {
             ? "ORDER_BOOKER"
             : "PRODUCTION",
       }));
+  const hasDesignerRole = !isAdmin &&
+    membershipOrganizations.some((organization) => organization.role === "DESIGNER");
+  const organizations = hasDesignerRole
+    ? membershipOrganizations.filter((organization) => organization.role === "DESIGNER")
+    : membershipOrganizations;
+  const organizationNamesForOrigination = hasDesignerRole
+    ? await prisma.productionOrganization.findMany({
+        select: { id: true, name: true },
+      })
+    : organizations;
   const organizationNames = new Map(
-    organizations.map((organization) => [organization.id, organization.name]),
+    organizationNamesForOrigination.map((organization) => [organization.id, organization.name]),
   );
   const jobs = organizations.length
     ? await prisma.productionJob.findMany({
@@ -132,22 +157,21 @@ async function AuthenticatedProductionAdminPage() {
           organizationId: { in: organizations.map((organization) => organization.id) },
         },
         orderBy: { updatedAt: "desc" },
-        select: {
-          id: true,
-          organizationId: true,
-          data: true,
-          updatedAt: true,
-          flag: {
-            select: {
-              reason: true,
-              resolvedAt: true,
-            },
-          },
-          _count: { select: { attachments: true } },
-        },
+        select: dashboardJobSelection,
       })
     : [];
-  const dashboardJobs: ProductionDashboardJob[] = jobs.map((job) => {
+  const crossOrganizationJobRows = hasDesignerRole
+    ? await prisma.productionJob.findMany({
+        where: {
+          organizationId: {
+            notIn: organizations.map((organization) => organization.id),
+          },
+        },
+        orderBy: { updatedAt: "desc" },
+        select: dashboardJobSelection,
+      })
+    : [];
+  const toDashboardJob = (job: (typeof jobs)[number]): ProductionDashboardJob => {
     const rawStage = textValue(job.data, "workflowStage");
     return {
       id: job.id,
@@ -168,7 +192,12 @@ async function AuthenticatedProductionAdminPage() {
       artworkCount: job._count.attachments,
       updatedAt: job.updatedAt.toISOString(),
     };
-  });
+  };
+  const dashboardJobs: ProductionDashboardJob[] = jobs
+    .map(toDashboardJob)
+    .filter((job) =>
+      !hasDesignerRole || isProductionOriginationQueueStage(job.workflowStage),
+    );
   const productionOrganizationIds = organizations
     .filter((organization) => organization.role === "PRODUCTION")
     .map((organization) => organization.id);
@@ -277,6 +306,14 @@ async function AuthenticatedProductionAdminPage() {
     const workflowStage = scheduledWorkflowStages.get(job.id);
     return workflowStage ? { ...job, workflowStage } : job;
   });
+  const originationQueueJobs = [
+    ...dashboardJobsWithScheduledStages.filter((job) =>
+      isProductionOriginationQueueStage(job.workflowStage),
+    ),
+    ...crossOrganizationJobRows
+      .map(toDashboardJob)
+      .filter((job) => isProductionOriginationQueueStage(job.workflowStage)),
+  ];
   const dashboardOperationRuns: ProductionDashboardRun[] = operationRunRows.map((run) => {
     if (!isProductionOperation(run.schedule.operation)) {
       throw new Error(`Production operation run ${run.id} references an invalid operation.`);
@@ -1221,6 +1258,7 @@ async function AuthenticatedProductionAdminPage() {
       cartonTypes={cartonTypes}
       organizations={organizations}
       jobs={dashboardJobsWithScheduledStages}
+      originationJobs={originationQueueJobs}
       schedules={dashboardSchedules}
       operationRuns={dashboardOperationRuns}
       qualityInspections={dashboardQualityInspections}

@@ -1,5 +1,10 @@
 import { auth } from "@/auth";
 import { isAdminEmail } from "@/lib/admin";
+import {
+  isProductionOriginationQueueStage,
+  isProductionWorkflowStage,
+  isRecord,
+} from "@/lib/production-data";
 import { prisma } from "@/lib/prisma";
 
 export function isProductionAdmin(user: { email?: string | null }) {
@@ -33,10 +38,14 @@ export async function getProductionOrganizationMembership(
       : null;
   }
 
-  return prisma.productionOrganizationMembership.findUnique({
+  const membership = await prisma.productionOrganizationMembership.findUnique({
     where: { organizationId_userId: { organizationId, userId } },
     select: { organizationId: true, role: true },
   });
+  if (!membership || membership.role === "DESIGNER") return null;
+  if (await isProductionDesigner(userId)) return null;
+
+  return membership;
 }
 
 export async function getAuthorizedProductionJob(
@@ -46,7 +55,7 @@ export async function getAuthorizedProductionJob(
 ) {
   const job = await prisma.productionJob.findUnique({
     where: { id: jobId },
-    select: { id: true, organizationId: true },
+    select: { id: true, organizationId: true, data: true },
   });
   if (!job) return null;
 
@@ -55,5 +64,30 @@ export async function getAuthorizedProductionJob(
     job.organizationId,
     isAdmin,
   );
-  return membership ? { job, membership } : null;
+  if (membership) return { job, membership };
+
+  const designerMembership = await prisma.productionOrganizationMembership.findFirst({
+    where: { userId, role: "DESIGNER" },
+    select: { userId: true },
+  });
+  const workflowStage =
+    isRecord(job.data) && isProductionWorkflowStage(job.data.workflowStage)
+      ? job.data.workflowStage
+      : "Origination";
+  if (!designerMembership || !isProductionOriginationQueueStage(workflowStage)) {
+    return null;
+  }
+
+  return {
+    job,
+    membership: { organizationId: job.organizationId, role: "DESIGNER" },
+  };
+}
+
+export async function isProductionDesigner(userId: string): Promise<boolean> {
+  const membership = await prisma.productionOrganizationMembership.findFirst({
+    where: { userId, role: "DESIGNER" },
+    select: { userId: true },
+  });
+  return Boolean(membership);
 }

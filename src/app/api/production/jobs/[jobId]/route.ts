@@ -1,5 +1,6 @@
 import {
   canEditProductionJobs,
+  getProductionOriginationPrintDetails,
   isProductionWorkflowStage,
   isProductionOriginationQueueStage,
   isRecord,
@@ -41,8 +42,12 @@ export async function GET(_request: Request, { params }: RouteContext) {
     return NextResponse.json({ error: "Production job not found" }, { status: 404 });
   }
 
+  const responseJob = access.membership.role === "DESIGNER"
+    ? { ...job, data: getProductionOriginationPrintDetails(job.data) }
+    : job;
+
   return NextResponse.json(
-    { job, role: access.membership.role },
+    { job: responseJob, role: access.membership.role },
     { headers: { "Cache-Control": "private, no-store" } },
   );
 }
@@ -76,10 +81,12 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
+  const isOriginationPrintUpdate =
+    isRecord(body) && validateProductionOriginationPrintDetails(body.data);
   if (
     !isRecord(body) ||
     !validateProductionJobData(body.data) ||
-    (isOriginationDesigner && !isAdmin && !validateProductionOriginationPrintDetails(body.data))
+    (isOriginationDesigner && !isAdmin && !isOriginationPrintUpdate)
   ) {
     return NextResponse.json(
       { error: "Invalid production job details" },
@@ -119,7 +126,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       return false;
     }
 
-    const updatedData = isOriginationDesigner && !isAdmin
+    const updatedData = isOriginationPrintUpdate
       ? {
           ...(isRecord(currentJob.data) ? currentJob.data : {}),
           ...requestedData,
@@ -148,5 +155,8 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     );
   }
 
-  return NextResponse.json({ job: result });
+  const responseJob = isOriginationDesigner && !isAdmin
+    ? { ...result, data: getProductionOriginationPrintDetails(result.data) }
+    : result;
+  return NextResponse.json({ job: responseJob });
 }

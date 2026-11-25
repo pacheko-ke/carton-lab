@@ -81,7 +81,8 @@ async function ProductionAdminDashboard({
           <p>
             Create production organizations and assign verified accounts. Production
             members manage shared jobs; Order Bookers create orders, and Designers can
-            view planned jobs and attach artwork.
+            work with Origination jobs across organizations, update print details, flag
+            jobs, and attach artwork.
           </p>
         </div>
 

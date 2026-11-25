@@ -1,6 +1,6 @@
 import { get } from "@vercel/blob";
 import {
-  getProductionOrganizationMembership,
+  getAuthorizedProductionJob,
   getVerifiedProductionUser,
   isProductionAdmin,
 } from "@/lib/production-access";
@@ -26,19 +26,19 @@ export async function GET(request: Request, { params }: RouteContext) {
       originalName: true,
       contentType: true,
       size: true,
-      job: { select: { organizationId: true } },
+      job: { select: { id: true } },
     },
   });
   if (!attachment) {
     return NextResponse.json({ error: "Artwork not found" }, { status: 404 });
   }
 
-  const membership = await getProductionOrganizationMembership(
+  const access = await getAuthorizedProductionJob(
     user.id,
-    attachment.job.organizationId,
+    attachment.job.id,
     isProductionAdmin(user),
   );
-  if (!membership) {
+  if (!access) {
     return NextResponse.json({ error: "Artwork not found" }, { status: 404 });
   }
 

@@ -5,6 +5,7 @@ import {
 import {
   getProductionOrganizationMembership,
   getVerifiedProductionUser,
+  isProductionDesigner,
   isProductionAdmin,
 } from "@/lib/production-access";
 import { prisma } from "@/lib/prisma";
@@ -32,6 +33,9 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   }
 
   const isAdmin = isProductionAdmin(user);
+  if (!isAdmin && await isProductionDesigner(user.id)) {
+    return NextResponse.json({ error: "Designer access is limited to Origination" }, { status: 403 });
+  }
   const membership = await getProductionOrganizationMembership(user.id, organizationId, isAdmin);
   if (!membership) {
     return NextResponse.json({ error: "Organization access denied" }, { status: 403 });
