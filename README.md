@@ -204,6 +204,15 @@ supplies `BLOB_STORE_ID` and OIDC credentials; for local development, connect
 the Development store and refresh the environment with `vercel env pull`. Do not
 use a public Blob store for production artwork.
 
+The Production workspace sends new-job notifications to Designer members in the
+job's organization. In-app notifications appear under the bell icon. To enable
+browser push, generate a VAPID key pair with `npx web-push generate-vapid-keys`
+and configure `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and
+`VAPID_SUBJECT` in the deployment environment. Each Designer must sign in and
+enable browser notifications from the bell menu on each device. In-app
+notifications remain available if browser push is not configured or permission
+is declined.
+
 The Procurement workspace tracks organization-specific materials and suppliers,
 purchase orders, and partial goods receipts. Receipts create auditable stock
 movements. Inventory shows ledger-derived on-hand quantities and reorder points;

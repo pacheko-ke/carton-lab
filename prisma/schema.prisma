@@ -36,6 +36,8 @@ model User {
   keylineBookmarks                    KeylineBookmark[]
   emailJobs                           EmailJob[]
   organizationMemberships             ProductionOrganizationMembership[]
+  productionNotifications              ProductionNotification[]
+  productionPushSubscriptions          ProductionPushSubscription[]
   createdProductionJobs               ProductionJob[]                    @relation("ProductionJobCreator")
   createdProductionItems              ProductionItem[]                   @relation("ProductionItemCreator")
   createdProductionCustomers          ProductionCustomer[]               @relation("ProductionCustomerCreator")
@@ -286,6 +288,37 @@ model ProductionOrganizationMembership {
   user           User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([organizationId, userId])
+  @@index([userId])
+}
+
+model ProductionNotification {
+  id             String   @id @default(cuid())
+  userId         String
+  organizationId String
+  jobId          String
+  jobNo          String
+  title          String
+  message        String
+  href           String
+  readAt         DateTime?
+  createdAt      DateTime @default(now())
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, jobId])
+  @@index([userId, readAt, createdAt])
+  @@index([organizationId, createdAt])
+}
+
+model ProductionPushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
 }
 

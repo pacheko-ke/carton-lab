@@ -6,6 +6,7 @@ import {
   isProductionAdmin,
 } from "@/lib/production-access";
 import { prisma } from "@/lib/prisma";
+import { notifyOriginationOfNewJob } from "@/lib/production-notifications";
 import { NextResponse } from "next/server";
 
 type RouteContext = { params: Promise<{ organizationId: string }> };
@@ -101,6 +102,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     },
     select: { id: true, organizationId: true, data: true, createdAt: true, updatedAt: true },
   });
+  await notifyOriginationOfNewJob(job);
 
   return NextResponse.json(
     { job },

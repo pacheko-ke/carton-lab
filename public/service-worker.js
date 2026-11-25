@@ -1,6 +1,6 @@
 "use strict";
 
-const CACHE_NAME = "packstudio-studio-v11";
+const CACHE_NAME = "packstudio-studio-v12";
 const APP_ASSETS = [
   "/offline.html",
   "/packstudio-icon.png",
@@ -62,4 +62,58 @@ self.addEventListener("fetch", (event) => {
       caches.match(`${url.origin}${url.pathname}`).then((cached) => cached || fetch(request)),
     );
   }
+});
+
+self.addEventListener("push", (event) => {
+  let payload = {};
+  const rawData = event.data ? event.data.text() : "";
+  if (rawData) {
+    try {
+      const parsed = JSON.parse(rawData);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        payload = parsed;
+      }
+    } catch {
+      payload = { body: rawData };
+    }
+  }
+
+  const title =
+    typeof payload.title === "string" ? payload.title : "Production notification";
+  const body = typeof payload.body === "string" ? payload.body : "Open Production to view the update.";
+  const url = typeof payload.url === "string" ? payload.url : "/production/admin";
+  const tag = typeof payload.tag === "string" ? payload.tag : "production-notification";
+
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body,
+      icon: "/packstudio-icon.png",
+      badge: "/packstudio-icon.png",
+      tag,
+      data: { url },
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  let targetUrl = new URL("/production/admin", self.location.origin);
+  try {
+    const candidate = new URL(event.notification.data?.url, self.location.origin);
+    if (candidate.origin === self.location.origin) targetUrl = candidate;
+  } catch {
+    targetUrl = new URL("/production/admin", self.location.origin);
+  }
+
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+      const client = clients.find((windowClient) =>
+        new URL(windowClient.url).origin === self.location.origin,
+      );
+      if (client) {
+        return client.navigate(targetUrl.href).then(() => client.focus());
+      }
+      return self.clients.openWindow(targetUrl.href);
+    }),
+  );
 });

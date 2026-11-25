@@ -2,6 +2,7 @@
 
 import {
   Fragment,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -17,6 +18,7 @@ import {
   FiAlertTriangle,
   FiArrowLeft,
   FiActivity,
+  FiBell,
   FiBriefcase,
   FiCalendar,
   FiCheckSquare,
@@ -607,6 +609,17 @@ export type ProductionDashboardSafetyTraining = {
   employee: { employeeNo: string; name: string; department: string };
 };
 
+type ProductionDashboardNotification = {
+  id: string;
+  jobId: string;
+  jobNo: string;
+  title: string;
+  message: string;
+  href: string;
+  readAt: string | null;
+  createdAt: string;
+};
+
 type Props = {
   accountId: string;
   accountName: string;
@@ -1153,6 +1166,329 @@ function formatScheduleDate(value: string) {
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(value));
+}
+
+const JOB_SHEET_CORE_FIELDS = new Set([
+  "jobNo",
+  "jobName",
+  "customer",
+  "customerPO",
+  "itemCode",
+  "itemId",
+  "boxType",
+  "length",
+  "width",
+  "height",
+  "unit",
+  "orderQty",
+  "orderDate",
+  "deliveryDate",
+]);
+
+const JOB_SHEET_FIELD_LABELS: Record<string, string> = {
+  customerPO: "Customer PO",
+  jobNo: "Job no.",
+  itemCode: "Item code",
+  workflowStage: "Workflow stage",
+  topLiner: "Top liner",
+  bottomLiner: "Bottom liner",
+  printColor: "Print colour",
+  printMethod: "Printing method",
+  printPosition: "Print position",
+  printArea: "Print area",
+  plateRef: "Plate / cylinder",
+  boardGsm: "Board GSM",
+  bwadd: "B/W add",
+  bct: "BCT",
+  pcsPerBundle: "Pieces per bundle",
+  pcsPerPallet: "Pieces per pallet",
+  qcApproved: "QC approved",
+  dispatchBy: "Dispatched by",
+};
+
+function formatJobSheetFieldLabel(key: string) {
+  return JOB_SHEET_FIELD_LABELS[key] ??
+    key.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/^./, (letter) => letter.toUpperCase());
+}
+
+function formatJobSheetValue(value: unknown): string {
+  if (typeof value === "string") return value.trim();
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (Array.isArray(value)) {
+    return value.map(formatJobSheetValue).filter(Boolean).join("; ");
+  }
+  if (isRecord(value)) {
+    return Object.entries(value)
+      .map(([key, item]) => {
+        const formatted = formatJobSheetValue(item);
+        return formatted ? `${formatJobSheetFieldLabel(key)}: ${formatted}` : "";
+      })
+      .filter(Boolean)
+      .join("; ");
+  }
+  return "";
+}
+
+function isProductionDashboardNotification(value: unknown): value is ProductionDashboardNotification {
+  return isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.jobId === "string" &&
+    typeof value.jobNo === "string" &&
+    typeof value.title === "string" &&
+    typeof value.message === "string" &&
+    typeof value.href === "string" &&
+    value.href.startsWith("/production/admin?jobId=") &&
+    (typeof value.readAt === "string" || value.readAt === null) &&
+    typeof value.createdAt === "string";
+}
+
+function decodeVapidPublicKey(encodedKey: string): ArrayBuffer {
+  const paddedKey = encodedKey + "=".repeat((4 - encodedKey.length % 4) % 4);
+  const base64Key = paddedKey.replace(/-/g, "+").replace(/_/g, "/");
+  const rawKey = window.atob(base64Key);
+  const keyBytes = new Uint8Array(rawKey.length);
+  for (let index = 0; index < rawKey.length; index += 1) {
+    keyBytes[index] = rawKey.charCodeAt(index);
+  }
+  return keyBytes.buffer;
+}
+
+function ProductionNotificationBell() {
+  const [notifications, setNotifications] = useState<ProductionDashboardNotification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [isOpen, setIsOpen] = useState(false);
+  const [isPushEnabled, setIsPushEnabled] = useState(false);
+  const [isBusy, setIsBusy] = useState(false);
+  const [loadError, setLoadError] = useState("");
+  const [status, setStatus] = useState("");
+  const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "";
+  const isPushSupported =
+    typeof window !== "undefined" &&
+    "serviceWorker" in navigator &&
+    "PushManager" in window &&
+    typeof Notification !== "undefined";
+
+  const loadNotifications = useCallback(async () => {
+    try {
+      const response = await fetch("/api/production/notifications", { cache: "no-store" });
+      if (!response.ok) throw new Error("Could not load notifications.");
+      const result: unknown = await response.json();
+      if (!isRecord(result) || !Array.isArray(result.notifications)) {
+        throw new Error("The server returned invalid notifications.");
+      }
+      const nextNotifications = result.notifications.filter(isProductionDashboardNotification);
+      setNotifications(nextNotifications);
+      setUnreadCount(
+        typeof result.unreadCount === "number"
+          ? result.unreadCount
+          : nextNotifications.filter((notification) => !notification.readAt).length,
+      );
+      setLoadError("");
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : "Could not load notifications.");
+    }
+  }, []);
+
+  useEffect(() => {
+    void Promise.resolve().then(loadNotifications);
+    const handleFocus = () => void loadNotifications();
+    const refreshTimer = window.setInterval(handleFocus, 60_000);
+    window.addEventListener("focus", handleFocus);
+
+    let active = true;
+    if (isPushSupported) {
+      void navigator.serviceWorker.register("/service-worker.js")
+        .then((registration) => registration.pushManager.getSubscription())
+        .then((subscription) => {
+          if (active) setIsPushEnabled(Boolean(subscription));
+        })
+        .catch((error: unknown) => {
+          if (active) {
+            setStatus(error instanceof Error ? error.message : "Could not prepare browser push.");
+          }
+        });
+    }
+
+    return () => {
+      active = false;
+      window.clearInterval(refreshTimer);
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [isPushSupported, loadNotifications]);
+
+  const enablePush = async () => {
+    setIsBusy(true);
+    setStatus("");
+    try {
+      if (!vapidPublicKey) {
+        throw new Error("Browser push is not configured. Add the VAPID keys to the deployment environment.");
+      }
+      if (!isPushSupported) throw new Error("This browser does not support push notifications.");
+      const permission = Notification.permission === "granted"
+        ? "granted"
+        : await Notification.requestPermission();
+      if (permission !== "granted") {
+        throw new Error("Browser notification permission was not granted.");
+      }
+
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.getSubscription() ??
+        await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: decodeVapidPublicKey(vapidPublicKey),
+        });
+      const response = await fetch("/api/production/notifications/push-subscriptions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(subscription.toJSON()),
+      });
+      if (!response.ok) throw new Error("Could not save this browser's push subscription.");
+
+      setIsPushEnabled(true);
+      setStatus("Browser push notifications are enabled on this device.");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Could not enable browser push.");
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const disablePush = async () => {
+    setIsBusy(true);
+    setStatus("");
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.getSubscription();
+      if (subscription) {
+        const response = await fetch("/api/production/notifications/push-subscriptions", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ endpoint: subscription.endpoint }),
+        });
+        if (!response.ok) throw new Error("Could not remove this browser's push subscription.");
+        await subscription.unsubscribe();
+      }
+      setIsPushEnabled(false);
+      setStatus("Browser push notifications are disabled on this device.");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Could not disable browser push.");
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const markRead = async (notificationId: string) => {
+    setStatus("");
+    try {
+      const response = await fetch("/api/production/notifications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notificationId }),
+      });
+      if (!response.ok) throw new Error("Could not mark this notification as read.");
+      setNotifications((current) => current.map((notification) =>
+        notification.id === notificationId
+          ? { ...notification, readAt: new Date().toISOString() }
+          : notification,
+      ));
+      setUnreadCount((current) => Math.max(0, current - 1));
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Could not update this notification.");
+    }
+  };
+
+  return (
+    <div className="production-notification-container">
+      <button
+        aria-controls="production-notification-panel"
+        aria-expanded={isOpen}
+        aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ""}`}
+        className="production-notification-button"
+        onClick={() => setIsOpen((open) => !open)}
+        type="button"
+      >
+        <FiBell aria-hidden="true" />
+        {unreadCount > 0 && (
+          <span className="production-notification-count">
+            {unreadCount > 99 ? "99+" : unreadCount}
+          </span>
+        )}
+      </button>
+      {isOpen && (
+        <section
+          aria-label="Production notifications"
+          className="production-notification-panel"
+          id="production-notification-panel"
+        >
+          <div className="production-notification-heading">
+            <div>
+              <strong>Notifications</strong>
+              <small>{unreadCount} unread</small>
+            </div>
+            <button
+              aria-label="Close notifications"
+              className="production-notification-close"
+              onClick={() => setIsOpen(false)}
+              type="button"
+            >
+              <FiX aria-hidden="true" />
+            </button>
+          </div>
+          {!vapidPublicKey && (
+            <p className="production-notification-hint">
+              Browser push needs VAPID keys configured. In-app notifications are still available.
+            </p>
+          )}
+          {!isPushSupported && (
+            <p className="production-notification-hint">
+              This browser does not support push notifications. In-app notifications are still available.
+            </p>
+          )}
+          {isPushSupported && vapidPublicKey && (
+            <button
+              className="production-notification-push-toggle"
+              disabled={isBusy}
+              onClick={() => void (isPushEnabled ? disablePush() : enablePush())}
+              type="button"
+            >
+              {isBusy
+                ? "Updating…"
+                : isPushEnabled
+                  ? "Turn off browser push"
+                  : "Enable browser push"}
+            </button>
+          )}
+          {loadError && <p className="production-order-booking-error" role="alert">{loadError}</p>}
+          {status && <p className="production-order-booking-status" role="status">{status}</p>}
+          {notifications.length ? (
+            <ul className="production-notification-list">
+              {notifications.map((notification) => (
+                <li className={notification.readAt ? "" : "is-unread"} key={notification.id}>
+                  <a href={notification.href}>
+                    <strong>{notification.title}</strong>
+                    <span>{notification.message}</span>
+                    <small>{new Date(notification.createdAt).toLocaleString("en-KE")}</small>
+                  </a>
+                  {!notification.readAt && (
+                    <button
+                      aria-label={`Mark job ${notification.jobNo} notification as read`}
+                      className="production-notification-mark-read"
+                      onClick={() => void markRead(notification.id)}
+                      type="button"
+                    >
+                      Mark read
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="production-notification-empty">No notifications yet.</p>
+          )}
+        </section>
+      )}
+    </div>
+  );
 }
 
 function PlanningBoard({
@@ -7656,10 +7992,13 @@ export default function ProductionDashboard({
   const [workflowQueuesExpanded, setWorkflowQueuesExpanded] = useState(false);
   const [organizationFilter, setOrganizationFilter] = useState("all");
   const [selectedJob, setSelectedJob] = useState<ProductionDashboardJob | null>(null);
+  const handledJobDeepLink = useRef("");
   const [customerSearch, setCustomerSearch] = useState("");
   const [printingData, setPrintingData] = useState<Record<string, unknown> | null>(null);
   const [jobSheetData, setJobSheetData] = useState<Record<string, unknown> | null>(null);
   const [jobSheetLoading, setJobSheetLoading] = useState(false);
+  const [jobSheetError, setJobSheetError] = useState("");
+  const [jobSheetShareStatus, setJobSheetShareStatus] = useState("");
   const [isSchedulingCorrugator, setIsSchedulingCorrugator] = useState(false);
   const [printingAttachments, setPrintingAttachments] = useState<Array<{
     id: string;
@@ -7679,6 +8018,14 @@ export default function ProductionDashboard({
       ? jobs
       : jobs.filter((job) => job.organizationId === organizationFilter),
     [jobs, organizationFilter],
+  );
+  const jobsScheduledForProduction = new Set(
+    schedules
+      .filter((schedule) => schedule.operation === "Corrugating" || schedule.operation === "Printing")
+      .map((schedule) => schedule.jobId),
+  );
+  const allJobs = visibleJobs.filter((job) =>
+    job.workflowStage !== "Order Booking" || jobsScheduledForProduction.has(job.id),
   );
   const designerOrganizationIds = useMemo(
     () => new Set(isAdmin
@@ -7771,28 +8118,26 @@ export default function ProductionDashboard({
     )?.id ??
     organizations.find((organization) => organization.role === "PRODUCTION")?.id ??
     "";
+  const jobsForWorkflowStage = (stage: ProductionWorkflowStage) => {
+    if (stage === "Board Production") {
+      return visibleJobs.filter((job) =>
+        job.workflowStage === stage && !jobsScheduledForProduction.has(job.id),
+      );
+    }
+    const scheduledOperation = stage === "Printing" ? "Printing" : null;
+    return visibleJobs.filter((job) =>
+      job.workflowStage === stage ||
+      (scheduledOperation !== null && schedules.some((schedule) =>
+        schedule.jobId === job.id && schedule.operation === scheduledOperation,
+      )),
+    );
+  };
+  const boardProductionJobs = jobsForWorkflowStage("Board Production");
+  const printingJobs = jobsForWorkflowStage("Printing");
   const stageCounts = PRODUCTION_WORKFLOW_STAGES.map((stage) => ({
     stage,
-    count: stage === "Printing"
-      ? visibleJobs.filter((job) =>
-        job.workflowStage === stage ||
-        schedules.some((schedule) =>
-          schedule.jobId === job.id &&
-          schedule.operation === "Printing",
-        ),
-      ).length
-      : visibleJobs.filter((job) => job.workflowStage === stage).length,
+    count: jobsForWorkflowStage(stage).length,
   }));
-  const printingJobs = useMemo(
-    () => visibleJobs.filter((job) =>
-      job.workflowStage === "Printing" ||
-      schedules.some((schedule) =>
-        schedule.jobId === job.id &&
-        schedule.operation === "Printing",
-      ),
-    ),
-    [visibleJobs, schedules],
-  );
   const stageOrderUnits = PRODUCTION_WORKFLOW_STAGES.map((stage) => ({
     stage,
     units: visibleJobs
@@ -7823,6 +8168,55 @@ export default function ProductionDashboard({
       schedule.jobId === selectedJob.id && schedule.operation === "Corrugating",
     ) ?? null
     : null;
+  const jobSheetSchedules = selectedJob
+    ? schedules
+      .filter((schedule) => schedule.jobId === selectedJob.id)
+      .sort((left, right) => left.scheduledStartAt.localeCompare(right.scheduledStartAt))
+    : [];
+  const jobSheetScheduleIds = new Set(jobSheetSchedules.map((schedule) => schedule.id));
+  const jobSheetRuns = operationRuns.filter((run) => jobSheetScheduleIds.has(run.scheduleId));
+  const jobSheetInspections = selectedJob
+    ? qualityInspections.filter((inspection) => inspection.jobId === selectedJob.id)
+    : [];
+  const jobSheetNonconformances = selectedJob
+    ? nonconformances.filter((nonconformance) => nonconformance.jobNo === selectedJob.jobNo)
+    : [];
+  const jobSheetPallets = selectedJob
+    ? warehousePallets.filter((pallet) => pallet.jobId === selectedJob.id)
+    : [];
+  const jobSheetStockMovements = selectedJob
+    ? stockMovements.filter((movement) => movement.jobId === selectedJob.id)
+    : [];
+  const jobSheetReelMovements = selectedJob
+    ? reelMovements.filter((movement) => movement.jobId === selectedJob.id)
+    : [];
+  const jobSheetDispatches = selectedJob
+    ? dispatches
+      .filter((dispatch) => dispatch.jobId === selectedJob.id)
+      .sort((left, right) => left.dispatchedAt.localeCompare(right.dispatchedAt))
+    : [];
+  const jobSheetCoreDetails: Array<[string, string]> = [
+    ["Job no.", selectedJob?.jobNo ?? ""],
+    ["Job name", selectedJob?.jobName ?? ""],
+    ["Customer", selectedJob?.customer ?? ""],
+    ["Organization", selectedJob?.organizationName ?? ""],
+    ["Customer PO", typeof jobSheetData?.customerPO === "string" ? jobSheetData.customerPO : ""],
+    ["Item code", typeof jobSheetData?.itemCode === "string" ? jobSheetData.itemCode : ""],
+    ["Carton spec", selectedJob?.cartonSpec ?? ""],
+    ["Size", selectedJob?.size ?? ""],
+    ["Order quantity", selectedJob?.orderQty === null || selectedJob?.orderQty === undefined
+      ? ""
+      : selectedJob.orderQty.toLocaleString("en-KE")],
+    ["Order date", typeof jobSheetData?.orderDate === "string" ? jobSheetData.orderDate : ""],
+    ["Delivery date", selectedJob?.deliveryDate ? formatDate(selectedJob.deliveryDate) : ""],
+  ];
+  const jobSheetAdditionalDetails: Array<[string, string]> = Object.entries(jobSheetData ?? {})
+    .filter(([key, value]) => !JOB_SHEET_CORE_FIELDS.has(key) && formatJobSheetValue(value))
+    .map(([key, value]): [string, string] =>
+      [formatJobSheetFieldLabel(key), formatJobSheetValue(value)],
+    );
+  const jobSheetDetails = [...jobSheetCoreDetails, ...jobSheetAdditionalDetails]
+    .filter(([, value]) => Boolean(value));
   const barMax = Math.max(1, ...stageCounts.map(({ count }) => count));
   const deliveryDays = Array.from({ length: 7 }, (_, index) => {
     const date = new Date(today);
@@ -7904,9 +8298,11 @@ export default function ProductionDashboard({
                                         ? STAGE_DETAILS[view as ProductionWorkflowStage]
                                         : "";
 
-  const openJob = (job: ProductionDashboardJob) => {
+  const openJob = useCallback((job: ProductionDashboardJob) => {
     setSelectedJob(job);
     setIsSchedulingCorrugator(false);
+    setJobSheetError("");
+    setJobSheetShareStatus("");
     if (view === "Printing") {
       setView("printing-detail");
       setPrintingLoading(true);
@@ -7940,6 +8336,7 @@ export default function ProductionDashboard({
       setView(isOrderBooking ? "order-detail" : "job-sheet");
       setJobSheetLoading(true);
       setJobSheetData(null);
+      setJobSheetError("");
       void fetch(`/api/production/jobs/${encodeURIComponent(job.id)}`, { cache: "no-store" })
         .then(async (response) => {
           if (!response.ok) throw new Error(isOrderBooking ? "Could not load order details." : "Could not load job sheet.");
@@ -7951,10 +8348,151 @@ export default function ProductionDashboard({
             ? data as Record<string, unknown>
             : {});
         })
-        .catch(() => setJobSheetData({}))
+        .catch((error) => {
+          setJobSheetData(null);
+          setJobSheetError(error instanceof Error ? error.message : "Could not load job details.");
+        })
         .finally(() => setJobSheetLoading(false));
     }
+  }, [view]);
+  const openJobRef = useRef(openJob);
+  useEffect(() => {
+    openJobRef.current = openJob;
+  }, [openJob]);
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const jobId = url.searchParams.get("jobId");
+    if (!jobId || handledJobDeepLink.current === jobId) return;
+    const job = jobs.find((entry) => entry.id === jobId);
+    if (!job) return;
+    handledJobDeepLink.current = jobId;
+    openJobRef.current(job);
+    url.searchParams.delete("jobId");
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  }, [jobs]);
+
+  const printJobSheet = () => {
+    document.body.dataset.printTarget = "job-sheet";
+    window.addEventListener(
+      "afterprint",
+      () => {
+        delete document.body.dataset.printTarget;
+      },
+      { once: true },
+    );
+    window.print();
   };
+
+  const shareJobSheet = async () => {
+    if (!selectedJob) return;
+    const lines = [
+      `JOB SHEET: ${selectedJob.jobNo || selectedJob.jobName}`,
+      ...jobSheetDetails.map(([label, value]) => `${label}: ${value}`),
+    ];
+
+    if (jobSheetSchedules.length) {
+      lines.push("", "PRODUCTION SCHEDULES");
+      for (const schedule of jobSheetSchedules) {
+        lines.push(
+          `${schedule.operation} — ${schedule.workCenter}`,
+          `Status: ${schedule.status.replaceAll("_", " ")} | Planned: ${schedule.plannedQty.toLocaleString("en-KE")} | Good: ${schedule.actualGoodQty.toLocaleString("en-KE")} | Rejected: ${schedule.actualRejectedQty.toLocaleString("en-KE")}`,
+          `Start: ${formatScheduleDate(schedule.scheduledStartAt)} | End: ${formatScheduleDate(schedule.scheduledEndAt)}`,
+          `Notes: ${schedule.notes || "—"}`,
+        );
+        for (const run of jobSheetRuns.filter((entry) => entry.scheduleId === schedule.id)) {
+          lines.push(
+            `Run ${new Date(run.recordedAt).toLocaleString("en-KE")} by ${run.recordedByName}: Good ${run.goodQty.toLocaleString("en-KE")}, rejected ${run.rejectedQty.toLocaleString("en-KE")}${run.notes ? ` — ${run.notes}` : ""}`,
+          );
+        }
+      }
+    }
+
+    if (jobSheetInspections.length) {
+      lines.push("", "QUALITY INSPECTIONS");
+      for (const inspection of jobSheetInspections) {
+        lines.push(
+          `${inspection.inspectionNo}: ${inspection.result} | ${inspection.inspectionType} | ${inspection.operation || "General"}`,
+          `Sample: ${inspection.sampleQty.toLocaleString("en-KE")} | Rejected: ${inspection.rejectedQty.toLocaleString("en-KE")} | Inspector: ${inspection.inspectorName} | ${new Date(inspection.inspectedAt).toLocaleString("en-KE")}`,
+          `Checks: ${formatJobSheetValue(inspection.checks) || "—"} | Notes: ${inspection.notes || "—"}`,
+        );
+      }
+    }
+
+    if (jobSheetNonconformances.length) {
+      lines.push("", "NONCONFORMANCES");
+      for (const nonconformance of jobSheetNonconformances) {
+        lines.push(
+          `${nonconformance.ncrNo}: ${nonconformance.status} | ${nonconformance.severity} | Affected qty: ${nonconformance.affectedQty.toLocaleString("en-KE")}`,
+          `Description: ${nonconformance.description}`,
+          `Disposition: ${nonconformance.disposition} | Root cause: ${nonconformance.rootCause || "—"} | Corrective action: ${nonconformance.correctiveAction || "—"}`,
+          `Resolution: ${nonconformance.resolutionNotes || "—"}`,
+        );
+      }
+    }
+
+    if (jobSheetPallets.length) {
+      lines.push("", "WAREHOUSE PALLETS");
+      for (const pallet of jobSheetPallets) {
+        lines.push(
+          `${pallet.palletNo}: Received ${pallet.quantityReceived.toLocaleString("en-KE")} | Available ${pallet.quantityAvailable.toLocaleString("en-KE")} | Location ${pallet.location || "—"} | ${new Date(pallet.receivedAt).toLocaleString("en-KE")}`,
+          `Notes: ${pallet.notes || "—"}`,
+        );
+      }
+    }
+
+    if (jobSheetStockMovements.length) {
+      lines.push("", "MATERIAL MOVEMENTS");
+      for (const movement of jobSheetStockMovements) {
+        lines.push(
+          `${movement.type}: ${movement.material.code} ${movement.material.name} · ${movement.quantity} ${movement.material.unit} · ${new Date(movement.createdAt).toLocaleString("en-KE")}`,
+          `Reference: ${movement.reference || "—"} | Notes: ${movement.notes || "—"}`,
+        );
+      }
+    }
+
+    if (jobSheetReelMovements.length) {
+      lines.push("", "PAPER REEL MOVEMENTS");
+      for (const movement of jobSheetReelMovements) {
+        lines.push(
+          `${movement.type}: Reel ${movement.reelNo} · ${movement.deltaKg} kg · ${new Date(movement.createdAt).toLocaleString("en-KE")}`,
+          `Related reel: ${movement.relatedReelNo || "—"} | Notes: ${movement.notes || "—"}`,
+        );
+      }
+    }
+
+    if (jobSheetDispatches.length) {
+      lines.push("", "DISPATCHES");
+      for (const dispatch of jobSheetDispatches) {
+        lines.push(
+          `${dispatch.dispatchNo} | Delivery note: ${dispatch.deliveryNoteNo || "—"} | ${dispatch.status}`,
+          `Vehicle: ${dispatch.vehicleRegistration || "—"} | Driver: ${dispatch.driverName || "—"} | Route: ${dispatch.route || "—"}`,
+          `Dispatched: ${new Date(dispatch.dispatchedAt).toLocaleString("en-KE")} | Delivered: ${dispatch.deliveredAt ? new Date(dispatch.deliveredAt).toLocaleString("en-KE") : "—"} | Received by: ${dispatch.receivedBy || "—"}`,
+          `Delivery notes: ${dispatch.deliveryNotes || "—"} | Notes: ${dispatch.notes || "—"}`,
+          ...dispatch.lines.map((line) =>
+            `Pallet ${line.palletNo} · ${line.location || "—"} · ${line.quantity.toLocaleString("en-KE")} units`,
+          ),
+        );
+      }
+    }
+
+    const text = lines.join("\n");
+    setJobSheetShareStatus("");
+    try {
+      if (typeof navigator.share === "function") {
+        await navigator.share({ title: `Job sheet ${selectedJob.jobNo}`, text });
+        setJobSheetShareStatus("Job sheet shared.");
+      } else if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        setJobSheetShareStatus("Job sheet copied to clipboard. Paste it into a message to share.");
+      } else {
+        throw new Error("Sharing is not supported in this browser.");
+      }
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      setJobSheetShareStatus(error instanceof Error ? error.message : String(error));
+    }
+  };
+
   return (
     <div className="production-dashboard-shell">
       {isMobileMenuOpen && (
@@ -8012,7 +8550,7 @@ export default function ProductionDashboard({
                       >
                         <span className="production-nav-icon" aria-hidden="true"><item.icon /></span>
                         {item.label}
-                        {item.id === "jobs" && <span className="production-nav-count">{visibleJobs.length}</span>}
+                        {item.id === "jobs" && <span className="production-nav-count">{allJobs.length}</span>}
                         {item.id === "origination" && <span className="production-nav-count">{originationJobs.length}</span>}
                       </button>
                     ))}
@@ -8111,6 +8649,7 @@ export default function ProductionDashboard({
             </div>
           </div>
           <div className="production-topbar-actions">
+            <ProductionNotificationBell />
             <label className="production-organization-filter">
               <span>Organization</span>
               <select
@@ -8234,51 +8773,357 @@ export default function ProductionDashboard({
             </div>
           ) : view === "job-sheet" ? (
             <div className="production-page-content">
-              <section className="production-panel production-list-panel">
+              <section
+                className="production-panel production-list-panel production-job-sheet"
+                id="production-job-sheet"
+              >
                 <div className="production-panel-heading">
                   <div>
                     <span className="production-panel-kicker">JOB SHEET</span>
                     <h2>{selectedJob?.jobName || selectedJob?.jobNo || "Production job sheet"}</h2>
                   </div>
-                  <button
-                    className="production-table-action"
-                    onClick={() => setView("jobs")}
-                    type="button"
-                  >
-                    Back to jobs
-                  </button>
+                  <div className="production-quote-actions production-no-print">
+                    <button
+                      className="production-table-action"
+                      onClick={() => setView("jobs")}
+                      type="button"
+                    >
+                      Back to jobs
+                    </button>
+                    <button
+                      className="production-table-action"
+                      disabled={jobSheetLoading || Boolean(jobSheetError)}
+                      onClick={printJobSheet}
+                      type="button"
+                    >
+                      Print job sheet
+                    </button>
+                    <button
+                      className="production-primary-button"
+                      disabled={jobSheetLoading || Boolean(jobSheetError) || !selectedJob}
+                      onClick={() => void shareJobSheet()}
+                      type="button"
+                    >
+                      Share job sheet
+                    </button>
+                  </div>
                 </div>
+                {jobSheetShareStatus && (
+                  <p className="production-quote-message production-no-print" role="status">
+                    {jobSheetShareStatus}
+                  </p>
+                )}
                 {jobSheetLoading ? (
                   <p className="production-quote-message" role="status">Loading job sheet…</p>
+                ) : jobSheetError ? (
+                  <p className="production-order-booking-error" role="alert">{jobSheetError}</p>
                 ) : (
-                  <div className="production-printing-details">
-                    {[
-                      ["Job no.", selectedJob?.jobNo],
-                      ["Job name", selectedJob?.jobName],
-                      ["Customer", selectedJob?.customer],
-                      ["Carton spec", selectedJob?.cartonSpec],
-                      ["Size", selectedJob?.size],
-                      ["Order qty", selectedJob?.orderQty?.toLocaleString("en-KE")],
-                      ["Workflow stage", typeof jobSheetData?.workflowStage === "string" ? jobSheetData.workflowStage : selectedJob?.workflowStage],
-                      ["Top liner", typeof jobSheetData?.topLiner === "string" ? jobSheetData.topLiner : ""],
-                      ["Medium", typeof jobSheetData?.medium === "string" ? jobSheetData.medium : ""],
-                      ["Bottom liner", typeof jobSheetData?.bottomLiner === "string" ? jobSheetData.bottomLiner : ""],
-                      ["Board length", typeof jobSheetData?.boardLength === "string" ? jobSheetData.boardLength : ""],
-                      ["Board width", typeof jobSheetData?.boardWidth === "string" ? jobSheetData.boardWidth : ""],
-                      ["Reel width", typeof jobSheetData?.reelWidth === "string" ? jobSheetData.reelWidth : ""],
-                      ["Printing method", typeof jobSheetData?.printMethod === "string" ? jobSheetData.printMethod : ""],
-                      ["Colour", typeof jobSheetData?.printColor === "string" ? jobSheetData.printColor : ""],
-                      ["Ink type", typeof jobSheetData?.inkType === "string" ? jobSheetData.inkType : ""],
-                      ["Artwork ref", typeof jobSheetData?.artworkRef === "string" ? jobSheetData.artworkRef : ""],
-                      ["Plate / cylinder", typeof jobSheetData?.plateRef === "string" ? jobSheetData.plateRef : ""],
-                      ["Print instructions", typeof jobSheetData?.printInstructions === "string" ? jobSheetData.printInstructions : ""],
-                    ].map(([label, value]) => (
-                      <div className="production-printing-detail" key={label}>
-                        <span>{label}</span>
-                        <strong>{value || "—"}</strong>
+                  <>
+                    <section className="production-job-sheet-section">
+                      <h3>Order and production specifications</h3>
+                      <div className="production-printing-details">
+                        {jobSheetDetails.map(([label, value]) => (
+                          <div className="production-printing-detail" key={label}>
+                            <span>{label}</span>
+                            <strong>{value || "—"}</strong>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    </section>
+
+                    <section className="production-job-sheet-section">
+                      <h3>Production schedule and output</h3>
+                      {jobSheetSchedules.length ? (
+                        <>
+                          <div className="production-table-scroll">
+                            <table className="production-jobs-table production-schedule-table">
+                              <thead>
+                                <tr>
+                                  <th>Operation</th>
+                                  <th>Work center</th>
+                                  <th>Start</th>
+                                  <th>End</th>
+                                  <th>Planned</th>
+                                  <th>Good</th>
+                                  <th>Rejected</th>
+                                  <th>Status</th>
+                                  <th>Notes</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {jobSheetSchedules.map((schedule) => (
+                                  <tr key={schedule.id}>
+                                    <td>{schedule.operation}</td>
+                                    <td>{schedule.workCenter}</td>
+                                    <td>{formatScheduleDate(schedule.scheduledStartAt)}</td>
+                                    <td>{formatScheduleDate(schedule.scheduledEndAt)}</td>
+                                    <td>{schedule.plannedQty.toLocaleString("en-KE")}</td>
+                                    <td>{schedule.actualGoodQty.toLocaleString("en-KE")}</td>
+                                    <td>{schedule.actualRejectedQty.toLocaleString("en-KE")}</td>
+                                    <td>{schedule.status.replaceAll("_", " ")}</td>
+                                    <td>{schedule.notes || "—"}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                          {jobSheetSchedules.map((schedule) => {
+                            const runs = jobSheetRuns.filter((run) => run.scheduleId === schedule.id);
+                            if (!runs.length) return null;
+                            return (
+                              <div className="production-job-sheet-subsection" key={`runs-${schedule.id}`}>
+                                <h4>{schedule.operation} run history</h4>
+                                <div className="production-table-scroll">
+                                  <table className="production-jobs-table">
+                                    <thead>
+                                      <tr>
+                                        <th>Recorded</th>
+                                        <th>Operator</th>
+                                        <th>Good qty</th>
+                                        <th>Rejected qty</th>
+                                        <th>Notes</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {runs.map((run) => (
+                                        <tr key={`${run.scheduleId}-${run.recordedAt}-${run.recordedByName}`}>
+                                          <td>{new Date(run.recordedAt).toLocaleString("en-KE")}</td>
+                                          <td>{run.recordedByName || "—"}</td>
+                                          <td>{run.goodQty.toLocaleString("en-KE")}</td>
+                                          <td>{run.rejectedQty.toLocaleString("en-KE")}</td>
+                                          <td>{run.notes || "—"}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </>
+                      ) : (
+                        <p className="production-chart-empty">No production operations have been scheduled.</p>
+                      )}
+                    </section>
+
+                    <section className="production-job-sheet-section">
+                      <h3>Quality inspections</h3>
+                      {jobSheetInspections.length ? (
+                        <div className="production-table-scroll">
+                          <table className="production-jobs-table">
+                            <thead>
+                              <tr>
+                                <th>Inspection</th>
+                                <th>Type / operation</th>
+                                <th>Result</th>
+                                <th>Sample</th>
+                                <th>Rejected</th>
+                                <th>Inspector / date</th>
+                                <th>Checks</th>
+                                <th>Notes</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {jobSheetInspections.map((inspection) => (
+                                <tr key={inspection.inspectionNo}>
+                                  <td>{inspection.inspectionNo}</td>
+                                  <td>{inspection.inspectionType} / {inspection.operation || "General"}</td>
+                                  <td>{inspection.result}</td>
+                                  <td>{inspection.sampleQty.toLocaleString("en-KE")}</td>
+                                  <td>{inspection.rejectedQty.toLocaleString("en-KE")}</td>
+                                  <td>{inspection.inspectorName} · {new Date(inspection.inspectedAt).toLocaleString("en-KE")}</td>
+                                  <td>{formatJobSheetValue(inspection.checks) || "—"}</td>
+                                  <td>{inspection.notes || "—"}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <p className="production-chart-empty">No quality inspections recorded.</p>
+                      )}
+                    </section>
+
+                    <section className="production-job-sheet-section">
+                      <h3>Nonconformances</h3>
+                      {jobSheetNonconformances.length ? (
+                        <div className="production-table-scroll">
+                          <table className="production-jobs-table">
+                            <thead>
+                              <tr>
+                                <th>NCR</th>
+                                <th>Status / severity</th>
+                                <th>Description</th>
+                                <th>Affected qty</th>
+                                <th>Disposition</th>
+                                <th>Root cause</th>
+                                <th>Corrective action</th>
+                                <th>Resolution</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {jobSheetNonconformances.map((nonconformance) => (
+                                <tr key={nonconformance.ncrNo}>
+                                  <td>{nonconformance.ncrNo}</td>
+                                  <td>{nonconformance.status} / {nonconformance.severity}</td>
+                                  <td>{nonconformance.description}</td>
+                                  <td>{nonconformance.affectedQty.toLocaleString("en-KE")}</td>
+                                  <td>{nonconformance.disposition}</td>
+                                  <td>{nonconformance.rootCause || "—"}</td>
+                                  <td>{nonconformance.correctiveAction || "—"}</td>
+                                  <td>{nonconformance.resolutionNotes || "—"}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <p className="production-chart-empty">No nonconformances recorded.</p>
+                      )}
+                    </section>
+
+                    <section className="production-job-sheet-section">
+                      <h3>Paper and material movements</h3>
+                      {jobSheetStockMovements.length || jobSheetReelMovements.length ? (
+                        <div className="production-table-scroll">
+                          <table className="production-jobs-table">
+                            <thead>
+                              <tr>
+                                <th>Recorded</th>
+                                <th>Movement</th>
+                                <th>Material / reel</th>
+                                <th>Quantity</th>
+                                <th>Reference</th>
+                                <th>Notes</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {jobSheetStockMovements.map((movement) => (
+                                <tr key={`stock-${movement.id}`}>
+                                  <td>{new Date(movement.createdAt).toLocaleString("en-KE")}</td>
+                                  <td>{movement.type}</td>
+                                  <td>{movement.material.code} · {movement.material.name}</td>
+                                  <td>{movement.quantity} {movement.material.unit}</td>
+                                  <td>{movement.reference || "—"}</td>
+                                  <td>{movement.notes || "—"}</td>
+                                </tr>
+                              ))}
+                              {jobSheetReelMovements.map((movement) => (
+                                <tr key={`reel-${movement.id}`}>
+                                  <td>{new Date(movement.createdAt).toLocaleString("en-KE")}</td>
+                                  <td>{movement.type}</td>
+                                  <td>Reel {movement.reelNo}{movement.relatedReelNo ? ` · related ${movement.relatedReelNo}` : ""}</td>
+                                  <td>{movement.deltaKg} kg</td>
+                                  <td>{movement.jobNo || "—"}</td>
+                                  <td>{movement.notes || "—"}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <p className="production-chart-empty">No paper or material movements recorded.</p>
+                      )}
+                    </section>
+
+                    <section className="production-job-sheet-section">
+                      <h3>Warehouse pallets</h3>
+                      {jobSheetPallets.length ? (
+                        <div className="production-table-scroll">
+                          <table className="production-jobs-table">
+                            <thead>
+                              <tr>
+                                <th>Pallet</th>
+                                <th>Received</th>
+                                <th>Available</th>
+                                <th>Location</th>
+                                <th>Received at</th>
+                                <th>Notes</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {jobSheetPallets.map((pallet) => (
+                                <tr key={pallet.id}>
+                                  <td>{pallet.palletNo}</td>
+                                  <td>{pallet.quantityReceived.toLocaleString("en-KE")}</td>
+                                  <td>{pallet.quantityAvailable.toLocaleString("en-KE")}</td>
+                                  <td>{pallet.location || "—"}</td>
+                                  <td>{new Date(pallet.receivedAt).toLocaleString("en-KE")}</td>
+                                  <td>{pallet.notes || "—"}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <p className="production-chart-empty">No warehouse pallets received.</p>
+                      )}
+                    </section>
+
+                    <section className="production-job-sheet-section">
+                      <h3>Dispatch and delivery</h3>
+                      {jobSheetDispatches.length ? (
+                        jobSheetDispatches.map((dispatch) => (
+                          <article className="production-quote-card production-job-sheet-dispatch" key={dispatch.id}>
+                            <div className="production-quote-card-header">
+                              <div>
+                                <span className={`production-schedule-status status-${dispatch.status.toLowerCase()}`}>{dispatch.status}</span>
+                                <h4>{dispatch.dispatchNo}</h4>
+                                <p>Delivery note {dispatch.deliveryNoteNo || "—"}</p>
+                              </div>
+                              <div className="production-quote-total">
+                                <span>Dispatched</span>
+                                <strong>{new Date(dispatch.dispatchedAt).toLocaleString("en-KE")}</strong>
+                              </div>
+                            </div>
+                            <div className="production-printing-details">
+                              {[
+                                ["Vehicle", dispatch.vehicleRegistration],
+                                ["Driver", dispatch.driverName],
+                                ["Route", dispatch.route],
+                                ["Status", dispatch.status],
+                                ["Delivered", dispatch.deliveredAt ? new Date(dispatch.deliveredAt).toLocaleString("en-KE") : ""],
+                                ["Received by", dispatch.receivedBy],
+                                ["Delivery notes", dispatch.deliveryNotes],
+                                ["Dispatch notes", dispatch.notes],
+                              ].filter(([, value]) => Boolean(value)).map(([label, value]) => (
+                                <div className="production-printing-detail" key={label}>
+                                  <span>{label}</span>
+                                  <strong>{value || "—"}</strong>
+                                </div>
+                              ))}
+                            </div>
+                            {dispatch.lines.length ? (
+                              <div className="production-table-scroll">
+                                <table className="production-jobs-table">
+                                  <thead>
+                                    <tr>
+                                      <th>Pallet</th>
+                                      <th>Location</th>
+                                      <th>Quantity</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {dispatch.lines.map((line) => (
+                                      <tr key={`${dispatch.id}-${line.palletId}`}>
+                                        <td>{line.palletNo}</td>
+                                        <td>{line.location || "—"}</td>
+                                        <td>{line.quantity.toLocaleString("en-KE")}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            ) : (
+                              <p className="production-chart-empty">No pallet lines recorded for this dispatch.</p>
+                            )}
+                          </article>
+                        ))
+                      ) : (
+                        <p className="production-chart-empty">No dispatches recorded.</p>
+                      )}
+                    </section>
+                  </>
                 )}
               </section>
             </div>
@@ -8859,18 +9704,22 @@ export default function ProductionDashboard({
                     </div>
                     <span className="production-panel-total">
                       {view === "jobs"
-                        ? visibleJobs.length
+                        ? allJobs.length
                         : view === "Printing"
                           ? printingJobs.length
+                          : view === "Board Production"
+                            ? boardProductionJobs.length
                           : visibleJobs.filter((job) => job.workflowStage === view).length} jobs
                     </span>
                   </div>
                   <JobTable
                     jobs={view === "jobs"
-                      ? visibleJobs
+                      ? allJobs
                       : view === "Printing"
                         ? printingJobs
-                        : visibleJobs.filter((job) => job.workflowStage === view)}
+                        : view === "Board Production"
+                          ? boardProductionJobs
+                          : visibleJobs.filter((job) => job.workflowStage === view)}
                     onOpen={openJob}
                     actionLabel={view === "Order Booking"
                       ? "Open order"
@@ -8878,9 +9727,15 @@ export default function ProductionDashboard({
                         ? "Open printing job"
                         : "Open job"}
                     numberLabel={view === "Order Booking" ? "Order no." : "Job sheet no."}
-                    emptyHeading={view === "Order Booking" ? "No booked orders" : undefined}
+                    emptyHeading={view === "Order Booking"
+                      ? "No booked orders"
+                      : view === "jobs"
+                        ? "No production jobs yet"
+                        : undefined}
                     emptyDescription={view === "Order Booking"
                       ? "Orders booked for your organizations will appear here."
+                      : view === "jobs"
+                        ? "Orders appear here after they move beyond Order Booking."
                       : undefined}
                     canOpenJobSheet={view === "Order Booking" || canManageJobs}
                     canOpenJobSheetForJob={(job) =>

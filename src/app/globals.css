@@ -2980,6 +2980,193 @@ input {
   gap: 10px;
 }
 
+.production-notification-container {
+  position: relative;
+}
+
+.production-notification-button,
+.production-notification-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(165, 190, 214, 0.18);
+  border-radius: 8px;
+  background: #102238;
+  color: #dce8f2;
+  cursor: pointer;
+}
+
+.production-notification-button {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  font-size: 17px;
+}
+
+.production-notification-button:hover,
+.production-notification-close:hover {
+  border-color: rgba(102, 211, 232, 0.5);
+  color: #a9eaf4;
+}
+
+.production-notification-button:focus-visible,
+.production-notification-close:focus-visible,
+.production-notification-push-toggle:focus-visible,
+.production-notification-mark-read:focus-visible {
+  outline: 2px solid #66d3e8;
+  outline-offset: 2px;
+}
+
+.production-notification-count {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: grid;
+  min-width: 18px;
+  height: 18px;
+  place-items: center;
+  padding: 0 4px;
+  border: 2px solid #0b1725;
+  border-radius: 999px;
+  background: #e66868;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 750;
+  line-height: 1;
+}
+
+.production-notification-panel {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 9px);
+  right: 0;
+  display: flex;
+  width: min(360px, calc(100vw - 28px));
+  max-height: min(70vh, 560px);
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgba(165, 190, 214, 0.2);
+  border-radius: 12px;
+  background: #0e1d2e;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.42);
+  color: #dce8f2;
+}
+
+.production-notification-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 15px;
+  border-bottom: 1px solid rgba(165, 190, 214, 0.14);
+}
+
+.production-notification-heading > div {
+  display: grid;
+  gap: 3px;
+}
+
+.production-notification-heading strong {
+  font-size: 13px;
+}
+
+.production-notification-heading small,
+.production-notification-list small {
+  color: #8da3b8;
+  font-size: 10px;
+}
+
+.production-notification-close {
+  width: 30px;
+  height: 30px;
+  font-size: 14px;
+}
+
+.production-notification-hint,
+.production-notification-empty {
+  margin: 0;
+  padding: 12px 15px;
+  color: #9eb1c3;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.production-notification-push-toggle {
+  align-self: flex-start;
+  margin: 11px 15px 0;
+  padding: 7px 10px;
+  border: 1px solid rgba(102, 211, 232, 0.25);
+  border-radius: 7px;
+  background: rgba(18, 56, 83, 0.72);
+  color: #a9eaf4;
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.production-notification-push-toggle:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.production-notification-list {
+  display: grid;
+  gap: 0;
+  margin: 8px 0 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.production-notification-list li {
+  position: relative;
+  padding: 0 15px;
+  border-top: 1px solid rgba(165, 190, 214, 0.1);
+}
+
+.production-notification-list li.is-unread {
+  background: rgba(27, 74, 105, 0.24);
+}
+
+.production-notification-list a {
+  display: grid;
+  gap: 5px;
+  padding: 12px 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.production-notification-list a:hover strong {
+  color: #a9eaf4;
+}
+
+.production-notification-list a strong {
+  font-size: 11px;
+}
+
+.production-notification-list a span {
+  color: #b6c6d5;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.production-notification-list a small {
+  font-size: 9px;
+}
+
+.production-notification-mark-read {
+  position: absolute;
+  right: 14px;
+  bottom: 10px;
+  padding: 3px 0;
+  border: 0;
+  background: transparent;
+  color: #83d6e8;
+  cursor: pointer;
+  font: inherit;
+  font-size: 9px;
+}
+
 .production-organization-filter {
   display: flex;
   min-height: 38px;
@@ -5221,6 +5408,36 @@ input {
   overflow-wrap: anywhere;
 }
 
+.production-job-sheet-section {
+  display: grid;
+  gap: 10px;
+  padding: 14px 0;
+  border-top: 1px solid rgba(165, 190, 214, 0.12);
+}
+
+.production-job-sheet-section > h3,
+.production-job-sheet-subsection > h4 {
+  margin: 0;
+  color: #dce8f2;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.production-job-sheet-subsection {
+  display: grid;
+  gap: 8px;
+  padding-top: 8px;
+}
+
+.production-job-sheet .production-printing-detail strong {
+  white-space: pre-wrap;
+}
+
+.production-job-sheet-dispatch {
+  display: grid;
+  gap: 10px;
+}
+
 .production-printing-artwork {
   padding-top: 12px;
   border-top: 1px solid rgba(165, 190, 214, 0.1);
@@ -5611,15 +5828,57 @@ input {
     visibility: visible !important;
   }
 
+  body[data-print-target="job-sheet"] .production-job-sheet,
+  body[data-print-target="job-sheet"] .production-job-sheet * {
+    visibility: visible !important;
+  }
+
   body[data-print-target="delivery-note"] .production-delivery-note,
   body[data-print-target="pallet-label"] .production-pallet-label,
-  body[data-print-target="invoice"] .production-print-invoice {
+  body[data-print-target="invoice"] .production-print-invoice,
+  body[data-print-target="job-sheet"] .production-job-sheet {
     position: absolute;
     inset: 0;
     width: 100%;
     max-width: none;
     border-radius: 0;
     box-shadow: none;
+  }
+
+  body[data-print-target="job-sheet"] .production-job-sheet {
+    overflow: visible !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: #fff !important;
+    color: #111 !important;
+  }
+
+  body[data-print-target="job-sheet"] .production-job-sheet * {
+    border-color: #ccc !important;
+    background-color: transparent !important;
+    color: #111 !important;
+    box-shadow: none !important;
+  }
+
+  body[data-print-target="job-sheet"] .production-job-sheet .production-table-scroll {
+    overflow: visible !important;
+  }
+
+  body[data-print-target="job-sheet"] .production-job-sheet .production-jobs-table {
+    min-width: 0 !important;
+    width: 100%;
+    font-size: 9px;
+  }
+
+  body[data-print-target="job-sheet"] .production-job-sheet .production-jobs-table th,
+  body[data-print-target="job-sheet"] .production-job-sheet .production-jobs-table td {
+    padding: 4px;
+    white-space: normal;
+  }
+
+  body[data-print-target="job-sheet"] .production-job-sheet-section,
+  body[data-print-target="job-sheet"] .production-job-sheet-dispatch {
+    break-inside: avoid;
   }
 
   .production-no-print {
@@ -5892,6 +6151,43 @@ input {
   border-color: #d0dce7;
   background: #ffffff;
   color: #50677d;
+}
+
+:root[data-theme="light"] .production-notification-button,
+:root[data-theme="light"] .production-notification-close {
+  border-color: #d0dce7;
+  background: #ffffff;
+  color: #36516a;
+}
+
+:root[data-theme="light"] .production-notification-panel {
+  border-color: #d0dce7;
+  background: #ffffff;
+  color: #203449;
+  box-shadow: 0 18px 48px rgba(28, 48, 68, 0.2);
+}
+
+:root[data-theme="light"] .production-notification-heading,
+:root[data-theme="light"] .production-notification-list li {
+  border-color: #e2e9f0;
+}
+
+:root[data-theme="light"] .production-notification-heading small,
+:root[data-theme="light"] .production-notification-list small,
+:root[data-theme="light"] .production-notification-hint,
+:root[data-theme="light"] .production-notification-empty,
+:root[data-theme="light"] .production-notification-list a span {
+  color: #60758a;
+}
+
+:root[data-theme="light"] .production-notification-list li.is-unread {
+  background: #eff8fc;
+}
+
+:root[data-theme="light"] .production-notification-push-toggle {
+  border-color: #b9d8e9;
+  background: #e5f3fb;
+  color: #155d89;
 }
 
 :root[data-theme="light"] .production-organization-filter select,
