@@ -1,6 +1,6 @@
 import { isRecord } from "@/lib/production-data";
 import { prisma } from "@/lib/prisma";
-import webpush from "web-push";
+import { sendNotification, setVapidDetails } from "web-push";
 
 type NewProductionJob = {
   id: string;
@@ -48,7 +48,7 @@ export async function notifyOriginationOfNewJob(job: NewProductionJob) {
   if (!publicKey || !privateKey || !subject) return;
 
   try {
-    webpush.setVapidDetails(subject, publicKey, privateKey);
+    setVapidDetails(subject, publicKey, privateKey);
   } catch (error) {
     console.error("Web Push VAPID configuration is invalid.", error);
     return;
@@ -71,7 +71,7 @@ export async function notifyOriginationOfNewJob(job: NewProductionJob) {
   });
   await Promise.all(subscriptions.map(async (subscription) => {
     try {
-      await webpush.sendNotification(
+      await sendNotification(
         {
           endpoint: subscription.endpoint,
           keys: { p256dh: subscription.p256dh, auth: subscription.auth },

@@ -59,6 +59,19 @@ export type ProductionOrderBookingInput = {
   deliveryDate: string;
 };
 
+export type ProductionOrderBookingLineInput = {
+  itemId: string;
+  orderQty: string;
+};
+
+export type MultiLineProductionOrderBookingInput = {
+  lines: ProductionOrderBookingLineInput[];
+  customerId: string;
+  customerPO: string;
+  orderDate: string;
+  deliveryDate: string;
+};
+
 function isValidProductionDate(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const date = new Date(`${value}T00:00:00.000Z`);
@@ -67,21 +80,15 @@ function isValidProductionDate(value: string): boolean {
 
 export function validateProductionOrderBooking(
   value: unknown,
-): value is ProductionOrderBookingInput {
+): value is ProductionOrderBookingInput | MultiLineProductionOrderBookingInput {
   if (!isRecord(value)) return false;
-  const { customerPO, orderQty, orderDate, deliveryDate } = value;
+  const { customerPO, orderDate, deliveryDate } = value;
   if (
-    typeof value.itemId !== "string" ||
-    !value.itemId.trim() ||
-    value.itemId.length > 100 ||
     typeof value.customerId !== "string" ||
     !value.customerId.trim() ||
     value.customerId.length > 100 ||
     typeof customerPO !== "string" ||
     customerPO.length > 60 ||
-    typeof orderQty !== "string" ||
-    !/^[1-9]\d*$/.test(orderQty) ||
-    !Number.isSafeInteger(Number(orderQty)) ||
     typeof orderDate !== "string" ||
     !isValidProductionDate(orderDate) ||
     typeof deliveryDate !== "string" ||
@@ -90,7 +97,30 @@ export function validateProductionOrderBooking(
   ) {
     return false;
   }
-  return true;
+
+  if ("lines" in value) {
+    return Array.isArray(value.lines) &&
+      value.lines.length > 0 &&
+      value.lines.length <= 100 &&
+      value.lines.every((line) =>
+        isRecord(line) &&
+        typeof line.itemId === "string" &&
+        Boolean(line.itemId.trim()) &&
+        line.itemId.length <= 100 &&
+        typeof line.orderQty === "string" &&
+        /^[1-9]\d*$/.test(line.orderQty) &&
+        Number.isSafeInteger(Number(line.orderQty)),
+      );
+  }
+
+  return (
+    typeof value.itemId === "string" &&
+    Boolean(value.itemId.trim()) &&
+    value.itemId.length <= 100 &&
+    typeof value.orderQty === "string" &&
+    /^[1-9]\d*$/.test(value.orderQty) &&
+    Number.isSafeInteger(Number(value.orderQty))
+  );
 }
 
 export type ProductionOperationScheduleInput = {

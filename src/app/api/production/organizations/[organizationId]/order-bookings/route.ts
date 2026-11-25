@@ -43,8 +43,13 @@ export async function POST(request: Request, { params }: RouteContext) {
     return NextResponse.json({ error: "Invalid order booking details" }, { status: 400 });
   }
 
-  const item = await prisma.productionItem.findFirst({
-    where: { id: body.itemId, organizationId },
+  const isMultiLineOrder = "lines" in body;
+  const lines = "lines" in body
+    ? body.lines
+    : [{ itemId: body.itemId, orderQty: body.orderQty }];
+  const itemIds = [...new Set(lines.map((line) => line.itemId))];
+  const items = await prisma.productionItem.findMany({
+    where: { id: { in: itemIds }, organizationId },
     select: {
       id: true,
       itemCode: true,
@@ -59,9 +64,10 @@ export async function POST(request: Request, { params }: RouteContext) {
       unit: true,
     },
   });
-  if (!item) {
+  if (items.length !== itemIds.length) {
     return NextResponse.json({ error: "Select an item from this organization" }, { status: 404 });
   }
+  const itemsById = new Map(items.map((item) => [item.id, item]));
 
   const customer = await prisma.productionCustomer.findUnique({
     where: { id: body.customerId },
@@ -71,41 +77,56 @@ export async function POST(request: Request, { params }: RouteContext) {
     return NextResponse.json({ error: "Select a customer from the shared catalog" }, { status: 404 });
   }
 
-  const data = {
-    jobNo: createJobSheetNumber(),
-    workflowStage: "Order Booking",
-    issueDate: new Date().toISOString().slice(0, 10),
-    documentType: "JOB",
-    priority: "Normal",
-    customer: customer.name,
-    itemId: item.id,
-    itemCode: item.itemCode,
-    jobName: item.name,
-    customerPO: body.customerPO.trim(),
-    orderQty: String(Number(body.orderQty)),
-    orderDate: body.orderDate,
-    deliveryDate: body.deliveryDate,
-    boxType: item.boxType,
-    topLiner: item.topLiner,
-    medium: item.medium,
-    bottomLiner: item.bottomLiner,
-    length: item.length,
-    width: item.width,
-    height: item.height,
-    unit: item.unit,
-  };
-  const job = await prisma.productionJob.create({
-    data: {
-      organizationId,
-      createdByUserId: user.id,
-      data,
-    },
-    select: { id: true, organizationId: true, data: true, createdAt: true, updatedAt: true },
+  const orderGroupId = randomUUID();
+  const jobs = await prisma.$transaction(async (transaction) => {
+    const createdJobs = [];
+    for (const [index, line] of lines.entries()) {
+      const item = itemsById.get(line.itemId);
+      if (!item) {
+        throw new Error(`Validated order line ${index + 1} references an unavailable item.`);
+      }
+      const data = {
+        jobNo: createJobSheetNumber(),
+        workflowStage: "Order Booking",
+        issueDate: new Date().toISOString().slice(0, 10),
+        documentType: "JOB",
+        priority: "Normal",
+        customer: customer.name,
+        customerPO: body.customerPO.trim(),
+        orderDate: body.orderDate,
+        deliveryDate: body.deliveryDate,
+        orderGroupId,
+        orderLineNumber: index + 1,
+        orderLineCount: lines.length,
+        itemId: item.id,
+        itemCode: item.itemCode,
+        jobName: item.name,
+        orderQty: String(Number(line.orderQty)),
+        boxType: item.boxType,
+        topLiner: item.topLiner,
+        medium: item.medium,
+        bottomLiner: item.bottomLiner,
+        length: item.length,
+        width: item.width,
+        height: item.height,
+        unit: item.unit,
+      };
+      const job = await transaction.productionJob.create({
+        data: {
+          organizationId,
+          createdByUserId: user.id,
+          data,
+        },
+        select: { id: true, organizationId: true, data: true, createdAt: true, updatedAt: true },
+      });
+      createdJobs.push(job);
+    }
+    return createdJobs;
   });
-  await notifyOriginationOfNewJob(job);
+  await Promise.all(jobs.map((job) => notifyOriginationOfNewJob(job)));
 
   return NextResponse.json(
-    { job },
+    isMultiLineOrder ? { jobs } : { job: jobs[0] },
     { status: 201, headers: { "Cache-Control": "private, no-store" } },
   );
 }

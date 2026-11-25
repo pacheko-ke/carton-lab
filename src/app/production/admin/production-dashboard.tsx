@@ -322,6 +322,12 @@ type ProductionDashboardItem = {
   unit: "mm" | "in";
 };
 
+type ProductionOrderLineDraft = {
+  id: string;
+  itemId: string;
+  orderQty: string;
+};
+
 export type ProductionDashboardCustomer = {
   id: string;
   name: string;
@@ -1149,6 +1155,251 @@ function createProductionScheduleForm(jobId: string): ProductionScheduleForm {
   };
 }
 
+type BulkProductionScheduleEntry = {
+  jobId: string;
+  scheduledStartAt: string;
+  scheduledEndAt: string;
+  plannedQty: string;
+};
+
+function BulkScheduleForm({
+  organizationId,
+  jobs,
+  schedules,
+  onSaved,
+}: {
+  organizationId: string;
+  jobs: ProductionDashboardJob[];
+  schedules: ProductionDashboardSchedule[];
+  onSaved: () => void;
+}) {
+  const [operation, setOperation] = useState<ProductionOperation>(PRODUCTION_OPERATIONS[0]);
+  const [workCenter, setWorkCenter] = useState("");
+  const [entries, setEntries] = useState<BulkProductionScheduleEntry[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [status, setStatus] = useState("");
+  const [hasError, setHasError] = useState(false);
+  const availableJobs = jobs.filter((job) =>
+    !schedules.some((schedule) =>
+      schedule.jobId === job.id && schedule.operation === operation,
+    ),
+  );
+  const entryJobIds = new Set(entries.map((entry) => entry.jobId));
+
+  const toggleJob = (job: ProductionDashboardJob, checked: boolean) => {
+    setStatus("");
+    setEntries((current) => {
+      if (!checked) return current.filter((entry) => entry.jobId !== job.id);
+      if (current.some((entry) => entry.jobId === job.id)) return current;
+
+      const defaults = createProductionScheduleForm(job.id);
+      const lastEnd = current.length
+        ? new Date(current[current.length - 1].scheduledEndAt)
+        : new Date(defaults.scheduledStartAt);
+      const start = Number.isNaN(lastEnd.getTime())
+        ? new Date(defaults.scheduledStartAt)
+        : new Date(lastEnd);
+      if (current.length) start.setHours(start.getHours() + 1);
+      const end = new Date(start);
+      end.setHours(end.getHours() + 1);
+      return [...current, {
+        jobId: job.id,
+        scheduledStartAt: localDateTimeValue(start),
+        scheduledEndAt: localDateTimeValue(end),
+        plannedQty: job.orderQty === null || job.orderQty < 1 ? "" : String(job.orderQty),
+      }];
+    });
+  };
+
+  const updateEntry = (
+    jobId: string,
+    field: "scheduledStartAt" | "scheduledEndAt" | "plannedQty",
+    value: string,
+  ) => {
+    setEntries((current) => current.map((entry) =>
+      entry.jobId === jobId ? { ...entry, [field]: value } : entry,
+    ));
+  };
+
+  const submitBulkSchedule = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsSaving(true);
+    setStatus("");
+    setHasError(false);
+    const failures: Array<{ entry: BulkProductionScheduleEntry; reason: string }> = [];
+    let successCount = 0;
+    try {
+      for (const entry of entries) {
+        try {
+          await requestProductionJson(
+            `/api/production/organizations/${encodeURIComponent(organizationId)}/operation-schedules`,
+            {
+              method: "POST",
+              body: JSON.stringify({
+                jobId: entry.jobId,
+                operation,
+                workCenter,
+                scheduledStartAt: new Date(entry.scheduledStartAt).toISOString(),
+                scheduledEndAt: new Date(entry.scheduledEndAt).toISOString(),
+                plannedQty: entry.plannedQty,
+                status: "PLANNED",
+                notes: "",
+              }),
+            },
+          );
+          successCount += 1;
+        } catch (error) {
+          failures.push({
+            entry,
+            reason: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }
+
+      if (failures.length) {
+        const failureDetails = failures.map(({ entry, reason }) => {
+          const job = jobs.find((candidate) => candidate.id === entry.jobId);
+          return `${job?.jobNo || "Job"}: ${reason}`;
+        });
+        setEntries(failures.map(({ entry }) => entry));
+        setStatus(
+          `${successCount} scheduled; ${failures.length} failed. ${failureDetails.join(" ")}`,
+        );
+        setHasError(true);
+      } else {
+        setEntries([]);
+        setStatus(`${successCount} ${operation} schedules created.`);
+      }
+      if (successCount) onSaved();
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <form className="production-planning-form" onSubmit={submitBulkSchedule}>
+      <div className="production-order-booking-row">
+        <label className="production-order-booking-field">
+          Operation
+          <select
+            onChange={(event) => {
+              const nextOperation = event.currentTarget.value;
+              if (!isProductionOperation(nextOperation)) return;
+              setOperation(nextOperation);
+              setEntries([]);
+              setStatus("");
+            }}
+            value={operation}
+          >
+            {PRODUCTION_OPERATIONS.map((productionOperation) => (
+              <option key={productionOperation} value={productionOperation}>
+                {productionOperation}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="production-order-booking-field">
+          Work center
+          <input
+            maxLength={80}
+            onChange={(event) => setWorkCenter(event.target.value)}
+            placeholder="e.g. Corrugator"
+            required
+            value={workCenter}
+          />
+        </label>
+      </div>
+      <fieldset className="production-bulk-job-picker">
+        <legend>Select jobs to schedule</legend>
+        {availableJobs.length ? (
+          availableJobs.map((job) => (
+            <label
+              className={`production-bulk-job-option${job.flag ? " is-disabled" : ""}`}
+              key={job.id}
+            >
+              <input
+                checked={entryJobIds.has(job.id)}
+                disabled={Boolean(job.flag) || isSaving}
+                onChange={(event) => toggleJob(job, event.currentTarget.checked)}
+                type="checkbox"
+              />
+              <span>
+                <strong>{job.jobNo || "Unnumbered"}</strong>
+                <small>{job.jobName || job.customer || "Untitled job"}</small>
+                {job.flag && <small>Flagged — clear the flag before scheduling</small>}
+              </span>
+              <span>{job.orderQty?.toLocaleString("en-KE") ?? "Quantity required"}</span>
+            </label>
+          ))
+        ) : (
+          <p className="production-chart-empty">
+            No unscheduled jobs are available for this operation.
+          </p>
+        )}
+      </fieldset>
+      {entries.length > 0 && (
+        <div className="production-bulk-schedule-entries">
+          <strong>Schedule details</strong>
+          {entries.map((entry) => {
+            const job = jobs.find((candidate) => candidate.id === entry.jobId);
+            return (
+              <fieldset className="production-bulk-schedule-entry" key={entry.jobId}>
+                <legend>{job?.jobNo || job?.jobName || "Selected job"}</legend>
+                <div className="production-bulk-schedule-fields">
+                  <label className="production-order-booking-field">
+                    Start
+                    <input
+                      onChange={(event) => updateEntry(entry.jobId, "scheduledStartAt", event.target.value)}
+                      required
+                      type="datetime-local"
+                      value={entry.scheduledStartAt}
+                    />
+                  </label>
+                  <label className="production-order-booking-field">
+                    End
+                    <input
+                      onChange={(event) => updateEntry(entry.jobId, "scheduledEndAt", event.target.value)}
+                      required
+                      type="datetime-local"
+                      value={entry.scheduledEndAt}
+                    />
+                  </label>
+                  <label className="production-order-booking-field">
+                    Planned quantity
+                    <input
+                      min="1"
+                      onChange={(event) => updateEntry(entry.jobId, "plannedQty", event.target.value)}
+                      required
+                      type="number"
+                      value={entry.plannedQty}
+                    />
+                  </label>
+                </div>
+              </fieldset>
+            );
+          })}
+        </div>
+      )}
+      {status && (
+        <p
+          aria-live="polite"
+          className={`production-bulk-schedule-status ${
+            hasError ? "production-order-booking-error" : "production-order-booking-status"
+          }`}
+          role={hasError ? "alert" : "status"}
+        >
+          {status}
+        </p>
+      )}
+      <div className="production-order-booking-actions">
+        <button className="production-primary-button" disabled={isSaving || !entries.length} type="submit">
+          {isSaving ? "Scheduling…" : `Schedule ${entries.length} jobs`}
+        </button>
+      </div>
+    </form>
+  );
+}
+
 function formatScheduleDate(value: string) {
   return new Intl.DateTimeFormat("en-KE", {
     day: "numeric",
@@ -1499,6 +1750,7 @@ function PlanningBoard({
     (organization) => organization.role === "PRODUCTION",
   );
   const [organizationId, setOrganizationId] = useState(preferredOrganizationId);
+  const [schedulingMode, setSchedulingMode] = useState<"single" | "bulk">("single");
   const organizationJobs = jobs.filter((job) => job.organizationId === organizationId);
   const [form, setForm] = useState(() =>
     createProductionScheduleForm(organizationJobs[0]?.id ?? ""),
@@ -1576,8 +1828,36 @@ function PlanningBoard({
             <span className="production-panel-kicker">CAPACITY & SEQUENCING</span>
             <h2>{editingScheduleId ? "Update operation schedule" : "Schedule a job operation"}</h2>
           </div>
-          <span className="production-panel-total">{organizationJobs.length} available jobs</span>
+          <div className="production-planning-mode-actions">
+            <span className="production-panel-total">{organizationJobs.length} jobs in organization</span>
+            <button
+              aria-pressed={schedulingMode === "single"}
+              className="production-text-action"
+              onClick={() => setSchedulingMode("single")}
+              type="button"
+            >
+              Single
+            </button>
+            <button
+              aria-pressed={schedulingMode === "bulk"}
+              className="production-text-action"
+              disabled={Boolean(editingScheduleId)}
+              onClick={() => setSchedulingMode("bulk")}
+              type="button"
+            >
+              Bulk
+            </button>
+          </div>
         </div>
+        {schedulingMode === "bulk" ? (
+          <BulkScheduleForm
+            key={organizationId}
+            jobs={organizationJobs}
+            onSaved={onSaved}
+            organizationId={organizationId}
+            schedules={organizationSchedules}
+          />
+        ) : (
         <form className="production-planning-form" onSubmit={submitSchedule}>
           {productionOrganizations.length > 1 && (
             <label className="production-order-booking-field">
@@ -1733,6 +2013,7 @@ function PlanningBoard({
             )}
           </div>
         </form>
+        )}
       </section>
 
       <section className="production-panel production-list-panel">
@@ -4886,10 +5167,12 @@ function OrderBookingDialog({
   const [organizationId, setOrganizationId] = useState(defaultOrganizationId);
   const [items, setItems] = useState<ProductionDashboardItem[]>([]);
   const [customers, setCustomers] = useState<ProductionDashboardCustomer[]>([]);
-  const [selectedItemId, setSelectedItemId] = useState("");
+  const [orderLines, setOrderLines] = useState<ProductionOrderLineDraft[]>([
+    { id: "order-line-1", itemId: "", orderQty: "" },
+  ]);
+  const orderLineSequence = useRef(1);
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const [customerPO, setCustomerPO] = useState("");
-  const [orderQty, setOrderQty] = useState("");
   const [orderDate, setOrderDate] = useState(() => dateKey(new Date()));
   const [deliveryDate, setDeliveryDate] = useState("");
   const [isLoadingItems, setIsLoadingItems] = useState(false);
@@ -4908,10 +5191,10 @@ function OrderBookingDialog({
       setOrganizationId(defaultOrganizationId);
       setItems([]);
       setCustomers([]);
-      setSelectedItemId("");
+      setOrderLines([{ id: "order-line-1", itemId: "", orderQty: "" }]);
+      orderLineSequence.current = 1;
       setSelectedCustomerId("");
       setCustomerPO("");
-      setOrderQty("");
       setOrderDate(dateKey(new Date()));
       setDeliveryDate("");
       setIsCreatingItem(false);
@@ -4985,8 +5268,33 @@ function OrderBookingDialog({
     };
   }, [open, organizationId]);
 
-  const selectedItem = items.find((item) => item.id === selectedItemId) ?? null;
   const selectedCustomer = customers.find((customer) => customer.id === selectedCustomerId) ?? null;
+  const createOrderLineId = () => {
+    orderLineSequence.current += 1;
+    return `order-line-${orderLineSequence.current}`;
+  };
+  const updateOrderLine = (
+    lineId: string,
+    field: "itemId" | "orderQty",
+    value: string,
+  ) => {
+    setOrderLines((current) => current.map((line) =>
+      line.id === lineId ? { ...line, [field]: value } : line,
+    ));
+  };
+  const removeOrderLine = (lineId: string) => {
+    const replacementLine = {
+      id: createOrderLineId(),
+      itemId: "",
+      orderQty: "",
+    };
+    setOrderLines((current) => {
+      const remaining = current.filter((line) => line.id !== lineId);
+      return remaining.length
+        ? remaining
+        : [replacementLine];
+    });
+  };
 
   const submitOrder = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -4999,22 +5307,33 @@ function OrderBookingDialog({
         {
           method: "POST",
           body: JSON.stringify({
-            itemId: selectedItemId,
             customerId: selectedCustomerId,
             customerPO,
-            orderQty,
             orderDate,
             deliveryDate,
+            lines: orderLines.map(({ itemId, orderQty: lineOrderQty }) => ({
+              itemId,
+              orderQty: lineOrderQty,
+            })),
           }),
         },
       );
-      const job = isRecord(result.job) ? result.job : null;
-      const data = job && isRecord(job.data) ? job.data : null;
-      const jobNo = data && typeof data.jobNo === "string" ? data.jobNo : "";
-      setStatus(jobNo ? `Order ${jobNo} booked.` : "Order booked.");
+      const bookedJobs = Array.isArray(result.jobs)
+        ? result.jobs.filter(isRecord)
+        : isRecord(result.job)
+          ? [result.job]
+          : [];
+      const jobNumbers = bookedJobs
+        .map((job) => isRecord(job.data) && typeof job.data.jobNo === "string" ? job.data.jobNo : "")
+        .filter(Boolean);
+      setStatus(
+        jobNumbers.length
+          ? `${jobNumbers.length} order line${jobNumbers.length === 1 ? "" : "s"} booked: ${jobNumbers.join(", ")}.`
+          : `${orderLines.length} order line${orderLines.length === 1 ? "" : "s"} booked.`,
+      );
+      setOrderLines([{ id: createOrderLineId(), itemId: "", orderQty: "" }]);
       setSelectedCustomerId("");
       setCustomerPO("");
-      setOrderQty("");
       setDeliveryDate("");
       onBooked();
     } catch (error) {
@@ -5053,7 +5372,7 @@ function OrderBookingDialog({
                 setOrganizationId(event.currentTarget.value);
                 setItems([]);
                 setCustomers([]);
-                setSelectedItemId("");
+                setOrderLines([{ id: createOrderLineId(), itemId: "", orderQty: "" }]);
                 setSelectedCustomerId("");
                 setIsLoadingItems(true);
                 setIsLoadingCustomers(true);
@@ -5085,8 +5404,14 @@ function OrderBookingDialog({
               setItems((current) =>
                 [...current, item].sort((left, right) => left.itemCode.localeCompare(right.itemCode)),
               );
-              setSelectedItemId(item.id);
-              setSelectedCustomerId(item.customerId ?? "");
+              const newLineId = createOrderLineId();
+              setOrderLines((current) => {
+                const emptyLine = current.find((line) => !line.itemId);
+                return emptyLine
+                  ? current.map((line) => line.id === emptyLine.id ? { ...line, itemId: item.id } : line)
+                  : [...current, { id: newLineId, itemId: item.id, orderQty: "" }];
+              });
+              if (!selectedCustomerId && item.customerId) setSelectedCustomerId(item.customerId);
               setIsCreatingItem(false);
               setStatus(`Item ${item.itemCode} saved and selected.`);
               setHasError(false);
@@ -5109,60 +5434,107 @@ function OrderBookingDialog({
           />
         ) : (
           <form className="production-order-booking-form" onSubmit={submitOrder}>
-          <div className="production-order-item-picker">
-            <label className="production-order-booking-field" htmlFor="production-order-item">
-              Item
-              <select
-                id="production-order-item"
-                onChange={(event) => {
-                  const itemId = event.currentTarget.value;
-                  const item = items.find((entry) => entry.id === itemId);
-                  setSelectedItemId(itemId);
-                  setSelectedCustomerId(item?.customerId ?? "");
+          <div className="production-order-lines">
+            {orderLines.map((line, index) => {
+              const item = items.find((entry) => entry.id === line.itemId);
+              return (
+                <section className="production-order-line" key={line.id}>
+                  <div className="production-order-line-heading">
+                    <strong>Order line {index + 1}</strong>
+                    {orderLines.length > 1 && (
+                      <button
+                        aria-label={`Remove order line ${index + 1}`}
+                        className="production-text-action"
+                        onClick={() => removeOrderLine(line.id)}
+                        type="button"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  <div className="production-order-booking-row">
+                    <label className="production-order-booking-field">
+                      Product
+                      <select
+                        onChange={(event) => {
+                          const itemId = event.currentTarget.value;
+                          const selectedProduct = items.find((entry) => entry.id === itemId);
+                          updateOrderLine(line.id, "itemId", itemId);
+                          if (!selectedCustomerId && selectedProduct?.customerId) {
+                            setSelectedCustomerId(selectedProduct.customerId);
+                          }
+                        }}
+                        ref={index === 0 ? itemSelectRef : undefined}
+                        required
+                        value={line.itemId}
+                      >
+                        <option value="">
+                          {isLoadingItems
+                            ? "Loading items…"
+                            : items.length
+                              ? "Select a product"
+                              : "No products yet"}
+                        </option>
+                        {items.map((entry) => (
+                          <option key={entry.id} value={entry.id}>
+                            {entry.itemCode} — {entry.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="production-order-booking-field">
+                      Quantity
+                      <input
+                        inputMode="numeric"
+                        min="1"
+                        onChange={(event) => updateOrderLine(line.id, "orderQty", event.currentTarget.value)}
+                        required
+                        step="1"
+                        type="number"
+                        value={line.orderQty}
+                      />
+                    </label>
+                  </div>
+                  {item && (
+                    <div className="production-order-item-summary">
+                      <strong>{item.itemCode} · {item.name}</strong>
+                      <span>{item.boxType}</span>
+                      <span>{item.topLiner}/{item.medium}/{item.bottomLiner}</span>
+                      <span>{item.length} × {item.width} × {item.height} {item.unit}</span>
+                    </div>
+                  )}
+                </section>
+              );
+            })}
+            <div className="production-order-line-actions">
+              <button
+                className="production-text-action"
+                disabled={isLoadingItems}
+                onClick={() => {
+                  const lineId = createOrderLineId();
+                  setOrderLines((current) => [
+                    ...current,
+                    { id: lineId, itemId: "", orderQty: "" },
+                  ]);
                 }}
-                ref={itemSelectRef}
-                required
-                value={selectedItemId}
+                type="button"
               >
-                <option value="">
-                  {isLoadingItems
-                    ? "Loading items…"
-                    : items.length
-                      ? "Select an item"
-                      : "No items yet"}
-                </option>
-                {items.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.itemCode} — {item.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button
-              className="production-text-action"
-              disabled={isLoadingItems || !organizationId}
-              onClick={() => {
-                setStatus("");
-                setHasError(false);
-                setIsCreatingItem(true);
-              }}
-              type="button"
-            >
-              <FiPlus aria-hidden="true" /> Create item
-            </button>
-          </div>
-          {selectedItem && (
-            <div className="production-order-item-summary">
-              <strong>{selectedItem.itemCode} · {selectedItem.name}</strong>
-              <span>{selectedItem.boxType}</span>
-              <span>
-                {selectedItem.topLiner}/{selectedItem.medium}/{selectedItem.bottomLiner}
-              </span>
-              <span>
-                {selectedItem.length} × {selectedItem.width} × {selectedItem.height} {selectedItem.unit}
-              </span>
+                <FiPlus aria-hidden="true" /> Add order line
+              </button>
+              <button
+                className="production-text-action"
+                disabled={isLoadingItems || !organizationId}
+                onClick={() => {
+                  setStatus("");
+                  setHasError(false);
+                  setIsCreatingItem(true);
+                }}
+                type="button"
+              >
+                <FiPlus aria-hidden="true" /> Create product
+              </button>
             </div>
-          )}
+          </div>
           <div className="production-order-item-picker">
             <label className="production-order-booking-field" htmlFor="production-order-customer">
               Customer
@@ -5219,18 +5591,6 @@ function OrderBookingDialog({
           </label>
           <div className="production-order-booking-row">
             <label className="production-order-booking-field">
-              Order quantity
-              <input
-                inputMode="numeric"
-                min="1"
-                onChange={(event) => setOrderQty(event.currentTarget.value)}
-                required
-                step="1"
-                type="number"
-                value={orderQty}
-              />
-            </label>
-            <label className="production-order-booking-field">
               Order date
               <input
                 onChange={(event) => setOrderDate(event.currentTarget.value)}
@@ -5260,7 +5620,7 @@ function OrderBookingDialog({
               disabled={isSaving || isLoadingItems || isLoadingCustomers}
               type="submit"
             >
-              {isSaving ? "Booking…" : "Book order"}
+              {isSaving ? "Booking…" : `Book ${orderLines.length} order line${orderLines.length === 1 ? "" : "s"}`}
             </button>
             <button
               className="production-text-action"

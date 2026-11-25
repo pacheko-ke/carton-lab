@@ -109,6 +109,38 @@ test("validates basic order booking fields and date order", () => {
   assert.equal(validateProductionOrderBooking({ ...order, itemId: "" }), false);
 });
 
+test("validates multi-line order bookings and line quantities", () => {
+  const order = {
+    customerId: "customer-123",
+    customerPO: "PO-123",
+    orderDate: "2026-11-23",
+    deliveryDate: "2026-12-01",
+    lines: [
+      { itemId: "item-123", orderQty: "1200" },
+      { itemId: "item-456", orderQty: "800" },
+    ],
+  };
+  assert.equal(validateProductionOrderBooking(order), true);
+  assert.equal(validateProductionOrderBooking({ ...order, lines: [] }), false);
+  assert.equal(
+    validateProductionOrderBooking({
+      ...order,
+      lines: [{ itemId: "item-123", orderQty: "0" }],
+    }),
+    false,
+  );
+  assert.equal(
+    validateProductionOrderBooking({
+      ...order,
+      lines: Array.from({ length: 101 }, (_, index) => ({
+        itemId: `item-${index}`,
+        orderQty: "1",
+      })),
+    }),
+    false,
+  );
+});
+
 test("validates shared customer details and optional contact information", () => {
   const customer = {
     name: "Carton customer",
