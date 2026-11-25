@@ -2,7 +2,6 @@ import {
   canEditProductionJobs,
   getProductionOriginationPrintDetails,
   isProductionWorkflowStage,
-  isProductionOriginationQueueStage,
   isRecord,
   PRODUCTION_WORKFLOW_STAGES,
   validateProductionJobData,
@@ -42,12 +41,8 @@ export async function GET(_request: Request, { params }: RouteContext) {
     return NextResponse.json({ error: "Production job not found" }, { status: 404 });
   }
 
-  const responseJob = access.membership.role === "DESIGNER"
-    ? { ...job, data: getProductionOriginationPrintDetails(job.data) }
-    : job;
-
   return NextResponse.json(
-    { job: responseJob, role: access.membership.role },
+    { job, role: access.membership.role },
     { headers: { "Cache-Control": "private, no-store" } },
   );
 }
@@ -109,13 +104,6 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       isRecord(currentJob.data) && isProductionWorkflowStage(currentJob.data.workflowStage)
         ? currentJob.data.workflowStage
         : "Origination";
-    if (
-      isOriginationDesigner &&
-      !isAdmin &&
-      !isProductionOriginationQueueStage(currentStage)
-    ) {
-      return "forbidden" as const;
-    }
     const requestedStage = isProductionWorkflowStage(requestedData.workflowStage)
       ? requestedData.workflowStage
       : currentStage;
@@ -148,13 +136,6 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       { status: 409 },
     );
   }
-  if (result === "forbidden") {
-    return NextResponse.json(
-      { error: "Origination can only update print details before printing begins." },
-      { status: 403 },
-    );
-  }
-
   const responseJob = isOriginationDesigner && !isAdmin
     ? { ...result, data: getProductionOriginationPrintDetails(result.data) }
     : result;

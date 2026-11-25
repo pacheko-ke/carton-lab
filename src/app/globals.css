@@ -3660,7 +3660,7 @@ input {
 .production-job-row-actions {
   display: grid;
   min-width: 120px;
-  gap: 6px;
+  gap: 10px;
 }
 
 .production-planning-mode-actions {
@@ -5850,6 +5850,26 @@ input {
   text-transform: none;
 }
 
+.production-job-filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, auto);
+  align-items: end;
+  gap: 12px;
+  margin: 8px 0 14px;
+}
+
+.production-job-filters .production-catalog-search {
+  margin: 0;
+}
+
+.production-job-filters .production-organization-filter {
+  justify-content: space-between;
+}
+
+.production-job-filters .production-organization-filter select {
+  flex: 1;
+}
+
 .production-printing-details {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -6431,6 +6451,22 @@ input {
   color: #ffc1c1;
 }
 
+.production-artwork-attach-button,
+.production-job-icon-action {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.production-artwork-attach-button svg,
+.production-job-icon-action svg {
+  width: 15px;
+  height: 15px;
+}
+
 .production-artwork-attached svg,
 .production-artwork-delete-button svg {
   width: 13px;
@@ -6451,6 +6487,12 @@ input {
   border: 1px solid rgba(165, 190, 214, 0.12);
   border-radius: 12px;
   background: #091626;
+}
+
+@media (max-width: 640px) {
+  .production-job-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .production-dashboard-content.is-job-sheet-view .production-iframe-shell {

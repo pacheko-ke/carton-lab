@@ -193,11 +193,7 @@ async function AuthenticatedProductionAdminPage() {
       updatedAt: job.updatedAt.toISOString(),
     };
   };
-  const dashboardJobs: ProductionDashboardJob[] = jobs
-    .map(toDashboardJob)
-    .filter((job) =>
-      !hasDesignerRole || isProductionOriginationQueueStage(job.workflowStage),
-    );
+  const dashboardJobs: ProductionDashboardJob[] = jobs.map(toDashboardJob);
   const productionOrganizationIds = organizations
     .filter((organization) => organization.role === "PRODUCTION")
     .map((organization) => organization.id);
@@ -308,12 +304,14 @@ async function AuthenticatedProductionAdminPage() {
   });
   const originationQueueJobs = [
     ...dashboardJobsWithScheduledStages.filter((job) =>
-      isProductionOriginationQueueStage(job.workflowStage),
+      hasDesignerRole || isProductionOriginationQueueStage(job.workflowStage),
     ),
     ...crossOrganizationJobRows
       .map(toDashboardJob)
-      .filter((job) => isProductionOriginationQueueStage(job.workflowStage)),
-  ];
+      .filter((job) =>
+        hasDesignerRole || isProductionOriginationQueueStage(job.workflowStage),
+      ),
+  ].sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt));
   const dashboardOperationRuns: ProductionDashboardRun[] = operationRunRows.map((run) => {
     if (!isProductionOperation(run.schedule.operation)) {
       throw new Error(`Production operation run ${run.id} references an invalid operation.`);

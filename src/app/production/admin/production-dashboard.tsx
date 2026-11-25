@@ -27,12 +27,14 @@ import {
   FiChevronDown,
   FiClipboard,
   FiDollarSign,
+  FiEdit2,
   FiFlag,
   FiGrid,
   FiLayers,
   FiLoader,
   FiMenu,
   FiPackage,
+  FiPaperclip,
   FiPenTool,
   FiPlus,
   FiPrinter,
@@ -827,8 +829,10 @@ function JobTable({
   emptyHeading = "No shared jobs here yet",
   emptyDescription = "Create a job sheet or choose another organization or stage.",
   showArtwork = false,
+  showOrganization = true,
   canOpenJobSheet = true,
   canOpenJobSheetForJob,
+  jobNameOpensJobSheet = false,
   canFlagJobs = false,
   canResolveJobFlag,
   onFlagChanged,
@@ -844,11 +848,13 @@ function JobTable({
   emptyHeading?: string;
   emptyDescription?: string;
   showArtwork?: boolean;
+  showOrganization?: boolean;
   onArtworkUploaded?: () => void;
   canFlagJobs?: boolean;
   canResolveJobFlag?: (job: ProductionDashboardJob) => boolean;
   onFlagChanged?: () => void;
   onEditPrintDetails?: (job: ProductionDashboardJob) => void;
+  jobNameOpensJobSheet?: boolean;
 }) {
   if (!jobs.length) {
     return (
@@ -883,7 +889,7 @@ function JobTable({
             {showArtwork && <th scope="col">Artwork</th>}
             <th scope="col">Delivery</th>
             <th scope="col" className="production-number-cell">Order qty</th>
-            <th scope="col">Organization</th>
+            {showOrganization && <th scope="col">Organization</th>}
             {(showArtwork || showJobSheetActions) && (
               <th scope="col">
                 {showArtwork ? "Artwork / print details" : <span className="sr-only">Action</span>}
@@ -892,10 +898,36 @@ function JobTable({
           </tr>
         </thead>
         <tbody>
-          {jobs.map((job) => (
+          {jobs.map((job) => {
+            const canOpenThisJob = canOpenJobSheet &&
+              (canOpenJobSheetForJob?.(job) ?? true);
+
+            return (
             <tr key={job.id}>
-              <td><strong>{job.jobNo || "—"}</strong></td>
-              <td>{job.jobName || "—"}</td>
+              <td>
+                <strong>
+                  {jobNameOpensJobSheet && canOpenThisJob ? (
+                    <button
+                      className="production-table-action"
+                      onClick={() => onOpen(job)}
+                      type="button"
+                    >
+                      {job.jobNo || "—"}
+                    </button>
+                  ) : job.jobNo || "—"}
+                </strong>
+              </td>
+              <td>
+                {jobNameOpensJobSheet && canOpenThisJob ? (
+                  <button
+                    className="production-table-action"
+                    onClick={() => onOpen(job)}
+                    type="button"
+                  >
+                    {job.jobName || "—"}
+                  </button>
+                ) : job.jobName || "—"}
+              </td>
               <td>{job.cartonSpec || "—"}</td>
               <td>{job.size || "—"}</td>
               <td>{job.customer || "—"}</td>
@@ -915,12 +947,12 @@ function JobTable({
               <td className="production-number-cell">
                 {job.orderQty === null ? "—" : job.orderQty.toLocaleString("en-KE")}
               </td>
-              <td>{job.organizationName}</td>
+              {showOrganization && <td>{job.organizationName}</td>}
               {(showArtwork || showJobSheetActions) && (
                 <td>
                   {showArtwork ? (
                     <div className="production-job-row-actions">
-                      {canOpenJobSheet && (canOpenJobSheetForJob?.(job) ?? true) && (
+                      {!jobNameOpensJobSheet && canOpenThisJob && (
                         <button
                           className="production-table-action"
                           onClick={() => onOpen(job)}
@@ -929,16 +961,18 @@ function JobTable({
                           {actionLabel}
                         </button>
                       )}
-                      <ArtworkUploadButton job={job} onUploaded={onArtworkUploaded} />
                       {onEditPrintDetails && (
                         <button
-                          className="production-table-action"
+                          aria-label={`Update print details for ${job.jobNo || "job"}`}
+                          className="production-table-action production-job-icon-action"
                           onClick={() => onEditPrintDetails(job)}
+                          title="Update print details"
                           type="button"
                         >
-                          Edit print details
+                          <FiEdit2 aria-hidden="true" />
                         </button>
                       )}
+                      <ArtworkUploadButton job={job} onUploaded={onArtworkUploaded} />
                     </div>
                   ) : canOpenJobSheet && (canOpenJobSheetForJob?.(job) ?? true) ? (
                     <button
@@ -954,9 +988,75 @@ function JobTable({
                 </td>
               )}
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function filterProductionDashboardJobs(
+  jobs: ProductionDashboardJob[],
+  search: string,
+  workflowStage: string,
+): ProductionDashboardJob[] {
+  const query = search.trim().toLowerCase();
+  return jobs.filter((job) => {
+    if (workflowStage !== "all" && job.workflowStage !== workflowStage) return false;
+    if (!query) return true;
+
+    return [
+      job.jobNo,
+      job.jobName,
+      job.customer,
+      job.cartonSpec,
+      job.size,
+      job.workflowStage,
+      job.organizationName,
+      job.deliveryDate,
+      job.priority,
+      job.orderQty === null ? "" : String(job.orderQty),
+    ].some((value) => value.toLowerCase().includes(query));
+  });
+}
+
+function ProductionJobFilters({
+  search,
+  onSearchChange,
+  workflowStage,
+  onWorkflowStageChange,
+}: {
+  search: string;
+  onSearchChange: (value: string) => void;
+  workflowStage: string;
+  onWorkflowStageChange: (value: string) => void;
+}) {
+  return (
+    <div className="production-job-filters">
+      <label className="production-catalog-search">
+        <span>Search jobs</span>
+        <input
+          aria-label="Search jobs"
+          onChange={(event) => onSearchChange(event.currentTarget.value)}
+          placeholder="Job number, name, customer, specification…"
+          type="search"
+          value={search}
+        />
+      </label>
+      <label className="production-organization-filter">
+        <span>Workflow stage</span>
+        <select
+          aria-label="Filter jobs by workflow stage"
+          onChange={(event) => onWorkflowStageChange(event.currentTarget.value)}
+          value={workflowStage}
+        >
+          <option value="all">All stages</option>
+          {PRODUCTION_WORKFLOW_STAGES.map((stage) => (
+            <option key={stage} value={stage}>{stage}</option>
+          ))}
+        </select>
+      </label>
     </div>
   );
 }
@@ -4593,9 +4693,7 @@ function PaperReelBoard({
             <label className="production-organization-filter">
               <span>Organization</span>
               <select onChange={(event) => changeOrganization(event.target.value)} value={organizationId}>
-                {organizations.map((organization) => (
-                  <option key={organization.id} value={organization.id}>{organization.name}</option>
-                ))}
+                {organizations.map((organization) => <option key={organization.id} value={organization.id}>{organization.name}</option>)}
               </select>
             </label>
           )}
@@ -6318,12 +6416,18 @@ function ArtworkUploadButton({
         type="file"
       />
       <button
-        className="production-table-action"
+        aria-label={isUploading
+          ? `Uploading artwork for ${job.jobNo || "job"}`
+          : `Attach artwork to ${job.jobNo || "job"}`}
+        className="production-table-action production-artwork-attach-button"
         disabled={isUploading}
         onClick={() => fileInputRef.current?.click()}
+        title={isUploading ? "Uploading artwork" : "Attach artwork"}
         type="button"
       >
-        {isUploading ? "Uploading…" : "Attach artwork"}
+        {isUploading
+          ? <FiLoader className="production-refresh-spinner" aria-hidden="true" />
+          : <FiPaperclip aria-hidden="true" />}
       </button>
       {status && <small aria-live="polite" role={hasError ? "alert" : "status"}>{status}</small>}
     </div>
@@ -9112,6 +9216,8 @@ export default function ProductionDashboard({
   const [editingOriginationJob, setEditingOriginationJob] = useState<ProductionDashboardJob | null>(null);
   const handledJobDeepLink = useRef("");
   const [customerSearch, setCustomerSearch] = useState("");
+  const [jobsSearch, setJobsSearch] = useState("");
+  const [jobsWorkflowStageFilter, setJobsWorkflowStageFilter] = useState("all");
   const [printingData, setPrintingData] = useState<Record<string, unknown> | null>(null);
   const [jobSheetData, setJobSheetData] = useState<Record<string, unknown> | null>(null);
   const [jobSheetAttachments, setJobSheetAttachments] = useState<ProductionDashboardAttachment[]>([]);
@@ -9204,6 +9310,39 @@ export default function ProductionDashboard({
       organizationFilter === "all" || job.organizationId === organizationFilter,
     ),
     [originationQueueJobs, organizationFilter],
+  );
+  const filteredOriginationJobs = useMemo(
+    () => filterProductionDashboardJobs(
+      originationJobs,
+      jobsSearch,
+      jobsWorkflowStageFilter,
+    ),
+    [originationJobs, jobsSearch, jobsWorkflowStageFilter],
+  );
+  const filteredAllJobs = useMemo(
+    () => filterProductionDashboardJobs(allJobs, jobsSearch, jobsWorkflowStageFilter),
+    [allJobs, jobsSearch, jobsWorkflowStageFilter],
+  );
+  const organizationFilterOptions = useMemo(() => {
+    if (!hasDesignerRole) {
+      return organizations.map(({ id, name }) => ({ id, name }));
+    }
+
+    const options = new Map<string, { id: string; name: string }>();
+    for (const job of originationQueueJobs) {
+      options.set(job.organizationId, {
+        id: job.organizationId,
+        name: job.organizationName,
+      });
+    }
+    return Array.from(options.values()).sort((left, right) =>
+      left.name.localeCompare(right.name),
+    );
+  }, [hasDesignerRole, organizations, originationQueueJobs]);
+  const hasActiveJobsFilter = Boolean(
+    jobsSearch.trim() ||
+    jobsWorkflowStageFilter !== "all" ||
+    organizationFilter !== "all",
   );
   const canManageJobs = isAdmin || organizations.some(
     (organization) => organization.role === "PRODUCTION" &&
@@ -9496,12 +9635,6 @@ export default function ProductionDashboard({
                                         : "";
 
   const openJob = useCallback((job: ProductionDashboardJob) => {
-    if (hasDesignerRole) {
-      if (!isProductionOriginationQueueStage(job.workflowStage)) return;
-      setEditingOriginationJob(job);
-      return;
-    }
-
     setSelectedJob(job);
     setIsSchedulingCorrugator(false);
     setJobSheetError("");
@@ -9573,7 +9706,7 @@ export default function ProductionDashboard({
         })
         .finally(() => setJobSheetLoading(false));
     }
-  }, [hasDesignerRole, view]);
+  }, [view]);
   const openJobRef = useRef(openJob);
   useEffect(() => {
     openJobRef.current = openJob;
@@ -9842,7 +9975,7 @@ export default function ProductionDashboard({
                 value={organizationFilter}
               >
                 <option value="all">All organizations</option>
-                {organizations.map((organization) => (
+                {organizationFilterOptions.map((organization) => (
                   <option key={organization.id} value={organization.id}>{organization.name}</option>
                 ))}
               </select>
@@ -10638,9 +10771,9 @@ export default function ProductionDashboard({
                   <div className="production-panel-heading">
                     <div>
                       <span className="production-panel-kicker">ARTWORK QUEUE</span>
-                      <h2>Planned jobs</h2>
+                      <h2>{hasDesignerRole ? "All jobs" : "Planned jobs"}</h2>
                     </div>
-                    <span className="production-panel-total">{originationJobs.length} jobs</span>
+                    <span className="production-panel-total">{filteredOriginationJobs.length} jobs</span>
                   </div>
                   {editingOriginationJob ? (
                     <OriginationPrintDetailsForm
@@ -10653,19 +10786,37 @@ export default function ProductionDashboard({
                       }}
                     />
                   ) : (
-                    <JobTable
-                      emptyDescription="Jobs from booking through board production across organizations will appear here."
-                      emptyHeading="No planned jobs"
-                      jobs={originationJobs}
-                      actionLabel={hasDesignerRole ? "Open Origination" : undefined}
-                      onOpen={openJob}
-                      onArtworkUploaded={() => router.refresh()}
-                      onFlagChanged={() => router.refresh()}
-                      onEditPrintDetails={hasDesignerRole ? undefined : setEditingOriginationJob}
-                      canFlagJobs
-                      canResolveJobFlag={(job) => productionOrganizationIds.has(job.organizationId)}
-                      showArtwork
-                    />
+                    <>
+                      {hasDesignerRole && (
+                        <ProductionJobFilters
+                          search={jobsSearch}
+                          onSearchChange={setJobsSearch}
+                          workflowStage={jobsWorkflowStageFilter}
+                          onWorkflowStageChange={setJobsWorkflowStageFilter}
+                        />
+                      )}
+                      <JobTable
+                        emptyDescription={hasActiveJobsFilter
+                          ? "Try changing your search or filters."
+                          : hasDesignerRole
+                            ? "Jobs from all workflow stages and organizations will appear here."
+                            : "Jobs from booking through board production across organizations will appear here."}
+                        emptyHeading={hasActiveJobsFilter
+                          ? "No matching jobs"
+                          : "No planned jobs"}
+                        jobs={filteredOriginationJobs}
+                        actionLabel="View job sheet"
+                        onOpen={openJob}
+                        onArtworkUploaded={() => router.refresh()}
+                        onFlagChanged={() => router.refresh()}
+                        onEditPrintDetails={setEditingOriginationJob}
+                        canFlagJobs
+                        canResolveJobFlag={(job) => productionOrganizationIds.has(job.organizationId)}
+                        showArtwork
+                        showOrganization={!hasDesignerRole}
+                        jobNameOpensJobSheet
+                      />
+                    </>
                   )}
                 </section>
               ) : view === "customers" ? (
@@ -10995,7 +11146,7 @@ export default function ProductionDashboard({
                     </div>
                     <span className="production-panel-total">
                       {view === "jobs"
-                        ? allJobs.length
+                        ? filteredAllJobs.length
                         : view === "Printing"
                           ? printingJobs.length
                           : view === "Board Production"
@@ -11003,9 +11154,17 @@ export default function ProductionDashboard({
                           : visibleJobs.filter((job) => job.workflowStage === view).length} jobs
                     </span>
                   </div>
+                  {view === "jobs" && (
+                    <ProductionJobFilters
+                      search={jobsSearch}
+                      onSearchChange={setJobsSearch}
+                      workflowStage={jobsWorkflowStageFilter}
+                      onWorkflowStageChange={setJobsWorkflowStageFilter}
+                    />
+                  )}
                   <JobTable
                     jobs={view === "jobs"
-                      ? allJobs
+                      ? filteredAllJobs
                       : view === "Printing"
                         ? printingJobs
                         : view === "Board Production"
@@ -11021,17 +11180,20 @@ export default function ProductionDashboard({
                     emptyHeading={view === "Order Booking"
                       ? "No booked orders"
                       : view === "jobs"
-                        ? "No production jobs yet"
+                        ? hasActiveJobsFilter ? "No matching jobs" : "No production jobs yet"
                         : undefined}
                     emptyDescription={view === "Order Booking"
                       ? "Orders booked for your organizations will appear here."
                       : view === "jobs"
-                        ? "Orders appear here after they move beyond Order Booking."
+                        ? hasActiveJobsFilter
+                          ? "Try changing your search or filters."
+                          : "Orders appear here after they move beyond Order Booking."
                       : undefined}
                     canOpenJobSheet={view === "Order Booking" || canManageJobs}
                     canOpenJobSheetForJob={(job) =>
                       view === "Order Booking" || productionOrganizationIds.has(job.organizationId)
                     }
+                    showOrganization={view !== "jobs"}
                     canResolveJobFlag={(job) => productionOrganizationIds.has(job.organizationId)}
                     onFlagChanged={() => router.refresh()}
                   />

@@ -1,10 +1,5 @@
 import { auth } from "@/auth";
 import { isAdminEmail } from "@/lib/admin";
-import {
-  isProductionOriginationQueueStage,
-  isProductionWorkflowStage,
-  isRecord,
-} from "@/lib/production-data";
 import { prisma } from "@/lib/prisma";
 
 export function isProductionAdmin(user: { email?: string | null }) {
@@ -70,13 +65,7 @@ export async function getAuthorizedProductionJob(
     where: { userId, role: "DESIGNER" },
     select: { userId: true },
   });
-  const workflowStage =
-    isRecord(job.data) && isProductionWorkflowStage(job.data.workflowStage)
-      ? job.data.workflowStage
-      : "Origination";
-  if (!designerMembership || !isProductionOriginationQueueStage(workflowStage)) {
-    return null;
-  }
+  if (!designerMembership) return null;
 
   return {
     job,
