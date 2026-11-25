@@ -274,3 +274,10 @@
     .workspace-tab,.workspace-tab:after,.keyline-tab,.job-sheet-actions .btn{transition:none}
     .job-sheet-actions .btn:hover{transform:none}
   }
+  body.production-iframe-mode{margin:0;padding:0}
+  body.production-iframe-mode #appHeader,
+  body.production-iframe-mode #workspaceTabs,
+  body.production-iframe-mode #studioWorkspaceMain,
+  body.production-iframe-mode #designerTour,
+  body.production-iframe-mode #studioSidebar,
+  body.production-iframe-mode #bulkWorkspace{display:none!important}

@@ -658,6 +658,7 @@ type DashboardView =
   | "planning"
   | "execution"
   | "quality"
+  | "Printing"
   | "procurement"
   | "inventory"
   | "reels"
@@ -667,6 +668,7 @@ type DashboardView =
   | "maintenance"
   | "hr"
   | "job-sheet"
+  | "printing-detail"
   | ProductionWorkflowStage;
 
 type WorkspaceNavGroup =
@@ -707,7 +709,7 @@ const WORKSPACE_GROUPS: Array<{ id: WorkspaceNavGroup; label: string }> = [
 ];
 
 const WORKSPACE_ITEMS: Array<{
-  id: "overview" | "jobs" | "origination" | "quotes" | "planning" | "execution" | "quality" | "procurement" | "inventory" | "reels" | "warehouse" | "invoicing" | "tooling" | "maintenance" | "hr" | "job-sheet";
+  id: "overview" | "jobs" | "origination" | "quotes" | "planning" | "execution" | "quality" | "Printing" | "procurement" | "inventory" | "reels" | "warehouse" | "invoicing" | "tooling" | "maintenance" | "hr" | "job-sheet";
   label: string;
   icon: IconType;
   group: WorkspaceNavGroup;
@@ -720,6 +722,7 @@ const WORKSPACE_ITEMS: Array<{
   { id: "planning", label: "Planning & scheduling", icon: FiCalendar, group: "production" },
   { id: "execution", label: "Shop floor execution", icon: FiActivity, group: "production" },
   { id: "quality", label: "Quality management", icon: FiCheckSquare, group: "production" },
+  { id: "Printing", label: "Printing", icon: FiPrinter, group: "production" },
   { id: "procurement", label: "Procurement", icon: FiShoppingCart, group: "supply" },
   { id: "inventory", label: "Inventory & WIP", icon: FiPackage, group: "supply" },
   { id: "reels", label: "Paper reel traceability", icon: FiLayers, group: "supply" },
@@ -7352,11 +7355,18 @@ export default function ProductionDashboard({
   const router = useRouter();
   const [view, setView] = useState<DashboardView>("overview");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [printingOnlyView, setPrintingOnlyView] = useState(false);
   const [expandedNavGroup, setExpandedNavGroup] = useState<WorkspaceNavGroup | null>("orders");
   const [workflowQueuesExpanded, setWorkflowQueuesExpanded] = useState(false);
   const [organizationFilter, setOrganizationFilter] = useState("all");
   const [selectedJob, setSelectedJob] = useState<ProductionDashboardJob | null>(null);
+  const [printingData, setPrintingData] = useState<Record<string, unknown> | null>(null);
+  const [printingAttachments, setPrintingAttachments] = useState<Array<{
+    id: string;
+    originalName: string;
+    contentType: string;
+    size: number;
+  }>>([]);
+  const [printingLoading, setPrintingLoading] = useState(false);
   const [isBookingOrder, setIsBookingOrder] = useState(false);
   const [isCreatingProduct, setIsCreatingProduct] = useState(false);
   const [isCreatingCustomer, setIsCreatingCustomer] = useState(false);
@@ -7523,6 +7533,7 @@ export default function ProductionDashboard({
   const pageTitle =
     view === "overview" ? "Production overview"
       : view === "jobs" ? "All production jobs"
+        : view === "printing-detail" ? "Printing job"
         : view === "origination" ? "Origination"
           : view === "quotes" ? "Costing & quotes"
             : view === "reels" ? "Paper reel traceability"
@@ -7541,6 +7552,7 @@ export default function ProductionDashboard({
   const pageDescription =
     view === "overview" ? "Live snapshot of your shared production work."
       : view === "jobs" ? "Track and open jobs across your production organizations."
+        : view === "printing-detail" ? "Printing details and artwork for the selected job."
         : view === "origination" ? "Review planned jobs for your designer organizations and attach their artwork."
           : view === "quotes" ? "Cost carton products, manage quotation approvals, and convert approved quotes into orders."
             : view === "reels" ? STAGE_DETAILS.reels
@@ -7559,12 +7571,40 @@ export default function ProductionDashboard({
 
   const openJob = (job: ProductionDashboardJob) => {
     setSelectedJob(job);
-    setPrintingOnlyView(view === "Printing");
-    navigateTo("job-sheet");
+    if (view === "Printing") {
+      setView("printing-detail");
+      setPrintingLoading(true);
+      setPrintingData(null);
+      setPrintingAttachments([]);
+      void Promise.all([
+        fetch(`/api/production/jobs/${encodeURIComponent(job.id)}`, { cache: "no-store" })
+          .then(async (response) => {
+            if (!response.ok) throw new Error("Could not load printing job.");
+            return response.json();
+          }),
+        fetch(`/api/production/jobs/${encodeURIComponent(job.id)}/artwork`, { cache: "no-store" })
+          .then(async (response) => {
+            if (!response.ok) throw new Error("Could not load artwork.");
+            return response.json();
+          }),
+      ]).then(([jobResult, artworkResult]) => {
+        const data = jobResult.job?.data;
+        setPrintingData(data && typeof data === "object" && !Array.isArray(data)
+          ? data as Record<string, unknown>
+          : {});
+        setPrintingAttachments(Array.isArray(artworkResult.attachments)
+          ? artworkResult.attachments
+          : []);
+      }).catch(() => {
+        setPrintingData({});
+        setPrintingAttachments([]);
+      }).finally(() => setPrintingLoading(false));
+    } else {
+      navigateTo("job-sheet");
+    }
   };
   const openNewJobSheet = () => {
     setSelectedJob(null);
-    setPrintingOnlyView(false);
     navigateTo("job-sheet");
   };
 
@@ -7644,12 +7684,17 @@ export default function ProductionDashboard({
               type="button"
             >
               <span>Workflow queues</span>
-              <span className="production-nav-group-count">{PRODUCTION_WORKFLOW_STAGES.length}</span>
+              <span className="production-nav-group-count">
+                {PRODUCTION_WORKFLOW_STAGES.filter((stage) =>
+                  stage !== "Dispatch" && stage !== "Printing"
+                ).length}
+              </span>
               <FiChevronDown className={workflowQueuesExpanded ? "is-expanded" : ""} aria-hidden="true" />
             </button>
             {workflowQueuesExpanded && (
               <div className="production-nav-group-items" id="production-workflow-queues">
                 {PRODUCTION_WORKFLOW_STAGES.map((stage) => {
+                  if (stage === "Dispatch" || stage === "Printing") return null;
                   if (stage === "Origination" && designerOrganizationIds.size > 0) return null;
                   const StageIcon = WORKFLOW_STAGE_ICONS[stage];
                   return (
@@ -7755,7 +7800,79 @@ export default function ProductionDashboard({
         </header>
 
         <main className={`production-dashboard-content${view === "job-sheet" ? " is-job-sheet-view" : ""}`}>
-          {view === "job-sheet" ? (
+          {view === "printing-detail" ? (
+            <div className="production-page-content">
+              <section className="production-panel production-list-panel">
+                <div className="production-panel-heading">
+                  <div>
+                    <span className="production-panel-kicker">PRINTING JOB</span>
+                    <h2>{selectedJob?.jobName || selectedJob?.jobNo || "Selected job"}</h2>
+                  </div>
+                  <button
+                    className="production-table-action"
+                    onClick={() => {
+                      setPrintingData(null);
+                      setPrintingAttachments([]);
+                      setView("Printing");
+                    }}
+                    type="button"
+                  >
+                    Back to Printing
+                  </button>
+                </div>
+                {printingLoading ? (
+                  <p className="production-quote-message" role="status">Loading printing details…</p>
+                ) : (
+                  <div className="production-printing-details">
+                    {[
+                      ["Job no.", selectedJob?.jobNo],
+                      ["Customer", selectedJob?.customer],
+                      ["Carton spec", selectedJob?.cartonSpec],
+                      ["Size", selectedJob?.size],
+                      ["Order qty", selectedJob?.orderQty?.toLocaleString("en-KE")],
+                      ["Printing", typeof printingData?.printing === "string" ? printingData.printing : "Yes"],
+                      ["Method", typeof printingData?.printMethod === "string" ? printingData.printMethod : ""],
+                      ["Colour", typeof printingData?.printColor === "string" ? printingData.printColor : ""],
+                      ["Ink type", typeof printingData?.inkType === "string" ? printingData.inkType : ""],
+                      ["Artwork ref", typeof printingData?.artworkRef === "string" ? printingData.artworkRef : ""],
+                      ["Plate / cylinder", typeof printingData?.plateRef === "string" ? printingData.plateRef : ""],
+                      ["Print area", typeof printingData?.printArea === "string" ? printingData.printArea : ""],
+                      ["Registration", typeof printingData?.registration === "string" ? printingData.registration : ""],
+                      ["Print position", typeof printingData?.printPosition === "string" ? printingData.printPosition : ""],
+                      ["Instructions", typeof printingData?.printInstructions === "string" ? printingData.printInstructions : ""],
+                    ].map(([label, value]) => (
+                      <div className="production-printing-detail" key={label}>
+                        <span>{label}</span>
+                        <strong>{value || "—"}</strong>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {!printingLoading && (
+                  <div className="production-printing-artwork">
+                    <h3>Artwork</h3>
+                    {printingAttachments.length ? (
+                      <ul>
+                        {printingAttachments.map((attachment) => (
+                          <li key={attachment.id}>
+                            <a
+                              href={`/api/production/artwork/${encodeURIComponent(attachment.id)}`}
+                              rel="noopener"
+                              target="_blank"
+                            >
+                              {attachment.originalName}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p>No artwork attached to this job.</p>
+                    )}
+                  </div>
+                )}
+              </section>
+            </div>
+          ) : view === "job-sheet" ? (
             <div className="production-iframe-shell">
               <AppFrame
                 key={`${sheetOrganizationId ?? organizationFilter}:${selectedJob?.id ?? "new"}`}
@@ -7763,7 +7880,6 @@ export default function ProductionDashboard({
                 profile={profile}
                 profileQrCode={profileQrCode}
                 workspace="production"
-                viewMode={printingOnlyView ? "printing" : undefined}
                 organizationId={sheetOrganizationId}
                 jobId={selectedJob?.id}
               />

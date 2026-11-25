@@ -2200,6 +2200,8 @@ function initializeWorkspaceTabs() {
   const isProductionDashboard =
     new URLSearchParams(window.location.search).get("workspace") === "production";
   $("studioWorkspaceMain").hidden = isProductionDashboard;
+  $("appHeader").hidden = isProductionDashboard;
+  document.body.classList.toggle("production-iframe-mode", isProductionDashboard);
   $("appTitle").textContent = isProductionDashboard ? "Production dashboard" : "PackStudio";
   $("productionDashboardLink").hidden = isProductionDashboard;
   $("studioDashboardLink").hidden = !isProductionDashboard;
