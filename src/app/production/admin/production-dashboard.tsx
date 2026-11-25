@@ -41,7 +41,6 @@ import {
   FiUsers,
   FiX,
 } from "react-icons/fi";
-import AppFrame from "@/app/app/app-frame";
 import BrandLogo from "@/app/brand-logo";
 import {
   MAX_ARTWORK_FILE_BYTES,
@@ -7318,10 +7317,7 @@ function ProductionQuotesBoard({
 }
 
 export default function ProductionDashboard({
-  accountId,
   accountName,
-  profile,
-  profileQrCode,
   cartonTypes,
   organizations,
   jobs,
@@ -7360,6 +7356,8 @@ export default function ProductionDashboard({
   const [organizationFilter, setOrganizationFilter] = useState("all");
   const [selectedJob, setSelectedJob] = useState<ProductionDashboardJob | null>(null);
   const [printingData, setPrintingData] = useState<Record<string, unknown> | null>(null);
+  const [jobSheetData, setJobSheetData] = useState<Record<string, unknown> | null>(null);
+  const [jobSheetLoading, setJobSheetLoading] = useState(false);
   const [printingAttachments, setPrintingAttachments] = useState<Array<{
     id: string;
     originalName: string;
@@ -7458,6 +7456,7 @@ export default function ProductionDashboard({
     ) return false;
     if (item.id === "quotes" && !quoteOrganizations.length) return false;
     if (item.id === "job-sheet" && !canManageJobs) return false;
+    if (item.id === "Printing" && !productionOrganizationIds.size) return false;
     return true;
   });
   const planningOrganizationId =
@@ -7467,10 +7466,6 @@ export default function ProductionDashboard({
     )?.id ??
     organizations.find((organization) => organization.role === "PRODUCTION")?.id ??
     "";
-  const sheetOrganizationId = selectedJob?.organizationId ??
-    (organizationFilter === "all"
-      ? organizations.find((organization) => organization.role === "PRODUCTION")?.id
-      : organizationFilter);
   const stageCounts = PRODUCTION_WORKFLOW_STAGES.map((stage) => ({
     stage,
     count: stage === "Printing"
@@ -7533,6 +7528,7 @@ export default function ProductionDashboard({
   const pageTitle =
     view === "overview" ? "Production overview"
       : view === "jobs" ? "All production jobs"
+        : view === "job-sheet" ? "Production job sheet"
         : view === "printing-detail" ? "Printing job"
         : view === "origination" ? "Origination"
           : view === "quotes" ? "Costing & quotes"
@@ -7547,27 +7543,47 @@ export default function ProductionDashboard({
             : view === "quality" ? "Quality management"
             : view === "procurement" ? "Procurement"
               : view === "inventory" ? "Inventory & WIP"
-          : view === "job-sheet" ? "Production job sheet"
-            : view;
+          : view;
   const pageDescription =
-    view === "overview" ? "Live snapshot of your shared production work."
-      : view === "jobs" ? "Track and open jobs across your production organizations."
-        : view === "printing-detail" ? "Printing details and artwork for the selected job."
-        : view === "origination" ? "Review planned jobs for your designer organizations and attach their artwork."
-          : view === "quotes" ? "Cost carton products, manage quotation approvals, and convert approved quotes into orders."
-            : view === "reels" ? STAGE_DETAILS.reels
-              : view === "warehouse" ? STAGE_DETAILS.warehouse
-            : view === "invoicing" ? STAGE_DETAILS.invoicing
-            : view === "tooling" ? STAGE_DETAILS.tooling
-              : view === "maintenance" ? STAGE_DETAILS.maintenance
-                : view === "hr" ? STAGE_DETAILS.hr
-          : view === "planning" ? STAGE_DETAILS.planning
-            : view === "execution" ? STAGE_DETAILS.execution
-            : view === "quality" ? STAGE_DETAILS.quality
-            : view === "procurement" ? STAGE_DETAILS.procurement
-              : view === "inventory" ? STAGE_DETAILS.inventory
-          : view === "job-sheet" ? "Create a local draft or work on an organization-shared job."
-            : STAGE_DETAILS[view];
+    view === "overview"
+      ? "Live snapshot of your shared production work."
+      : view === "jobs"
+        ? "Track and open jobs across your production organizations."
+        : view === "job-sheet"
+          ? "View production job-sheet details without opening an embedded page."
+        : view === "printing-detail"
+          ? "Printing details and artwork for the selected job."
+          : view === "origination"
+            ? "Review planned jobs for your designer organizations and attach their artwork."
+            : view === "quotes"
+              ? "Cost carton products, manage quotation approvals, and convert approved quotes into orders."
+              : view === "planning"
+                ? STAGE_DETAILS.planning
+                : view === "execution"
+                  ? STAGE_DETAILS.execution
+                  : view === "quality"
+                    ? STAGE_DETAILS.quality
+                    : view === "Printing"
+                      ? STAGE_DETAILS.Printing
+                      : view === "procurement"
+                        ? STAGE_DETAILS.procurement
+                        : view === "inventory"
+                          ? STAGE_DETAILS.inventory
+                          : view === "reels"
+                            ? STAGE_DETAILS.reels
+                            : view === "warehouse"
+                              ? STAGE_DETAILS.warehouse
+                              : view === "invoicing"
+                                ? STAGE_DETAILS.invoicing
+                                : view === "tooling"
+                                  ? STAGE_DETAILS.tooling
+                                  : view === "maintenance"
+                                    ? STAGE_DETAILS.maintenance
+                                    : view === "hr"
+                                      ? STAGE_DETAILS.hr
+                                      : view in STAGE_DETAILS
+                                        ? STAGE_DETAILS[view as ProductionWorkflowStage]
+                                        : "";
 
   const openJob = (job: ProductionDashboardJob) => {
     setSelectedJob(job);
@@ -7600,12 +7616,28 @@ export default function ProductionDashboard({
         setPrintingAttachments([]);
       }).finally(() => setPrintingLoading(false));
     } else {
-      navigateTo("job-sheet");
+      setView("job-sheet");
+      setJobSheetLoading(true);
+      setJobSheetData(null);
+      void fetch(`/api/production/jobs/${encodeURIComponent(job.id)}`, { cache: "no-store" })
+        .then(async (response) => {
+          if (!response.ok) throw new Error("Could not load job sheet.");
+          return response.json();
+        })
+        .then((result) => {
+          const data = result.job?.data;
+          setJobSheetData(data && typeof data === "object" && !Array.isArray(data)
+            ? data as Record<string, unknown>
+            : {});
+        })
+        .catch(() => setJobSheetData({}))
+        .finally(() => setJobSheetLoading(false));
     }
   };
   const openNewJobSheet = () => {
     setSelectedJob(null);
-    navigateTo("job-sheet");
+    setJobSheetData(null);
+    setView("job-sheet");
   };
 
   return (
@@ -7799,8 +7831,52 @@ export default function ProductionDashboard({
           </div>
         </header>
 
-        <main className={`production-dashboard-content${view === "job-sheet" ? " is-job-sheet-view" : ""}`}>
-          {view === "printing-detail" ? (
+        <main className="production-dashboard-content">
+          {view === "job-sheet" ? (
+            <div className="production-page-content">
+              <section className="production-panel production-list-panel">
+                <div className="production-panel-heading">
+                  <div>
+                    <span className="production-panel-kicker">JOB SHEET</span>
+                    <h2>{selectedJob?.jobName || selectedJob?.jobNo || "Production job sheet"}</h2>
+                  </div>
+                  <button
+                    className="production-table-action"
+                    onClick={() => setView("jobs")}
+                    type="button"
+                  >
+                    Back to jobs
+                  </button>
+                </div>
+                {jobSheetLoading ? (
+                  <p className="production-quote-message" role="status">Loading job sheet…</p>
+                ) : (
+                  <div className="production-printing-details">
+                    {[
+                      ["Job no.", selectedJob?.jobNo],
+                      ["Job name", selectedJob?.jobName],
+                      ["Customer", selectedJob?.customer],
+                      ["Carton spec", selectedJob?.cartonSpec],
+                      ["Size", selectedJob?.size],
+                      ["Order qty", selectedJob?.orderQty?.toLocaleString("en-KE")],
+                      ["Workflow stage", typeof jobSheetData?.workflowStage === "string" ? jobSheetData.workflowStage : selectedJob?.workflowStage],
+                      ["Printing method", typeof jobSheetData?.printMethod === "string" ? jobSheetData.printMethod : ""],
+                      ["Colour", typeof jobSheetData?.printColor === "string" ? jobSheetData.printColor : ""],
+                      ["Ink type", typeof jobSheetData?.inkType === "string" ? jobSheetData.inkType : ""],
+                      ["Artwork ref", typeof jobSheetData?.artworkRef === "string" ? jobSheetData.artworkRef : ""],
+                      ["Plate / cylinder", typeof jobSheetData?.plateRef === "string" ? jobSheetData.plateRef : ""],
+                      ["Print instructions", typeof jobSheetData?.printInstructions === "string" ? jobSheetData.printInstructions : ""],
+                    ].map(([label, value]) => (
+                      <div className="production-printing-detail" key={label}>
+                        <span>{label}</span>
+                        <strong>{value || "—"}</strong>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            </div>
+          ) : view === "printing-detail" ? (
             <div className="production-page-content">
               <section className="production-panel production-list-panel">
                 <div className="production-panel-heading">
@@ -7871,18 +7947,6 @@ export default function ProductionDashboard({
                   </div>
                 )}
               </section>
-            </div>
-          ) : view === "job-sheet" ? (
-            <div className="production-iframe-shell">
-              <AppFrame
-                key={`${sheetOrganizationId ?? organizationFilter}:${selectedJob?.id ?? "new"}`}
-                accountId={accountId}
-                profile={profile}
-                profileQrCode={profileQrCode}
-                workspace="production"
-                organizationId={sheetOrganizationId}
-                jobId={selectedJob?.id}
-              />
             </div>
           ) : (
             <div className="production-page-content">
