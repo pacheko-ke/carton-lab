@@ -18,6 +18,16 @@ export function isProductionWorkflowStage(
   return PRODUCTION_WORKFLOW_STAGES.some((stage) => stage === value);
 }
 
+export function isProductionOriginationQueueStage(
+  value: unknown,
+): value is ProductionWorkflowStage {
+  return (
+    isProductionWorkflowStage(value) &&
+    PRODUCTION_WORKFLOW_STAGES.indexOf(value) <
+      PRODUCTION_WORKFLOW_STAGES.indexOf("Printing")
+  );
+}
+
 export const PRODUCTION_OPERATIONS = [
   "Corrugating",
   "Printing",

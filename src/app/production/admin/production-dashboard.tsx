@@ -56,6 +56,7 @@ import {
   PRODUCTION_NONCONFORMANCE_SEVERITIES,
   PRODUCTION_NONCONFORMANCE_STATUSES,
   PRODUCTION_WORKFLOW_STAGES,
+  isProductionOriginationQueueStage,
   isProductionOperation,
   isProductionOperationStatus,
   isProductionQualityCheckResult,
@@ -880,7 +881,7 @@ function JobTable({
               <td><span className={stageClass(job.workflowStage)}>{job.workflowStage}</span></td>
               <td>
                 <JobFlagControl
-                  canFlag={canFlagJobs && job.workflowStage === "Origination"}
+                  canFlag={canFlagJobs && isProductionOriginationQueueStage(job.workflowStage)}
                   canResolve={canResolveJobFlag?.(job) ?? false}
                   job={job}
                   onChanged={onFlagChanged}
@@ -4565,7 +4566,10 @@ function JobFlagControl({
     <div className="production-job-flag">
       {job.flag ? (
         <>
-          <strong>Flagged</strong>
+          <strong className="production-job-flag-status">
+            <FiFlag aria-hidden="true" focusable="false" />
+            Flagged
+          </strong>
           <small>{job.flag.reason}</small>
           {canResolve && (
             <button
@@ -4591,7 +4595,13 @@ function JobFlagControl({
           <FiFlag aria-hidden="true" focusable="false" />
         </button>
       ) : (
-        "—"
+        <span
+          aria-label="Not flagged"
+          className="production-job-flag-clear-icon"
+          title="Not flagged"
+        >
+          <FiFlag aria-hidden="true" focusable="false" />
+        </span>
       )}
       {canFlag && (
         <dialog
@@ -8604,8 +8614,7 @@ export default function ProductionDashboard({
     : orderBookingOrganizations.filter((organization) => organization.id === organizationFilter);
   const originationJobs = useMemo(
     () => visibleJobs.filter(
-      (job) => PRODUCTION_WORKFLOW_STAGES.indexOf(job.workflowStage) <
-          PRODUCTION_WORKFLOW_STAGES.indexOf("Printing") &&
+      (job) => isProductionOriginationQueueStage(job.workflowStage) &&
         designerOrganizationIds.has(job.organizationId),
     ),
     [visibleJobs, designerOrganizationIds],

@@ -4826,6 +4826,27 @@ input {
   color: #f0b968;
 }
 
+.production-job-flag-status {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.production-job-flag-status svg,
+.production-job-flag-clear-icon svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.5;
+}
+
+.production-job-flag-status svg {
+  color: #f87171;
+}
+
 .production-job-flag small {
   margin-top: 4px;
   color: #9eb0c1;
@@ -4840,13 +4861,13 @@ input {
   border: 1px solid rgba(165, 190, 214, 0.2);
   border-radius: 6px;
   background: #101923;
-  color: #f0b968;
+  color: #4ade80;
   cursor: pointer;
 }
 
 .production-job-flag-trigger:hover {
-  border-color: #f0b968;
-  background: rgba(240, 185, 104, 0.1);
+  border-color: #4ade80;
+  background: rgba(74, 222, 128, 0.1);
 }
 
 .production-job-flag-trigger:focus-visible {
@@ -4862,6 +4883,14 @@ input {
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 1.5;
+}
+
+.production-job-flag-clear-icon {
+  display: inline-grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  color: #4ade80;
 }
 
 .production-flag-dialog {
@@ -6639,6 +6668,25 @@ input {
 
 :root[data-theme="light"] .production-artwork-delete-button:hover {
   color: #8f1d14;
+}
+
+:root[data-theme="light"] .production-dashboard-shell .production-job-flag-trigger {
+  border-color: #b9d8e9;
+  background: #e5f3fb;
+  color: #15803d;
+}
+
+:root[data-theme="light"] .production-dashboard-shell .production-job-flag-trigger:hover {
+  border-color: #82c795;
+  background: #e5f5e9;
+}
+
+:root[data-theme="light"] .production-dashboard-shell .production-job-flag-clear-icon {
+  color: #15803d;
+}
+
+:root[data-theme="light"] .production-dashboard-shell .production-job-flag-status svg {
+  color: #b42318;
 }
 
 :root[data-theme="light"] .production-dashboard-shell .production-order-booking-error,

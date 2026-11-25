@@ -6,6 +6,7 @@ import {
   canEditProductionJobs,
   canFlagProductionJobs,
   canResolveProductionJobFlags,
+  isProductionOriginationQueueStage,
   getArtworkContentType,
   MAX_ARTWORK_FILE_BYTES,
   MAX_PRODUCTION_JOB_FLAG_REASON_LENGTH,
@@ -196,6 +197,16 @@ test("validates the explicit production workflow stage", () => {
   assert.equal(validateProductionJobData({ workflowStage: "Order Booking" }), true);
   assert.equal(validateProductionJobData({ workflowStage: "Board Production" }), true);
   assert.equal(validateProductionJobData({ workflowStage: "Complete" }), false);
+});
+
+test("allows flagging jobs shown in Origination but not later workflow stages", () => {
+  assert.equal(isProductionOriginationQueueStage("Order Booking"), true);
+  assert.equal(isProductionOriginationQueueStage("Origination"), true);
+  assert.equal(isProductionOriginationQueueStage("Paper Booking"), true);
+  assert.equal(isProductionOriginationQueueStage("Board Production"), true);
+  assert.equal(isProductionOriginationQueueStage("Printing"), false);
+  assert.equal(isProductionOriginationQueueStage("Dispatch"), false);
+  assert.equal(isProductionOriginationQueueStage("Not a stage"), false);
 });
 
 test("validates operation schedules and rejects invalid quantities and time ranges", () => {

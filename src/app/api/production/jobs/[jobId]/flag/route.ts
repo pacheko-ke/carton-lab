@@ -3,6 +3,7 @@ import {
   canFlagProductionJobs,
   canResolveProductionJobFlags,
   isRecord,
+  isProductionOriginationQueueStage,
   isProductionWorkflowStage,
   validateProductionJobFlagReason,
 } from "@/lib/production-data";
@@ -42,8 +43,11 @@ export async function POST(request: Request, { params }: RouteContext) {
   const workflowStage = isRecord(job.data) && isProductionWorkflowStage(job.data.workflowStage)
     ? job.data.workflowStage
     : "Origination";
-  if (workflowStage !== "Origination") {
-    return NextResponse.json({ error: "Only Origination jobs can be flagged" }, { status: 409 });
+  if (!isProductionOriginationQueueStage(workflowStage)) {
+    return NextResponse.json(
+      { error: "Only jobs in the Origination queue can be flagged" },
+      { status: 409 },
+    );
   }
 
   let body: unknown;
