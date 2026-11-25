@@ -5168,6 +5168,28 @@ input {
   margin-bottom: 8px;
 }
 
+.production-catalog-search {
+  display: grid;
+  gap: 5px;
+  margin: 8px 0;
+  color: #8299ae;
+  font-size: 9px;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.production-catalog-search input {
+  min-height: 42px;
+  width: 100%;
+  padding: 0 12px;
+  border: 1px solid rgba(165, 190, 214, 0.18);
+  border-radius: 9px;
+  background: rgba(16, 34, 56, 0.72);
+  color: #dce8f2;
+  font-size: 12px;
+  text-transform: none;
+}
+
 .production-printing-details {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

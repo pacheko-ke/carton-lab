@@ -658,6 +658,8 @@ type DashboardView =
   | "execution"
   | "quality"
   | "Printing"
+  | "customers"
+  | "products"
   | "procurement"
   | "inventory"
   | "reels"
@@ -672,6 +674,8 @@ type DashboardView =
 
 type WorkspaceNavGroup =
   | "orders"
+  | "customers"
+  | "products"
   | "production"
   | "supply"
   | "fulfillment"
@@ -700,6 +704,8 @@ const STAGE_DETAILS: Record<ProductionWorkflowStage | "planning" | "execution" |
 
 const WORKSPACE_GROUPS: Array<{ id: WorkspaceNavGroup; label: string }> = [
   { id: "orders", label: "Overview & orders" },
+  { id: "customers", label: "Customers" },
+  { id: "products", label: "Products" },
   { id: "production", label: "Production" },
   { id: "supply", label: "Inventory & supply" },
   { id: "fulfillment", label: "Delivery & finance" },
@@ -708,7 +714,7 @@ const WORKSPACE_GROUPS: Array<{ id: WorkspaceNavGroup; label: string }> = [
 ];
 
 const WORKSPACE_ITEMS: Array<{
-  id: "overview" | "jobs" | "origination" | "quotes" | "planning" | "execution" | "quality" | "Printing" | "procurement" | "inventory" | "reels" | "warehouse" | "invoicing" | "tooling" | "maintenance" | "hr" | "job-sheet";
+  id: "overview" | "jobs" | "origination" | "quotes" | "planning" | "execution" | "quality" | "Printing" | "customers" | "products" | "procurement" | "inventory" | "reels" | "warehouse" | "invoicing" | "tooling" | "maintenance" | "hr" | "job-sheet";
   label: string;
   icon: IconType;
   group: WorkspaceNavGroup;
@@ -717,6 +723,8 @@ const WORKSPACE_ITEMS: Array<{
   { id: "jobs", label: "All jobs", icon: FiBriefcase, group: "orders" },
   { id: "origination", label: "Origination", icon: FiPenTool, group: "orders" },
   { id: "quotes", label: "Costing & quotes", icon: FiDollarSign, group: "orders" },
+  { id: "customers", label: "Customers", icon: FiUsers, group: "customers" },
+  { id: "products", label: "Products", icon: FiPackage, group: "products" },
   { id: "job-sheet", label: "Job sheet", icon: FiFileText, group: "orders" },
   { id: "planning", label: "Planning & scheduling", icon: FiCalendar, group: "production" },
   { id: "execution", label: "Shop floor execution", icon: FiActivity, group: "production" },
@@ -913,6 +921,156 @@ function isProductionDashboardCustomer(value: unknown): value is ProductionDashb
     (value.phone === null || typeof value.phone === "string") &&
     (value.email === null || typeof value.email === "string") &&
     (value.address === null || typeof value.address === "string");
+}
+
+function ProductionProductCatalog({
+  organizationId,
+  customers,
+  cartonTypes,
+  routerRefresh,
+}: {
+  organizationId: string;
+  customers: ProductionDashboardCustomer[];
+  cartonTypes: string[];
+  routerRefresh: () => void;
+}) {
+  const [items, setItems] = useState<ProductionDashboardItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
+  const [productSearch, setProductSearch] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    if (!organizationId) {
+      queueMicrotask(() => {
+        if (active) {
+          setItems([]);
+          setLoading(false);
+          setStatus("");
+        }
+      });
+      return () => {
+        active = false;
+      };
+    }
+    requestProductionJson(
+      `/api/production/organizations/${encodeURIComponent(organizationId)}/items`,
+      { method: "GET" },
+    )
+      .then((result) => {
+        if (!Array.isArray(result.items) || !result.items.every(isProductionDashboardItem)) {
+          throw new Error("The server returned invalid product details.");
+        }
+        if (active) setItems(result.items);
+      })
+      .catch((error) => {
+        if (active) {
+          setStatus(error instanceof Error ? error.message : "Could not load products.");
+          setItems([]);
+        }
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [organizationId]);
+
+  if (isCreating) {
+    return (
+      <CreateProductionItemForm
+        cartonTypes={cartonTypes}
+        onCancel={() => setIsCreating(false)}
+        onCreated={(item) => {
+          setItems((current) =>
+            [...current, item].sort((left, right) => left.itemCode.localeCompare(right.itemCode)),
+          );
+          setIsCreating(false);
+          routerRefresh();
+        }}
+        organizationId={organizationId}
+        title="Add product"
+      />
+    );
+  }
+
+  return (
+    <>
+      {status && <p className="production-order-booking-error" role="alert">{status}</p>}
+      <label className="production-catalog-search">
+        <span>Search products</span>
+        <input
+          onChange={(event) => setProductSearch(event.target.value)}
+          placeholder="Item code, name, customer, carton or size"
+          type="search"
+          value={productSearch}
+        />
+      </label>
+      {loading ? (
+        <p className="production-quote-message" role="status">Loading products…</p>
+      ) : (() => {
+        const query = productSearch.trim().toLowerCase();
+        const filteredItems = query
+          ? items.filter((item) => {
+            const customerName =
+              customers.find((customer) => customer.id === item.customerId)?.name || "";
+            const boardSpec = [item.topLiner, item.medium, item.bottomLiner]
+              .filter(Boolean)
+              .join("/");
+            const size = `${item.length} × ${item.width} × ${item.height} ${item.unit}`;
+            return [
+              item.itemCode,
+              item.name,
+              customerName,
+              item.boxType,
+              boardSpec,
+              size,
+            ].some((value) => value.toLowerCase().includes(query));
+          })
+          : items;
+        return filteredItems.length ? (
+        <div className="production-table-scroll">
+          <table className="production-jobs-table">
+            <thead>
+              <tr>
+                <th>Item code</th>
+                <th>Product</th>
+                <th>Customer</th>
+                <th>Carton</th>
+                <th>Board spec</th>
+                <th>Size</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredItems.map((item) => (
+                <tr key={item.id}>
+                  <td><strong>{item.itemCode}</strong></td>
+                  <td>{item.name}</td>
+                  <td>{customers.find((customer) => customer.id === item.customerId)?.name || "—"}</td>
+                  <td>{item.boxType}</td>
+                  <td>{[item.topLiner, item.medium, item.bottomLiner].filter(Boolean).join("/") || "—"}</td>
+                  <td>{item.length} × {item.width} × {item.height} {item.unit}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="production-empty-state">
+          <span className="production-empty-mark" aria-hidden="true"><FiPackage /></span>
+          <h3>{productSearch.trim() ? "No matching products" : "No products yet"}</h3>
+          <p>
+            {productSearch.trim()
+              ? "Try a different item code, name, customer, carton or size."
+              : "Create a product and link it to a customer."}
+          </p>
+        </div>
+        );
+      })()}
+    </>
+  );
 }
 
 async function requestProductionJson(
@@ -7355,6 +7513,7 @@ export default function ProductionDashboard({
   const [workflowQueuesExpanded, setWorkflowQueuesExpanded] = useState(false);
   const [organizationFilter, setOrganizationFilter] = useState("all");
   const [selectedJob, setSelectedJob] = useState<ProductionDashboardJob | null>(null);
+  const [customerSearch, setCustomerSearch] = useState("");
   const [printingData, setPrintingData] = useState<Record<string, unknown> | null>(null);
   const [jobSheetData, setJobSheetData] = useState<Record<string, unknown> | null>(null);
   const [jobSheetLoading, setJobSheetLoading] = useState(false);
@@ -7457,6 +7616,7 @@ export default function ProductionDashboard({
     if (item.id === "quotes" && !quoteOrganizations.length) return false;
     if (item.id === "job-sheet" && !canManageJobs) return false;
     if (item.id === "Printing" && !productionOrganizationIds.size) return false;
+    if (["customers", "products"].includes(item.id) && !canBookOrders) return false;
     return true;
   });
   const planningOrganizationId =
@@ -7528,6 +7688,8 @@ export default function ProductionDashboard({
   const pageTitle =
     view === "overview" ? "Production overview"
       : view === "jobs" ? "All production jobs"
+        : view === "customers" ? "Customers"
+        : view === "products" ? "Products"
         : view === "job-sheet" ? "Production job sheet"
         : view === "printing-detail" ? "Printing job"
         : view === "origination" ? "Origination"
@@ -7549,6 +7711,10 @@ export default function ProductionDashboard({
       ? "Live snapshot of your shared production work."
       : view === "jobs"
         ? "Track and open jobs across your production organizations."
+        : view === "customers"
+          ? "Manage customer accounts and contact details."
+          : view === "products"
+            ? "Manage product specifications and customer-linked carton items."
         : view === "job-sheet"
           ? "View production job-sheet details without opening an embedded page."
         : view === "printing-detail"
@@ -8164,6 +8330,111 @@ export default function ProductionDashboard({
                     canFlagJobs
                     canResolveJobFlag={(job) => productionOrganizationIds.has(job.organizationId)}
                     showArtwork
+                  />
+                </section>
+              ) : view === "customers" ? (
+                <section className="production-panel production-list-panel">
+                  <div className="production-panel-heading">
+                    <div>
+                      <span className="production-panel-kicker">CUSTOMER CATALOG</span>
+                      <h2>Customers</h2>
+                    </div>
+                    {canBookOrders && (
+                      <button
+                        className="production-primary-button"
+                        onClick={() => setIsCreatingCustomer(true)}
+                        type="button"
+                      >
+                        <FiPlus aria-hidden="true" /> Add customer
+                      </button>
+                    )}
+                  </div>
+                  <label className="production-catalog-search">
+                    <span>Search customers</span>
+                    <input
+                      onChange={(event) => setCustomerSearch(event.target.value)}
+                      placeholder="Name, contact, phone, email or address"
+                      type="search"
+                      value={customerSearch}
+                    />
+                  </label>
+                  {(() => {
+                    const query = customerSearch.trim().toLowerCase();
+                    const filteredCustomers = query
+                      ? customers.filter((customer) =>
+                        [
+                          customer.name,
+                          customer.contactPerson,
+                          customer.phone,
+                          customer.email,
+                          customer.address,
+                        ].some((value) => value?.toLowerCase().includes(query)),
+                      )
+                      : customers;
+                    return filteredCustomers.length ? (
+                    <div className="production-table-scroll">
+                      <table className="production-jobs-table">
+                        <thead>
+                          <tr>
+                            <th>Customer</th>
+                            <th>Contact person</th>
+                            <th>Phone</th>
+                            <th>Email</th>
+                            <th>Address</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {customers.map((customer) => (
+                            <tr key={customer.id}>
+                              <td><strong>{customer.name}</strong></td>
+                              <td>{customer.contactPerson || "—"}</td>
+                              <td>{customer.phone || "—"}</td>
+                              <td>{customer.email || "—"}</td>
+                              <td>{customer.address || "—"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    ) : (
+                    <div className="production-empty-state">
+                      <span className="production-empty-mark" aria-hidden="true"><FiUsers /></span>
+                      <h3>{customerSearch.trim() ? "No matching customers" : "No customers yet"}</h3>
+                      <p>
+                        {customerSearch.trim()
+                          ? "Try a different name, contact, phone, email or address."
+                          : "Add a customer before creating products or booking orders."}
+                      </p>
+                    </div>
+                    );
+                  })()}
+                </section>
+              ) : view === "products" ? (
+                <section className="production-panel production-list-panel">
+                  <div className="production-panel-heading">
+                    <div>
+                      <span className="production-panel-kicker">PRODUCT CATALOG</span>
+                      <h2>Products</h2>
+                    </div>
+                    {canBookOrders && (
+                      <button
+                        className="production-primary-button"
+                        onClick={() => setIsCreatingProduct(true)}
+                        type="button"
+                      >
+                        <FiPlus aria-hidden="true" /> Add product
+                      </button>
+                    )}
+                  </div>
+                  <ProductionProductCatalog
+                    cartonTypes={cartonTypes}
+                    customers={customers}
+                    organizationId={
+                      organizationFilter === "all"
+                        ? defaultOrderBookingOrganizationId
+                        : organizationFilter
+                    }
+                    routerRefresh={() => router.refresh()}
                   />
                 </section>
               ) : view === "planning" ? (
