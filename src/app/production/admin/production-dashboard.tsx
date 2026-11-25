@@ -1474,6 +1474,143 @@ function PlanningBoard({
   );
 }
 
+function CorrugatorScheduleForm({
+  job,
+  existingSchedule,
+  onSaved,
+  onCancel,
+}: {
+  job: ProductionDashboardJob;
+  existingSchedule: ProductionDashboardSchedule | null;
+  onSaved: () => void;
+  onCancel: () => void;
+}) {
+  const [form, setForm] = useState<ProductionScheduleForm>(() => {
+    if (existingSchedule) {
+      return {
+        jobId: job.id,
+        operation: "Corrugating",
+        workCenter: existingSchedule.workCenter,
+        scheduledStartAt: localDateTimeValue(new Date(existingSchedule.scheduledStartAt)),
+        scheduledEndAt: localDateTimeValue(new Date(existingSchedule.scheduledEndAt)),
+        plannedQty: String(existingSchedule.plannedQty),
+        status: existingSchedule.status,
+        notes: existingSchedule.notes,
+      };
+    }
+    return {
+      ...createProductionScheduleForm(job.id),
+      operation: "Corrugating",
+      workCenter: "Corrugator",
+      plannedQty: job.orderQty === null ? "" : String(job.orderQty),
+    };
+  });
+  const [isSaving, setIsSaving] = useState(false);
+  const [status, setStatus] = useState("");
+  const [hasError, setHasError] = useState(false);
+
+  const submitSchedule = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsSaving(true);
+    setStatus("");
+    setHasError(false);
+    try {
+      const response = await requestProductionJson(
+        `/api/production/organizations/${encodeURIComponent(job.organizationId)}/operation-schedules`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            ...form,
+            scheduledStartAt: new Date(form.scheduledStartAt).toISOString(),
+            scheduledEndAt: new Date(form.scheduledEndAt).toISOString(),
+          }),
+        },
+      );
+      if (!isRecord(response.schedule)) {
+        throw new Error("The server returned an invalid operation schedule.");
+      }
+      onSaved();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error));
+      setHasError(true);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <form className="production-planning-form" onSubmit={submitSchedule}>
+      <div>
+        <span className="production-panel-kicker">CORRUGATING</span>
+        <h3>{existingSchedule ? "Update corrugator schedule" : "Schedule to Corrugator"}</h3>
+      </div>
+      <div className="production-order-booking-row">
+        <label className="production-order-booking-field">
+          Corrugator work center
+          <input
+            maxLength={80}
+            onChange={(event) => setForm((current) => ({ ...current, workCenter: event.target.value }))}
+            required
+            value={form.workCenter}
+          />
+        </label>
+        <label className="production-order-booking-field">
+          Planned quantity
+          <input
+            min="1"
+            onChange={(event) => setForm((current) => ({ ...current, plannedQty: event.target.value }))}
+            required
+            type="number"
+            value={form.plannedQty}
+          />
+        </label>
+      </div>
+      <div className="production-order-booking-row">
+        <label className="production-order-booking-field">
+          Start
+          <input
+            onChange={(event) => setForm((current) => ({ ...current, scheduledStartAt: event.target.value }))}
+            required
+            type="datetime-local"
+            value={form.scheduledStartAt}
+          />
+        </label>
+        <label className="production-order-booking-field">
+          End
+          <input
+            min={form.scheduledStartAt}
+            onChange={(event) => setForm((current) => ({ ...current, scheduledEndAt: event.target.value }))}
+            required
+            type="datetime-local"
+            value={form.scheduledEndAt}
+          />
+        </label>
+      </div>
+      <label className="production-order-booking-field">
+        Notes
+        <input
+          maxLength={500}
+          onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))}
+          value={form.notes}
+        />
+      </label>
+      {status && (
+        <p aria-live="polite" className={hasError ? "production-order-booking-error" : "production-order-booking-status"} role={hasError ? "alert" : "status"}>
+          {status}
+        </p>
+      )}
+      <div className="production-order-booking-actions">
+        <button className="production-primary-button" disabled={isSaving} type="submit">
+          {isSaving ? "Saving…" : existingSchedule ? "Update schedule" : "Schedule operation"}
+        </button>
+        <button className="production-text-action" disabled={isSaving} onClick={onCancel} type="button">
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
+
 function ShopFloorExecutionBoard({
   organizations,
   schedules,
@@ -7523,6 +7660,7 @@ export default function ProductionDashboard({
   const [printingData, setPrintingData] = useState<Record<string, unknown> | null>(null);
   const [jobSheetData, setJobSheetData] = useState<Record<string, unknown> | null>(null);
   const [jobSheetLoading, setJobSheetLoading] = useState(false);
+  const [isSchedulingCorrugator, setIsSchedulingCorrugator] = useState(false);
   const [printingAttachments, setPrintingAttachments] = useState<Array<{
     id: string;
     originalName: string;
@@ -7680,6 +7818,11 @@ export default function ProductionDashboard({
       job.deliveryDate <= weekEndKey,
   );
   const orderUnits = visibleJobs.reduce((total, job) => total + (job.orderQty ?? 0), 0);
+  const selectedCorrugatorSchedule = selectedJob
+    ? schedules.find((schedule) =>
+      schedule.jobId === selectedJob.id && schedule.operation === "Corrugating",
+    ) ?? null
+    : null;
   const barMax = Math.max(1, ...stageCounts.map(({ count }) => count));
   const deliveryDays = Array.from({ length: 7 }, (_, index) => {
     const date = new Date(today);
@@ -7763,6 +7906,7 @@ export default function ProductionDashboard({
 
   const openJob = (job: ProductionDashboardJob) => {
     setSelectedJob(job);
+    setIsSchedulingCorrugator(false);
     if (view === "Printing") {
       setView("printing-detail");
       setPrintingLoading(true);
@@ -8011,13 +8155,32 @@ export default function ProductionDashboard({
                     <span className="production-panel-kicker">BOOKED ORDER</span>
                     <h2>{selectedJob?.jobNo || "Order details"}</h2>
                   </div>
-                  <button
-                    className="production-table-action"
-                    onClick={() => setView("Order Booking")}
-                    type="button"
-                  >
-                    Back to Order Booking
-                  </button>
+                  <div className="production-quote-actions">
+                    <button
+                      className="production-table-action"
+                      onClick={() => {
+                        setIsSchedulingCorrugator(false);
+                        setView("Order Booking");
+                      }}
+                      type="button"
+                    >
+                      Back to Order Booking
+                    </button>
+                    {selectedJob && (isAdmin || productionOrganizationIds.has(selectedJob.organizationId)) && (
+                      <button
+                        className="production-primary-button"
+                        disabled={selectedCorrugatorSchedule?.status === "COMPLETED"}
+                        onClick={() => setIsSchedulingCorrugator((open) => !open)}
+                        type="button"
+                      >
+                        {selectedCorrugatorSchedule?.status === "COMPLETED"
+                          ? "Corrugating completed"
+                          : selectedCorrugatorSchedule
+                            ? "Update corrugator schedule"
+                            : "Schedule to Corrugator"}
+                      </button>
+                    )}
+                  </div>
                 </div>
                 {jobSheetLoading ? (
                   <p className="production-quote-message" role="status">Loading order details…</p>
@@ -8047,6 +8210,25 @@ export default function ProductionDashboard({
                       </div>
                     ))}
                   </div>
+                )}
+                {selectedCorrugatorSchedule && (
+                  <p className="production-quote-message" role="status">
+                    Corrugator: {selectedCorrugatorSchedule.status.replaceAll("_", " ")} ·{" "}
+                    {formatScheduleDate(selectedCorrugatorSchedule.scheduledStartAt)}
+                    {" – "}
+                    {formatScheduleDate(selectedCorrugatorSchedule.scheduledEndAt)}
+                  </p>
+                )}
+                {isSchedulingCorrugator && selectedJob && (
+                  <CorrugatorScheduleForm
+                    existingSchedule={selectedCorrugatorSchedule}
+                    job={selectedJob}
+                    onCancel={() => setIsSchedulingCorrugator(false)}
+                    onSaved={() => {
+                      setIsSchedulingCorrugator(false);
+                      router.refresh();
+                    }}
+                  />
                 )}
               </section>
             </div>
