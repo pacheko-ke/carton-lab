@@ -5933,6 +5933,35 @@ input {
   gap: 10px;
 }
 
+.production-job-sheet {
+  border-color: #d8e2ec;
+  background: #f2f6fa;
+  color: #203449;
+  color-scheme: light;
+}
+
+.production-job-sheet .production-panel-heading h2 {
+  color: #20384f;
+}
+
+.production-job-sheet .production-panel-kicker {
+  color: #60758a;
+}
+
+.production-job-sheet .production-table-action {
+  color: #12699e;
+}
+
+.production-job-sheet .production-primary-button {
+  border-color: #b9d8e9;
+  background: #e5f3fb;
+  color: #155d89;
+}
+
+.production-job-sheet .production-quote-message {
+  color: #315870;
+}
+
 .production-job-sheet-template {
   display: grid;
   gap: 20px;
@@ -5965,10 +5994,13 @@ input {
   border-bottom: 2px solid #111;
 }
 
-.production-job-sheet-template-header h1 {
-  margin: 0;
-  font-size: 19px;
-  letter-spacing: 0.08em;
+.production-job-sheet-logo {
+  display: block;
+  width: 140px;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+  filter: brightness(0) saturate(100%);
 }
 
 .production-job-sheet-template-header p {
@@ -6009,11 +6041,6 @@ input {
 .production-job-sheet-template-header-compact {
   align-items: center;
   font-size: 10px;
-}
-
-.production-job-sheet-template-header-compact strong {
-  font-size: 12px;
-  letter-spacing: 0.06em;
 }
 
 .production-job-sheet-section {
@@ -6093,6 +6120,21 @@ input {
   margin: 0;
   padding: 4px 6px;
   font-size: 8px;
+}
+
+.production-job-sheet-template .production-job-sheet-operations .production-printing-detail {
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.production-job-sheet-template .production-printing-detail span {
+  color: #536a80;
+}
+
+.production-job-sheet-template .production-printing-detail strong {
+  color: #111;
 }
 
 .production-job-sheet-artwork-previews {

@@ -9918,9 +9918,7 @@ export default function ProductionDashboard({
                   <div className="production-job-sheet-template">
                     <div className="production-job-sheet-page">
                       <header className="production-job-sheet-template-header">
-                        <div>
-                          <h1>JOB SHEET</h1>
-                        </div>
+                        <BrandLogo className="production-job-sheet-logo" />
                         <dl>
                           <div><dt>No.</dt><dd>{selectedJob?.jobNo || "—"}</dd></div>
                           <div>
@@ -10025,12 +10023,12 @@ export default function ProductionDashboard({
                         <div key={label}><span>{label}</span><i /></div>
                       ))}
                     </div>
-                    <footer className="production-job-sheet-page-footer">Generated with Keyline Generator &amp; Board Calculator · Page 1 of 2</footer>
+                    <footer className="production-job-sheet-page-footer">Powered by PackStudio.app · Page 1 of 2</footer>
                     </div>
 
                     <div className="production-job-sheet-page">
                       <header className="production-job-sheet-template-header production-job-sheet-template-header-compact">
-                        <strong>JOB SHEET</strong>
+                        <BrandLogo className="production-job-sheet-logo" />
                         <span>{selectedJob?.jobNo || "—"} · {selectedJob?.jobName || "—"} · {selectedJob?.size || "—"}</span>
                       </header>
 
@@ -10287,7 +10285,7 @@ export default function ProductionDashboard({
                         <div key={label}><span>{label}</span><i /></div>
                       ))}
                     </div>
-                    <footer className="production-job-sheet-page-footer">Generated with Keyline Generator &amp; Board Calculator · Page 2 of 2</footer>
+                    <footer className="production-job-sheet-page-footer">Powered by PackStudio.app · Page 2 of 2</footer>
                     </div>
                   </div>
                 )}
