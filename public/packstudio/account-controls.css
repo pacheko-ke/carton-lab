@@ -867,3 +867,170 @@ body .batch-premium-notice button:hover {
     width: 100%;
   }
 }
+
+body[data-theme="light"] {
+  color-scheme: light;
+  background: #f2f6fa;
+  color: #203449;
+}
+
+body[data-theme="light"] > header {
+  border-color: #d9e3ed;
+  background: #ffffff;
+}
+
+body[data-theme="light"] > header h1,
+body[data-theme="light"] .batch-heading h2,
+body[data-theme="light"] .batch-output-option strong,
+body[data-theme="light"] .keyline-choice-name,
+body[data-theme="light"] .carton3d-title {
+  color: #20384f;
+}
+
+body[data-theme="light"] .card,
+body[data-theme="light"] .batch-card,
+body[data-theme="light"] .batch-premium-notice,
+body[data-theme="light"] .designer-tour,
+body[data-theme="light"] .carton3d-viewer {
+  border-color: #d8e2ec;
+  background: #ffffff;
+  color: #30475d;
+  box-shadow: 0 6px 20px rgba(36, 61, 86, 0.08);
+}
+
+body[data-theme="light"] .card-title,
+body[data-theme="light"] .field,
+body[data-theme="light"] .batch-file-details,
+body[data-theme="light"] .batch-output legend,
+body[data-theme="light"] .batch-output-option,
+body[data-theme="light"] .designer-tour-description,
+body[data-theme="light"] .carton3d-dimensions,
+body[data-theme="light"] .carton3d-zoom-level {
+  color: #455e75;
+}
+
+body[data-theme="light"] .input,
+body[data-theme="light"] .batch-output-option,
+body[data-theme="light"] [data-tour="canvas-tools"],
+body[data-theme="light"] [data-tour="zoom-tools"],
+body[data-theme="light"] .designer-help-button,
+body[data-theme="light"] .carton3d-control,
+body[data-theme="light"] .carton3d-launch,
+body[data-theme="light"] .artboard-bookmark-button {
+  border-color: #cbd8e4;
+  background: #ffffff;
+  color: #203449;
+}
+
+body[data-theme="light"] .input::placeholder {
+  color: #73869a;
+}
+
+body[data-theme="light"] .btn-secondary,
+body[data-theme="light"] .keyline-tab,
+body[data-theme="light"] .keyline-choice {
+  border-color: #c8d8e5;
+  background: #edf4f9;
+  color: #2f4a61;
+}
+
+body[data-theme="light"] .keyline-tab:hover,
+body[data-theme="light"] .keyline-choice:hover,
+body[data-theme="light"] .designer-help-button:hover,
+body[data-theme="light"] .carton3d-control:hover,
+body[data-theme="light"] .carton3d-launch:hover:not(:disabled),
+body[data-theme="light"] .artboard-bookmark-button:hover:not(:disabled) {
+  border-color: #75b8da;
+  background: #e2f2fb;
+  color: #155e8b;
+}
+
+body[data-theme="light"] .keyline-tab[aria-selected="true"],
+body[data-theme="light"] .keyline-choice[aria-pressed="true"] {
+  border-color: #80bbda;
+  background: #dff0fa;
+  color: #155e8b;
+}
+
+body[data-theme="light"] .keyline-choice-locked {
+  border-color: #e3d29c;
+  background: #fff8df;
+  color: #725b1c;
+}
+
+body[data-theme="light"] .workspace-tabs {
+  border-color: #d5e0e9;
+}
+
+body[data-theme="light"] .workspace-tab {
+  color: #5a7084;
+}
+
+body[data-theme="light"] .workspace-tab:hover,
+body[data-theme="light"] .workspace-tab[aria-selected="true"],
+body[data-theme="light"] .batch-eyebrow,
+body[data-theme="light"] .batch-sample-link,
+body[data-theme="light"] .batch-premium-notice button {
+  color: #126b9c;
+}
+
+body[data-theme="light"] .batch-heading > p:last-child,
+body[data-theme="light"] .batch-heading > p.batch-context-note,
+body[data-theme="light"] .batch-file-hint,
+body[data-theme="light"] .batch-file-details summary,
+body[data-theme="light"] .batch-output-option small,
+body[data-theme="light"] .batch-status,
+body[data-theme="light"] .batch-premium-notice {
+  color: #536a80;
+}
+
+body[data-theme="light"] .batch-output-option:has(input:checked) {
+  border-color: #84bfdf;
+  background: #e4f3fb;
+}
+
+body[data-theme="light"] .carton3d-header,
+body[data-theme="light"] .carton3d-footer {
+  border-color: #d8e2ec;
+  background: #eff4f8;
+}
+
+body[data-theme="light"] .carton3d-replay,
+body[data-theme="light"] .carton3d-close,
+body[data-theme="light"] .designer-tour-progress,
+body[data-theme="light"] .designer-tour-skip,
+body[data-theme="light"] .designer-tour-secondary {
+  color: #50677d;
+}
+
+body[data-theme="light"] .designer-tour-skip:hover,
+body[data-theme="light"] .designer-tour-secondary:hover:not(:disabled),
+body[data-theme="light"] .carton3d-replay:hover:not(:disabled),
+body[data-theme="light"] .carton3d-close:hover {
+  background: #e5eef5;
+  color: #203449;
+}
+
+body[data-theme="light"] .text-brand,
+body[data-theme="light"] .text-sky-300 {
+  color: #0876a9;
+}
+
+body[data-theme="light"] .text-slate-400,
+body[data-theme="light"] .text-slate-500,
+body[data-theme="light"] .text-slate-700,
+body[data-theme="light"] .text-slate-900 {
+  color: #435b72;
+}
+
+body[data-theme="light"] .bg-slate-200 {
+  background: #dbe5ed;
+}
+
+body[data-theme="light"] .bg-red-50 {
+  background: #fff0ef;
+}
+
+body[data-theme="light"] .text-red-700 {
+  color: #a33131;
+}

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import jobSheet from "../public/packstudio/job-sheet.js";
 
-const { calculateJobSheetQuantities, createJobSheetPdf } = jobSheet;
+const { buildJobSheetPrintHtml, calculateJobSheetQuantities, createJobSheetPdf } = jobSheet;
 
 test("calculates production, reel, trim, area, and pallet requirements", () => {
   const result = calculateJobSheetQuantities({
@@ -86,4 +86,44 @@ test("creates a valid two-page PDF with escaped job data and keyline geometry", 
   assert.match(pdf, /PRODUCTION TRACKING/);
   assert.match(pdf, /1965\.2 m/);
   assert.match(pdf, /startxref\n\d+\n%%EOF$/);
+});
+
+test("prints only printing details and the artwork artboard", () => {
+  const originalToSVG = globalThis.toSVG;
+  globalThis.toSVG = (model, mode) => {
+    assert.ok(model);
+    assert.equal(mode, "export");
+    return '<svg id="print-artboard" viewBox="0 0 100 50"><path d="M0 0h100v50H0z"/></svg>';
+  };
+
+  try {
+    const html = buildJobSheetPrintHtml({
+      jobNo: "JS-42",
+      jobName: "Sample carton",
+      printing: "Yes",
+      printMethod: "Flexo",
+      printColor: "Blue",
+      inkType: "Water-based",
+      artwork: "1 colour print",
+      artworkRef: "ART-2",
+      plateRef: "PLATE-5",
+      printArea: "100 x 50 mm",
+      registration: "+/- 1 mm",
+      printPosition: "Outside",
+      printInstructions: "Approve first-off",
+      specialInstructions: "Do not include",
+      dispatchInstructions: "Do not include",
+      customer: "Do not include",
+    }, { items: [] });
+
+    assert.match(html, /PRINTING INSTRUCTIONS/);
+    assert.match(html, /Approve first-off/);
+    assert.match(html, /ART-2/);
+    assert.match(html, /print-artboard/);
+    assert.doesNotMatch(html, /Do not include|Customer|Dispatch|Production tracking|Packing/);
+    assert.equal((html.match(/<article class="page">/g) || []).length, 1);
+  } finally {
+    if (originalToSVG === undefined) delete globalThis.toSVG;
+    else globalThis.toSVG = originalToSVG;
+  }
 });

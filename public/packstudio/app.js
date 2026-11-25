@@ -262,7 +262,21 @@ window.addEventListener("message", (event) => {
     window.parent === window ||
     event.origin !== window.location.origin ||
     event.source !== window.parent ||
-    !event.data ||
+    !event.data
+  ) {
+    return;
+  }
+
+  if (event.data.type === "packstudio:theme") {
+    if (event.data.theme === "light" || event.data.theme === "dark") {
+      document.documentElement.dataset.theme = event.data.theme;
+      document.documentElement.style.colorScheme = event.data.theme;
+      document.body.dataset.theme = event.data.theme;
+    }
+    return;
+  }
+
+  if (
     event.data.type !== "packstudio:profile" ||
     typeof event.data.accountId !== "string" ||
     !event.data.profile ||

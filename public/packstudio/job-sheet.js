@@ -1171,49 +1171,27 @@ function buildJobSheetPrintHtml(data, model) {
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;").replace(/'/g, "&#39;")
     .replace(/\r?\n/g, "<br>");
-  const quantities = calculateJobSheetQuantities(data);
   const printField = (label, value) => `<div class="field"><small>${esc(label)}</small><span>${esc(value || "")}</span></div>`;
   const group = (title, entries) => `<section><h2>${esc(title)}</h2><div class="grid">${entries.map(([label, value]) => printField(label, value)).join("")}</div></section>`;
   const keylineSvg = model && typeof toSVG === "function" ? toSVG(model, "export") : "";
-  const trackingRows = JOB_SHEET_TRACKING_STAGES.map((stage, index) => {
-    const row = (data.tracking || [])[index] || {};
-    return `<tr><th>${esc(stage)}</th>${["date", "operator", "qtyIn", "qtyOut", "rejects", "sign"].map((key) => `<td>${esc(row[key] || "")}</td>`).join("")}</tr>`;
-  }).join("");
   return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(data.jobNo || "Job sheet")}</title>
     <style>
       *{box-sizing:border-box}body{margin:0;color:#17212b;font:10px Arial,Helvetica,sans-serif}
-      @page{size:A4;margin:12mm}.page{height:273mm;page-break-after:always;position:relative}.page:last-child{page-break-after:auto}
+      @page{size:A4;margin:12mm}.page{min-height:273mm;position:relative}
       header{height:19mm;margin:-12mm -12mm 5mm;padding:7mm 12mm;background:#0f6cbd;color:#fff;display:flex;justify-content:space-between}
       header h1{margin:0 0 2mm;font-size:18px}header p{margin:0;color:#eaf5ff}
       section{margin:0 0 4mm;break-inside:avoid}h2{margin:0 0 2mm;padding:1.5mm 2mm;background:#eaf3fb;color:#0f6cbd;font-size:9px;text-transform:uppercase}
       .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));column-gap:4mm;row-gap:2mm;padding:0 1mm}
       .field{min-height:8mm;border-bottom:.2mm solid #cbd5e1;overflow:hidden}.field small{display:block;color:#64748b;font-size:7px;font-weight:bold}.field span{display:block;margin-top:1mm;max-height:8mm;overflow:hidden}
-      .drawing{height:38mm;border:.2mm solid #cbd5e1;padding:2mm}.drawing svg{width:100%;height:100%;object-fit:contain}
-      .track{width:100%;border-collapse:collapse;font-size:7px}.track th,.track td{height:6mm;padding:1mm;border:.2mm solid #cbd5e1;text-align:left}.track th{background:#f1f5f9}
-      .instructions{padding:1mm 2mm;min-height:8mm;white-space:normal}.footer{position:absolute;bottom:0;left:0;right:0;border-top:.2mm solid #cbd5e1;padding-top:2mm;color:#64748b}
-      @media screen{body{background:#e2e8f0}.page{width:210mm;height:297mm;margin:10mm auto;padding:12mm;background:#fff;box-shadow:0 2mm 8mm #0002}header{margin:-12mm -12mm 5mm}}
+      .instructions{padding:1mm 2mm;min-height:8mm;white-space:normal}
+      .drawing{height:150mm;border:.2mm solid #cbd5e1;padding:3mm;display:flex;align-items:center;justify-content:center;overflow:hidden}
+      .drawing svg{display:block;width:100%;height:100%}
+      @media screen{body{background:#e2e8f0}.page{width:210mm;min-height:297mm;margin:10mm auto;padding:12mm;background:#fff;box-shadow:0 2mm 8mm #0002}header{margin:-12mm -12mm 5mm}}
     </style></head><body>
-    <article class="page"><header><div><h1>JOB SHEET</h1><p>Production copy - internal - no prices</p></div><div><strong>No. ${esc(data.jobNo)}</strong><p>Issued: ${esc(data.issueDate)}</p></div></header>
-      ${group("Job and customer", [["Document / priority", `${data.documentType || ""} / ${data.priority || ""}`], ["Customer", data.customer], ["Job name", data.jobName], ["Customer PO no.", data.customerPO], ["Order date", data.orderDate], ["Delivery date", data.deliveryDate]])}
-      ${group("Box specification", [["Box type", data.boxType], ["Size (OD) L x W x H", `${data.length || ""} x ${data.width || ""} x ${data.height || ""} ${quantities.unit}`], ["Plies / flute", `${data.plies || ""}, ${data.flute || ""}`], ["Glue flap / slot width", `${data.glue || ""} / ${data.slot || ""} ${quantities.unit}`], ["Joint", data.joint], ["Artwork", data.artwork]])}
-      <section><h2>Keyline</h2><div class="drawing">${keylineSvg}</div></section>
-      ${group("Board specification", [["Top liner", data.topLiner], ["Medium (fluting)", data.medium], ["Bottom liner", data.bottomLiner], ["Nominal board weight", data.boardWeight], ["Moisture content", data.moisture], ["Board supplier / batch", data.boardSupplier]])}
-      ${group("Board & cutting", [["Board length (cut-off)", `${data.boardLength || ""} ${quantities.unit}`], ["Board width", `${data.boardWidth || ""} ${quantities.unit}`], ["Creasing dimension", data.creasing], ["Reel width / ups", `${data.reelWidth || ""} ${quantities.unit} / ${data.ups || ""}`], ["Trim", quantities.trim === null ? "" : `${jobSheetFormat(quantities.trim)} ${quantities.unit}`], ["Grain / flute direction", data.grain]])}
-      ${group("Quantity & material requirement", [["Order quantity", data.orderQty && `${data.orderQty} pcs`], ["Production quantity", quantities.productionQuantity], ["Spoilage allowance", `${data.spoilage || ""}%`], ["Cuts to run", quantities.cuts], ["Reel run (approx.)", quantities.reelRun === null ? "" : `${jobSheetFormat(quantities.reelRun)} m`], ["Board area (approx.)", quantities.boardArea === null ? "" : `${jobSheetFormat(quantities.boardArea)} m2`]])}
-      <section><h2>Special instructions</h2><div class="instructions">${esc(data.specialInstructions)}</div></section>
-      ${group("Approvals", [["Prepared by", data.preparedBy], ["Approved by", data.approvedBy], ["Received by (production)", data.receivedBy], ["Production supervisor", data.supervisor], ["QC approved", data.qcApproved], ["Dispatch / driver", data.dispatchBy]])}
-      <div class="footer">Generated with PackStudio <span style="float:right">Page 1 of 2</span></div>
-    </article>
-    <article class="page"><header><div><h1>JOB SHEET</h1><p>Production instructions and tracking</p></div><div><strong>No. ${esc(data.jobNo)}</strong><p>${esc(data.jobName)}</p></div></header>
-      ${group("Printing", [["Printing", data.printing], ["Method", data.printMethod], ["Colour 1", data.printColor], ["Ink type", data.inkType], ["Artwork ref / revision", data.artworkRef], ["Plate / cylinder ref", data.plateRef], ["Print area", data.printArea], ["Registration tolerance", data.registration], ["Print position", data.printPosition]])}
+    <article class="page"><header><div><h1>PRINTING INSTRUCTIONS</h1><p>Print setup and artwork reference</p></div><div><strong>No. ${esc(data.jobNo)}</strong><p>${esc(data.jobName)}</p></div></header>
+      ${group("Print setup", [["Printing", data.printing], ["Method", data.printMethod], ["Colour", data.printColor], ["Ink type", data.inkType], ["Artwork", data.artwork], ["Artwork ref / revision", data.artworkRef], ["Plate / cylinder ref", data.plateRef], ["Print area", data.printArea], ["Registration tolerance", data.registration], ["Print position", data.printPosition]])}
       <section><h2>Print instructions</h2><div class="instructions">${esc(data.printInstructions)}</div></section>
-      ${group("Converting (slot, joint)", [["Slotting / scoring", data.slotting], ["Slot width", data.slotWidth && `${data.slotWidth} ${quantities.unit}`], ["Joint type", data.jointType], ["Stitches", data.stitches], ["Stitch position", data.stitchPosition], ["Box squareness", data.squareness]])}
-      ${group("Quality control", [["Size tolerance (L, W, H)", data.sizeTolerance], ["Crease", data.creaseCheck], ["Sampling", data.sampling], ["Print check", data.printCheck], ["Joint check", data.jointCheck], ["Min. compression (BCT)", data.bct]])}
-      ${group("Packing", [["Pack as", data.packAs], ["Pcs per bundle", data.pcsPerBundle], ["Strapping", data.strapping], ["Pallet size", data.palletSize], ["Pcs per pallet", data.pcsPerPallet], ["Pallets (order qty)", quantities.pallets]])}
-      ${group("Dispatch", [["Deliver to", data.deliverTo], ["Address", data.deliveryAddress], ["Contact / phone", data.deliveryContact], ["Delivery window", data.deliveryWindow], ["Vehicle / driver", data.vehicleDriver], ["Delivery note no.", data.deliveryNote]])}
-      <section><h2>Dispatch instructions</h2><div class="instructions">${esc(data.dispatchInstructions)}</div></section>
-      <section><h2>Production tracking</h2><table class="track"><thead><tr><th>Stage</th><th>Date</th><th>Operator</th><th>Qty in</th><th>Qty out</th><th>Rejects</th><th>Sign</th></tr></thead><tbody>${trackingRows}</tbody></table></section>
-      <div class="footer">Generated with PackStudio <span style="float:right">Page 2 of 2</span></div>
+      <section><h2>Artwork artboard</h2><div class="drawing">${keylineSvg}</div></section>
     </article></body></html>`;
 }
 
@@ -1222,6 +1200,7 @@ if (typeof window !== "undefined") {
 }
 if (typeof module !== "undefined") {
   module.exports = {
+    buildJobSheetPrintHtml,
     calculateJobSheetQuantities,
     createJobSheetPdf,
     defaultJobSheetData,

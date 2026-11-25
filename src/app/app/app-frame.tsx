@@ -76,12 +76,19 @@ export default function AppFrame({
         className="h-full w-full border-0"
         src={iframeSrc}
         title={workspace === "production" ? "Production dashboard" : "PackStudio"}
-        onLoad={(event) =>
+        onLoad={(event) => {
           event.currentTarget.contentWindow?.postMessage(
             { type: "packstudio:profile", accountId, profile, qrCode: profileQrCode },
             window.location.origin,
-          )
-        }
+          );
+          event.currentTarget.contentWindow?.postMessage(
+            {
+              type: "packstudio:theme",
+              theme: document.documentElement.dataset.theme === "light" ? "light" : "dark",
+            },
+            window.location.origin,
+          );
+        }}
       />
     </>
   );

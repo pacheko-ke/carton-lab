@@ -28,6 +28,7 @@ import {
   FiGrid,
   FiLayers,
   FiLoader,
+  FiMenu,
   FiPackage,
   FiPenTool,
   FiPlus,
@@ -38,6 +39,7 @@ import {
   FiTruck,
   FiTool,
   FiUsers,
+  FiX,
 } from "react-icons/fi";
 import AppFrame from "@/app/app/app-frame";
 import BrandLogo from "@/app/brand-logo";
@@ -7349,6 +7351,7 @@ export default function ProductionDashboard({
 }: Props) {
   const router = useRouter();
   const [view, setView] = useState<DashboardView>("overview");
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [expandedNavGroup, setExpandedNavGroup] = useState<WorkspaceNavGroup | null>("orders");
   const [workflowQueuesExpanded, setWorkflowQueuesExpanded] = useState(false);
   const [organizationFilter, setOrganizationFilter] = useState("all");
@@ -7395,6 +7398,7 @@ export default function ProductionDashboard({
   );
   const navigateTo = (nextView: DashboardView) => {
     setView(nextView);
+    setIsMobileMenuOpen(false);
     const group = WORKSPACE_ITEMS.find((item) => item.id === nextView)?.group;
     if (group) {
       setExpandedNavGroup(group);
@@ -7402,6 +7406,14 @@ export default function ProductionDashboard({
       setWorkflowQueuesExpanded(true);
     }
   };
+  useEffect(() => {
+    if (!isMobileMenuOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsMobileMenuOpen(false);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isMobileMenuOpen]);
   const canBookOrders = orderBookingOrganizations.some(
     (organization) => organizationFilter === "all" || organization.id === organizationFilter,
   ) || isAdmin;
@@ -7537,15 +7549,31 @@ export default function ProductionDashboard({
 
   return (
     <div className="production-dashboard-shell">
-      <aside className="production-sidebar">
+      {isMobileMenuOpen && (
+        <button
+          aria-label="Close production menu"
+          className="production-sidebar-backdrop"
+          onClick={() => setIsMobileMenuOpen(false)}
+          type="button"
+        />
+      )}
+      <aside className={`production-sidebar${isMobileMenuOpen ? " is-open" : ""}`}>
         <div className="production-brand">
           <div className="production-brand-lockup">
             <BrandLogo className="production-brand-wordmark" />
             <small>Production</small>
           </div>
+          <button
+            aria-label="Close production menu"
+            className="production-mobile-menu-close"
+            onClick={() => setIsMobileMenuOpen(false)}
+            type="button"
+          >
+            <FiX aria-hidden="true" />
+          </button>
         </div>
 
-        <nav className="production-side-nav" aria-label="Production navigation">
+        <nav className="production-side-nav" id="production-side-navigation" aria-label="Production navigation">
           {WORKSPACE_GROUPS.map((group) => {
             const groupItems = visibleWorkspaceItems.filter((item) => item.group === group.id);
             if (!groupItems.length) return null;
@@ -7653,9 +7681,21 @@ export default function ProductionDashboard({
 
       <div className="production-dashboard-main">
         <header className="production-topbar">
-          <div>
-            <p className="production-breadcrumb">Production <span>/</span> {pageTitle}</p>
-            <h1>{pageTitle}</h1>
+          <div className="production-topbar-heading">
+            <button
+              aria-controls="production-side-navigation"
+              aria-expanded={isMobileMenuOpen}
+              aria-label="Open production menu"
+              className="production-mobile-menu-button"
+              onClick={() => setIsMobileMenuOpen(true)}
+              type="button"
+            >
+              <FiMenu aria-hidden="true" />
+            </button>
+            <div>
+              <p className="production-breadcrumb">Production <span>/</span> {pageTitle}</p>
+              <h1>{pageTitle}</h1>
+            </div>
           </div>
           <div className="production-topbar-actions">
             <label className="production-organization-filter">

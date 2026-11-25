@@ -30,6 +30,10 @@ and in Vercel; the sender address must use a domain verified with Resend.
 delivery failures are logged without preventing account creation or payment
 processing.
 
+The interface supports light and dark themes. It follows the device preference
+until changed, then saves the selected theme for the browser across the
+dashboard and embedded Studio.
+
 The current production hostname remains `cartonlab-web.vercel.app` until a
 PackStudio domain is configured. Update the Google OAuth redirect URLs, Paystack
 webhook URL, and `APP_URL` when changing the production hostname.
