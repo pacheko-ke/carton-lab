@@ -136,7 +136,7 @@ export function validateProductionOrderBooking(
 export type ProductionOperationScheduleInput = {
   jobId: string;
   operation: ProductionOperation;
-  workCenter: string;
+  machineId: string;
   scheduledStartAt: string;
   scheduledEndAt: string;
   plannedQty: string;
@@ -351,7 +351,7 @@ export function validateProductionOperationSchedule(
   return (
     isNonEmptyString(value.jobId, 100) &&
     isProductionOperation(value.operation) &&
-    isNonEmptyString(value.workCenter, 80) &&
+    isNonEmptyString(value.machineId, 100) &&
     isValidIsoDateTime(value.scheduledStartAt) &&
     isValidIsoDateTime(value.scheduledEndAt) &&
     new Date(value.scheduledEndAt).getTime() > new Date(value.scheduledStartAt).getTime() &&
@@ -387,6 +387,19 @@ export function validateProductionCustomer(value: unknown): value is ProductionC
     isBoundedString(value.email, 254) &&
     (!value.email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.email)) &&
     isBoundedString(value.address, 300)
+  );
+}
+
+export function validateProductionCustomerCreation(
+  value: unknown,
+): value is ProductionCustomerInput & { kraPin: string } {
+  return (
+    validateProductionCustomer(value) &&
+    isNonEmptyString(value.kraPin, 20) &&
+    isNonEmptyString(value.contactPerson, 120) &&
+    isNonEmptyString(value.phone, 40) &&
+    isNonEmptyString(value.email, 254) &&
+    isNonEmptyString(value.address, 300)
   );
 }
 

@@ -51,6 +51,20 @@ export async function POST(request: Request, { params }: RouteContext) {
   if (!job) {
     return NextResponse.json({ error: "Production job not found" }, { status: 404 });
   }
+  const machine = await prisma.productionMachine.findFirst({
+    where: {
+      id: body.machineId,
+      organizationId,
+      status: { not: "RETIRED" },
+    },
+    select: { id: true, workCenter: true },
+  });
+  if (!machine) {
+    return NextResponse.json(
+      { error: "Select a registered machine from this production organization" },
+      { status: 404 },
+    );
+  }
   if (job.flag && !job.flag.resolvedAt) {
     return NextResponse.json(
       { error: "Clear the active job flag before scheduling its next operation." },
@@ -105,7 +119,13 @@ export async function POST(request: Request, { params }: RouteContext) {
     : await prisma.productionOperationSchedule.findFirst({
         where: {
           organizationId,
-          workCenter: { equals: body.workCenter.trim(), mode: "insensitive" },
+          OR: [
+            { machineId: machine.id },
+            {
+              machineId: null,
+              workCenter: { equals: machine.workCenter, mode: "insensitive" },
+            },
+          ],
           status: { not: "COMPLETED" },
           scheduledStartAt: { lt: end },
           scheduledEndAt: { gt: start },
@@ -115,13 +135,14 @@ export async function POST(request: Request, { params }: RouteContext) {
       });
   if (conflict) {
     return NextResponse.json(
-      { error: "This work center already has an overlapping scheduled operation." },
+      { error: "This machine already has an overlapping scheduled operation." },
       { status: 409 },
     );
   }
 
   const scheduleData = {
-    workCenter: body.workCenter.trim(),
+    machineId: machine.id,
+    workCenter: machine.workCenter,
     scheduledStartAt: start,
     scheduledEndAt: end,
     plannedQty: Number(body.plannedQty),
@@ -145,6 +166,7 @@ export async function POST(request: Request, { params }: RouteContext) {
         id: true,
         jobId: true,
         operation: true,
+        machineId: true,
         workCenter: true,
         scheduledStartAt: true,
         scheduledEndAt: true,

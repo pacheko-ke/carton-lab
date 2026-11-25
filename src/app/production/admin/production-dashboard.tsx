@@ -99,6 +99,7 @@ import {
   PRODUCTION_MAINTENANCE_TICKET_TYPES,
   PRODUCTION_MAINTENANCE_TICKET_STATUSES,
 } from "@/lib/production-maintenance-data";
+import { notifyToast } from "@/app/toast-provider";
 import { PRODUCTION_LEAVE_TYPES } from "@/lib/production-hr-data";
 
 export type ProductionDashboardOrganization = {
@@ -136,6 +137,8 @@ export type ProductionDashboardSchedule = {
   jobName: string;
   customer: string;
   operation: ProductionOperation;
+  machineId: string | null;
+  machineLabel: string;
   workCenter: string;
   scheduledStartAt: string;
   scheduledEndAt: string;
@@ -160,7 +163,7 @@ export type ProductionDashboardRun = {
   scheduleId: string;
   operation: ProductionOperation;
   jobNo: string;
-  workCenter: string;
+  machineLabel: string;
   goodQty: number;
   rejectedQty: number;
   notes: string;
@@ -722,7 +725,7 @@ const STAGE_DETAILS: Record<ProductionWorkflowStage | "planning" | "execution" |
   "Board Production": "Converting, quality checks and board production tracking",
   Printing: "Print setup, artwork references and print instructions",
   Dispatch: "Packing, delivery details and final approvals",
-  planning: "Schedule production operations by work center and planned quantity",
+  planning: "Schedule production operations by registered machine and planned quantity",
   execution: "Record actual production output, rejects, and operation completion",
   quality: "Inspect carton quality, manage nonconformances, and verify corrective actions",
   procurement: "Manage suppliers, material purchasing, and goods receipts",
@@ -1156,7 +1159,7 @@ async function requestProductionJson(
 type ProductionScheduleForm = {
   jobId: string;
   operation: ProductionOperation;
-  workCenter: string;
+  machineId: string;
   scheduledStartAt: string;
   scheduledEndAt: string;
   plannedQty: string;
@@ -1185,7 +1188,7 @@ function createProductionScheduleForm(jobId: string): ProductionScheduleForm {
   return {
     jobId,
     operation: PRODUCTION_OPERATIONS[0],
-    workCenter: "",
+    machineId: "",
     scheduledStartAt: localDateTimeValue(start),
     scheduledEndAt: localDateTimeValue(end),
     plannedQty: "",
@@ -1203,17 +1206,19 @@ type BulkProductionScheduleEntry = {
 
 function BulkScheduleForm({
   organizationId,
+  machines,
   jobs,
   schedules,
   onSaved,
 }: {
   organizationId: string;
+  machines: ProductionDashboardMachine[];
   jobs: ProductionDashboardJob[];
   schedules: ProductionDashboardSchedule[];
   onSaved: () => void;
 }) {
   const [operation, setOperation] = useState<ProductionOperation>(PRODUCTION_OPERATIONS[0]);
-  const [workCenter, setWorkCenter] = useState("");
+  const [machineId, setMachineId] = useState("");
   const [entries, setEntries] = useState<BulkProductionScheduleEntry[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [status, setStatus] = useState("");
@@ -1222,6 +1227,9 @@ function BulkScheduleForm({
     !schedules.some((schedule) =>
       schedule.jobId === job.id && schedule.operation === operation,
     ),
+  );
+  const availableMachines = machines.filter(
+    (machine) => machine.organizationId === organizationId && machine.status !== "RETIRED",
   );
   const entryJobIds = new Set(entries.map((entry) => entry.jobId));
 
@@ -1277,7 +1285,7 @@ function BulkScheduleForm({
               body: JSON.stringify({
                 jobId: entry.jobId,
                 operation,
-                workCenter,
+                machineId,
                 scheduledStartAt: new Date(entry.scheduledStartAt).toISOString(),
                 scheduledEndAt: new Date(entry.scheduledEndAt).toISOString(),
                 plannedQty: entry.plannedQty,
@@ -1307,7 +1315,8 @@ function BulkScheduleForm({
         setHasError(true);
       } else {
         setEntries([]);
-        setStatus(`${successCount} ${operation} schedules created.`);
+        notifyToast(`${successCount} ${operation} schedules created.`);
+        setStatus("");
       }
       if (successCount) onSaved();
     } finally {
@@ -1338,14 +1347,22 @@ function BulkScheduleForm({
           </select>
         </label>
         <label className="production-order-booking-field">
-          Work center
-          <input
-            maxLength={80}
-            onChange={(event) => setWorkCenter(event.target.value)}
-            placeholder="e.g. Corrugator"
+          Machine
+          <select
+            disabled={!availableMachines.length}
+            onChange={(event) => setMachineId(event.currentTarget.value)}
             required
-            value={workCenter}
-          />
+            value={machineId}
+          >
+            <option value="">
+              {availableMachines.length ? "Select a machine" : "Register a machine first"}
+            </option>
+            {availableMachines.map((machine) => (
+              <option key={machine.id} value={machine.id}>
+                {machine.machineNo} — {machine.name}
+              </option>
+            ))}
+          </select>
         </label>
       </div>
       <fieldset className="production-bulk-job-picker">
@@ -1431,7 +1448,11 @@ function BulkScheduleForm({
         </p>
       )}
       <div className="production-order-booking-actions">
-        <button className="production-primary-button" disabled={isSaving || !entries.length} type="submit">
+        <button
+          className="production-primary-button"
+          disabled={isSaving || !entries.length || !availableMachines.length}
+          type="submit"
+        >
           {isSaving ? "Scheduling…" : `Schedule ${entries.length} jobs`}
         </button>
       </div>
@@ -1541,7 +1562,8 @@ function ProductionNotificationBell() {
   const [isPushEnabled, setIsPushEnabled] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
   const [loadError, setLoadError] = useState("");
-  const [status, setStatus] = useState("");
+  const hasLoadedNotifications = useRef(false);
+  const knownNotificationIds = useRef(new Set<string>());
   const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "";
   const isPushSupported =
     typeof window !== "undefined" &&
@@ -1558,6 +1580,17 @@ function ProductionNotificationBell() {
         throw new Error("The server returned invalid notifications.");
       }
       const nextNotifications = result.notifications.filter(isProductionDashboardNotification);
+      if (hasLoadedNotifications.current) {
+        nextNotifications
+          .filter((notification) =>
+            !notification.readAt && !knownNotificationIds.current.has(notification.id),
+          )
+          .forEach((notification) => {
+            notifyToast(`${notification.title}: ${notification.message}`, "info");
+          });
+      }
+      nextNotifications.forEach((notification) => knownNotificationIds.current.add(notification.id));
+      hasLoadedNotifications.current = true;
       setNotifications(nextNotifications);
       setUnreadCount(
         typeof result.unreadCount === "number"
@@ -1585,7 +1618,10 @@ function ProductionNotificationBell() {
         })
         .catch((error: unknown) => {
           if (active) {
-            setStatus(error instanceof Error ? error.message : "Could not prepare browser push.");
+            notifyToast(
+              error instanceof Error ? error.message : "Could not prepare browser push.",
+              "error",
+            );
           }
         });
     }
@@ -1599,7 +1635,6 @@ function ProductionNotificationBell() {
 
   const enablePush = async () => {
     setIsBusy(true);
-    setStatus("");
     try {
       if (!vapidPublicKey) {
         throw new Error("Browser push is not configured. Add the VAPID keys to the deployment environment.");
@@ -1626,9 +1661,9 @@ function ProductionNotificationBell() {
       if (!response.ok) throw new Error("Could not save this browser's push subscription.");
 
       setIsPushEnabled(true);
-      setStatus("Browser push notifications are enabled on this device.");
+      notifyToast("Browser push notifications are enabled on this device.");
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Could not enable browser push.");
+      notifyToast(error instanceof Error ? error.message : "Could not enable browser push.", "error");
     } finally {
       setIsBusy(false);
     }
@@ -1636,7 +1671,6 @@ function ProductionNotificationBell() {
 
   const disablePush = async () => {
     setIsBusy(true);
-    setStatus("");
     try {
       const registration = await navigator.serviceWorker.ready;
       const subscription = await registration.pushManager.getSubscription();
@@ -1650,16 +1684,15 @@ function ProductionNotificationBell() {
         await subscription.unsubscribe();
       }
       setIsPushEnabled(false);
-      setStatus("Browser push notifications are disabled on this device.");
+      notifyToast("Browser push notifications are disabled on this device.", "info");
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Could not disable browser push.");
+      notifyToast(error instanceof Error ? error.message : "Could not disable browser push.", "error");
     } finally {
       setIsBusy(false);
     }
   };
 
   const markRead = async (notificationId: string) => {
-    setStatus("");
     try {
       const response = await fetch("/api/production/notifications", {
         method: "PATCH",
@@ -1673,8 +1706,12 @@ function ProductionNotificationBell() {
           : notification,
       ));
       setUnreadCount((current) => Math.max(0, current - 1));
+      notifyToast("Notification marked as read.", "success");
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Could not update this notification.");
+      notifyToast(
+        error instanceof Error ? error.message : "Could not update this notification.",
+        "error",
+      );
     }
   };
 
@@ -1740,7 +1777,6 @@ function ProductionNotificationBell() {
             </button>
           )}
           {loadError && <p className="production-order-booking-error" role="alert">{loadError}</p>}
-          {status && <p className="production-order-booking-status" role="status">{status}</p>}
           {notifications.length ? (
             <ul className="production-notification-list">
               {notifications.map((notification) => (
@@ -1775,12 +1811,14 @@ function ProductionNotificationBell() {
 function PlanningBoard({
   organizations,
   jobs,
+  machines,
   schedules,
   preferredOrganizationId,
   onSaved,
 }: {
   organizations: ProductionDashboardOrganization[];
   jobs: ProductionDashboardJob[];
+  machines: ProductionDashboardMachine[];
   schedules: ProductionDashboardSchedule[];
   preferredOrganizationId: string;
   onSaved: () => void;
@@ -1791,6 +1829,9 @@ function PlanningBoard({
   const [organizationId, setOrganizationId] = useState(preferredOrganizationId);
   const [schedulingMode, setSchedulingMode] = useState<"single" | "bulk">("single");
   const organizationJobs = jobs.filter((job) => job.organizationId === organizationId);
+  const organizationMachines = machines.filter(
+    (machine) => machine.organizationId === organizationId && machine.status !== "RETIRED",
+  );
   const [form, setForm] = useState(() =>
     createProductionScheduleForm(organizationJobs[0]?.id ?? ""),
   );
@@ -1816,7 +1857,7 @@ function PlanningBoard({
     setForm({
       jobId: schedule.jobId,
       operation: schedule.operation,
-      workCenter: schedule.workCenter,
+      machineId: schedule.machineId ?? "",
       scheduledStartAt: localDateTimeValue(new Date(schedule.scheduledStartAt)),
       scheduledEndAt: localDateTimeValue(new Date(schedule.scheduledEndAt)),
       plannedQty: String(schedule.plannedQty),
@@ -1847,7 +1888,7 @@ function PlanningBoard({
       if (!isRecord(response.schedule)) {
         throw new Error("The server returned an invalid operation schedule.");
       }
-      setStatus("Production schedule saved.");
+      notifyToast("Production schedule saved.");
       setForm(createProductionScheduleForm(organizationJobs[0]?.id ?? ""));
       setEditingScheduleId("");
       onSaved();
@@ -1892,6 +1933,7 @@ function PlanningBoard({
           <BulkScheduleForm
             key={organizationId}
             jobs={organizationJobs}
+            machines={machines}
             onSaved={onSaved}
             organizationId={organizationId}
             schedules={organizationSchedules}
@@ -1948,14 +1990,22 @@ function PlanningBoard({
           </div>
           <div className="production-order-booking-row">
             <label className="production-order-booking-field">
-              Work center
-              <input
-                maxLength={80}
-                onChange={(event) => setForm((current) => ({ ...current, workCenter: event.target.value }))}
-                placeholder="e.g. Die cutter 1"
+              Machine
+              <select
+                disabled={!organizationMachines.length}
+                onChange={(event) => setForm((current) => ({ ...current, machineId: event.currentTarget.value }))}
                 required
-                value={form.workCenter}
-              />
+                value={form.machineId}
+              >
+                <option value="">
+                  {organizationMachines.length ? "Select a machine" : "Register a machine first"}
+                </option>
+                {organizationMachines.map((machine) => (
+                  <option key={machine.id} value={machine.id}>
+                    {machine.machineNo} — {machine.name}
+                  </option>
+                ))}
+              </select>
             </label>
             <label className="production-order-booking-field">
               Planned quantity
@@ -2032,7 +2082,7 @@ function PlanningBoard({
           <div className="production-order-booking-actions">
             <button
               className="production-primary-button"
-              disabled={isSaving || !organizationJobs.length}
+              disabled={isSaving || !organizationJobs.length || !organizationMachines.length}
               type="submit"
             >
               {isSaving ? "Saving…" : editingScheduleId ? "Update schedule" : "Schedule operation"}
@@ -2058,7 +2108,7 @@ function PlanningBoard({
       <section className="production-panel production-list-panel">
         <div className="production-panel-heading">
           <div>
-            <span className="production-panel-kicker">WORK CENTER LOAD</span>
+            <span className="production-panel-kicker">MACHINE LOAD</span>
             <h2>Scheduled operations</h2>
           </div>
           <span className="production-panel-total">{organizationSchedules.length} operations</span>
@@ -2071,7 +2121,7 @@ function PlanningBoard({
                   <th scope="col">Job sheet</th>
                   {productionOrganizations.length > 1 && <th scope="col">Organization</th>}
                   <th scope="col">Operation</th>
-                  <th scope="col">Work center</th>
+                  <th scope="col">Machine</th>
                   <th scope="col">Start</th>
                   <th scope="col">End</th>
                   <th scope="col">Planned qty</th>
@@ -2089,7 +2139,7 @@ function PlanningBoard({
                     </td>
                     {productionOrganizations.length > 1 && <td>{schedule.organizationName}</td>}
                     <td>{schedule.operation}</td>
-                    <td>{schedule.workCenter}</td>
+                    <td>{schedule.machineLabel}</td>
                     <td>{formatScheduleDate(schedule.scheduledStartAt)}</td>
                     <td>{formatScheduleDate(schedule.scheduledEndAt)}</td>
                     <td>{schedule.plannedQty.toLocaleString("en-KE")}</td>
@@ -2113,7 +2163,7 @@ function PlanningBoard({
           <div className="production-empty-state">
             <span className="production-empty-mark" aria-hidden="true"><FiCalendar /></span>
             <h3>No operations scheduled</h3>
-            <p>Schedule a job operation to see work center capacity and timing here.</p>
+            <p>Schedule a job operation to see machine capacity and timing here.</p>
           </div>
         )}
       </section>
@@ -2123,11 +2173,13 @@ function PlanningBoard({
 
 function CorrugatorScheduleForm({
   job,
+  machines,
   existingSchedule,
   onSaved,
   onCancel,
 }: {
   job: ProductionDashboardJob;
+  machines: ProductionDashboardMachine[];
   existingSchedule: ProductionDashboardSchedule | null;
   onSaved: () => void;
   onCancel: () => void;
@@ -2137,7 +2189,7 @@ function CorrugatorScheduleForm({
       return {
         jobId: job.id,
         operation: "Corrugating",
-        workCenter: existingSchedule.workCenter,
+        machineId: existingSchedule.machineId ?? "",
         scheduledStartAt: localDateTimeValue(new Date(existingSchedule.scheduledStartAt)),
         scheduledEndAt: localDateTimeValue(new Date(existingSchedule.scheduledEndAt)),
         plannedQty: String(existingSchedule.plannedQty),
@@ -2148,10 +2200,12 @@ function CorrugatorScheduleForm({
     return {
       ...createProductionScheduleForm(job.id),
       operation: "Corrugating",
-      workCenter: "Corrugator",
       plannedQty: job.orderQty === null ? "" : String(job.orderQty),
     };
   });
+  const availableMachines = machines.filter(
+    (machine) => machine.organizationId === job.organizationId && machine.status !== "RETIRED",
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [status, setStatus] = useState("");
   const [hasError, setHasError] = useState(false);
@@ -2176,6 +2230,7 @@ function CorrugatorScheduleForm({
       if (!isRecord(response.schedule)) {
         throw new Error("The server returned an invalid operation schedule.");
       }
+      notifyToast(existingSchedule ? "Corrugator schedule updated." : "Corrugator schedule created.");
       onSaved();
     } catch (error) {
       setStatus(error instanceof Error ? error.message : String(error));
@@ -2193,13 +2248,22 @@ function CorrugatorScheduleForm({
       </div>
       <div className="production-order-booking-row">
         <label className="production-order-booking-field">
-          Corrugator work center
-          <input
-            maxLength={80}
-            onChange={(event) => setForm((current) => ({ ...current, workCenter: event.target.value }))}
+          Machine
+          <select
+            disabled={!availableMachines.length}
+            onChange={(event) => setForm((current) => ({ ...current, machineId: event.currentTarget.value }))}
             required
-            value={form.workCenter}
-          />
+            value={form.machineId}
+          >
+            <option value="">
+              {availableMachines.length ? "Select a machine" : "Register a machine first"}
+            </option>
+            {availableMachines.map((machine) => (
+              <option key={machine.id} value={machine.id}>
+                {machine.machineNo} — {machine.name}
+              </option>
+            ))}
+          </select>
         </label>
         <label className="production-order-booking-field">
           Planned quantity
@@ -2247,7 +2311,11 @@ function CorrugatorScheduleForm({
         </p>
       )}
       <div className="production-order-booking-actions">
-        <button className="production-primary-button" disabled={isSaving} type="submit">
+        <button
+          className="production-primary-button"
+          disabled={isSaving || !availableMachines.length}
+          type="submit"
+        >
           {isSaving ? "Saving…" : existingSchedule ? "Update schedule" : "Schedule operation"}
         </button>
         <button className="production-text-action" disabled={isSaving} onClick={onCancel} type="button">
@@ -2321,7 +2389,7 @@ function ShopFloorExecutionBoard({
       if (!isRecord(response.run)) {
         throw new Error("The server returned an invalid production report.");
       }
-      setStatus("Production output recorded.");
+      notifyToast("Production output recorded.");
       setSelectedScheduleId("");
       setForm({ goodQty: "0", rejectedQty: "0", notes: "", completeOperation: false });
       onSaved();
@@ -2360,7 +2428,7 @@ function ShopFloorExecutionBoard({
                 <tr>
                   <th scope="col">Job sheet</th>
                   <th scope="col">Operation</th>
-                  <th scope="col">Work center</th>
+                  <th scope="col">Machine</th>
                   <th scope="col">Planned</th>
                   <th scope="col">Good output</th>
                   <th scope="col">Rejected</th>
@@ -2376,7 +2444,7 @@ function ShopFloorExecutionBoard({
                       <small className="production-schedule-job-name">{schedule.jobName || schedule.customer}</small>
                     </td>
                     <td>{schedule.operation}</td>
-                    <td>{schedule.workCenter}</td>
+                    <td>{schedule.machineLabel}</td>
                     <td>{schedule.plannedQty.toLocaleString("en-KE")}</td>
                     <td>{schedule.actualGoodQty.toLocaleString("en-KE")}</td>
                     <td>{schedule.actualRejectedQty.toLocaleString("en-KE")}</td>
@@ -2507,7 +2575,7 @@ function ShopFloorExecutionBoard({
                   <th scope="col">Recorded</th>
                   <th scope="col">Job sheet</th>
                   <th scope="col">Operation</th>
-                  <th scope="col">Work center</th>
+                  <th scope="col">Machine</th>
                   <th scope="col">Good</th>
                   <th scope="col">Rejected</th>
                   <th scope="col">Operator</th>
@@ -2520,7 +2588,7 @@ function ShopFloorExecutionBoard({
                     <td>{formatScheduleDate(run.recordedAt)}</td>
                     <td>{run.jobNo || "—"}</td>
                     <td>{run.operation}</td>
-                    <td>{run.workCenter}</td>
+                    <td>{run.machineLabel}</td>
                     <td>{run.goodQty.toLocaleString("en-KE")}</td>
                     <td>{run.rejectedQty.toLocaleString("en-KE")}</td>
                     <td>{run.recordedByName}</td>
@@ -2771,7 +2839,7 @@ function QualityManagementBoard({
                 .filter((schedule) => schedule.jobId === draft.jobId)
                 .map((schedule) => (
                   <option key={schedule.id} value={schedule.id}>
-                    {schedule.operation} — {schedule.workCenter} ({schedule.status.replaceAll("_", " ")})
+                    {schedule.operation} — {schedule.machineLabel} ({schedule.status.replaceAll("_", " ")})
                   </option>
                 ))}
             </select>
@@ -3075,7 +3143,8 @@ function QualityNonconformanceCard({
         `/api/production/organizations/${encodeURIComponent(organizationId)}/quality/nonconformances/${encodeURIComponent(nonconformance.id)}`,
         { method: "PATCH", body: JSON.stringify(form) },
       );
-      setStatusMessage(form.status === "CLOSED" ? "Nonconformance closed." : "Corrective-action plan saved.");
+      notifyToast(form.status === "CLOSED" ? "Nonconformance closed." : "Corrective-action plan saved.");
+      setStatusMessage("");
       onSaved();
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : String(error));
@@ -3289,7 +3358,7 @@ function ProcurementBoard({
         throw new Error("The server returned an invalid material.");
       }
       setMaterialForm({ name: "", category: "PAPER", unit: "kg", reorderPoint: "0" });
-      setStatus(`Material created with code ${response.material.code}.`);
+      notifyToast(`Material created with code ${response.material.code}.`);
       onSaved();
     } catch (error) {
       setStatus(error instanceof Error ? error.message : String(error));
@@ -3313,7 +3382,7 @@ function ProcurementBoard({
         throw new Error("The server returned an invalid supplier.");
       }
       setSupplierForm({ name: "", contactPerson: "", phone: "", email: "", address: "" });
-      setStatus(`Supplier created with code ${response.supplier.code}.`);
+      notifyToast(`Supplier created with code ${response.supplier.code}.`);
       onSaved();
     } catch (error) {
       setStatus(error instanceof Error ? error.message : String(error));
@@ -3348,7 +3417,7 @@ function ProcurementBoard({
       setExpectedAt("");
       setOrderNotes("");
       setOrderLines([{ materialId: activeMaterials[0]?.id ?? "", quantity: "" }]);
-      setStatus(`Purchase order ${response.purchaseOrder.orderNo} created.`);
+      notifyToast(`Purchase order ${response.purchaseOrder.orderNo} created.`);
       onSaved();
     } catch (error) {
       setStatus(error instanceof Error ? error.message : String(error));
@@ -3389,7 +3458,7 @@ function ProcurementBoard({
       );
       setReceivingOrderId("");
       setReceiptQuantities({});
-      setStatus(`Goods received against ${purchaseOrder.orderNo}.`);
+      notifyToast(`Goods received against ${purchaseOrder.orderNo}.`);
       onSaved();
     } catch (error) {
       setStatus(error instanceof Error ? error.message : String(error));
@@ -4057,7 +4126,7 @@ function PaperReelBoard({
         { method: "POST", body: JSON.stringify({ action: movementAction, ...movementForm }) },
       );
       if (movementAction === "REMNANT" && isRecord(result.child) && typeof result.child.reelNo === "string") {
-        setStatus(`Remnant ${result.child.reelNo} created and linked to ${selectedReel.reelNo}.`);
+        notifyToast(`Remnant ${result.child.reelNo} created and linked to ${selectedReel.reelNo}.`);
       } else {
         setStatus(
           movementAction === "ISSUE"
@@ -4532,7 +4601,7 @@ function JobFlagControl({
       });
       setReason("");
       setIsEditing(false);
-      setStatus("Job flagged.");
+      notifyToast("Job flagged.");
       onChanged?.();
     } catch (error) {
       console.error("Could not flag the production job:", error);
@@ -4551,7 +4620,7 @@ function JobFlagControl({
       await requestProductionJson(`/api/production/jobs/${encodeURIComponent(job.id)}/flag`, {
         method: "PATCH",
       });
-      setStatus("Job flag cleared.");
+      notifyToast("Job flag cleared.");
       onChanged?.();
     } catch (error) {
       console.error("Could not clear the production job flag:", error);
@@ -4772,7 +4841,7 @@ function CreateProductionItemForm({
           setSelectedCustomerId(customer.id);
           onCustomerCreated?.(customer);
           setIsCreatingCustomer(false);
-          setStatus(`Customer ${customer.name} added and selected.`);
+          notifyToast(`Customer ${customer.name} added and selected.`);
           setHasError(false);
         }}
         organizationId={organizationId}
@@ -5086,48 +5155,53 @@ function CreateProductionCustomerForm({
         />
       </label>
       <label className="production-order-booking-field">
-        KRA PIN (optional)
+        KRA PIN{customer ? " (optional)" : ""}
         <input
           autoCapitalize="characters"
           disabled={Boolean(customer)}
           maxLength={20}
           onChange={(event) => setKraPin(event.currentTarget.value)}
+          required={!customer}
           value={kraPin}
         />
       </label>
       <label className="production-order-booking-field">
-        Contact person (optional)
+        Contact person{customer ? " (optional)" : ""}
         <input
           maxLength={120}
           onChange={(event) => setContactPerson(event.currentTarget.value)}
+          required={!customer}
           value={contactPerson}
         />
       </label>
       <div className="production-customer-details-row">
         <label className="production-order-booking-field">
-          Phone (optional)
+          Phone{customer ? " (optional)" : ""}
           <input
             maxLength={40}
             onChange={(event) => setPhone(event.currentTarget.value)}
+            required={!customer}
             type="tel"
             value={phone}
           />
         </label>
         <label className="production-order-booking-field">
-          Email (optional)
+          Email{customer ? " (optional)" : ""}
           <input
             maxLength={254}
             onChange={(event) => setEmail(event.currentTarget.value)}
+            required={!customer}
             type="email"
             value={email}
           />
         </label>
       </div>
       <label className="production-order-booking-field">
-        Address (optional)
+        Address{customer ? " (optional)" : ""}
         <input
           maxLength={300}
           onChange={(event) => setAddress(event.currentTarget.value)}
+          required={!customer}
           value={address}
         />
       </label>
@@ -5487,7 +5561,7 @@ function OrderBookingDialog({
               });
               if (!selectedCustomerId && item.customerId) setSelectedCustomerId(item.customerId);
               setIsCreatingItem(false);
-              setStatus(`Item ${item.itemCode} saved and selected.`);
+              notifyToast(`Item ${item.itemCode} saved and selected.`);
               setHasError(false);
             }}
             organizationId={organizationId}
@@ -5501,7 +5575,7 @@ function OrderBookingDialog({
               );
               setSelectedCustomerId(customer.id);
               setIsCreatingCustomer(false);
-              setStatus(`Customer ${customer.name} added and selected.`);
+              notifyToast(`Customer ${customer.name} added and selected.`);
               setHasError(false);
             }}
             organizationId={organizationId}
@@ -5766,7 +5840,7 @@ function ArtworkUploadButton({
         method: "POST",
         body: JSON.stringify({ pathname: upload.pathname, fileName: file.name }),
       });
-      setStatus("Artwork attached.");
+      notifyToast("Artwork attached.");
       onUploaded?.();
     } catch (error) {
       console.error("Could not attach artwork to the production job:", error);
@@ -5788,7 +5862,7 @@ function ArtworkUploadButton({
         `/api/production/jobs/${encodeURIComponent(job.id)}/artwork`,
         { method: "DELETE" },
       );
-      setStatus("Artwork deleted.");
+      notifyToast("Artwork deleted.");
       onUploaded?.();
     } catch (error) {
       console.error("Could not delete artwork from the production job:", error);
@@ -6057,7 +6131,7 @@ function WarehouseDispatchBoard({
         { method: "POST", body: JSON.stringify(receipt) },
       );
       const pallet = isRecord(result.pallet) ? result.pallet : null;
-      setStatus(
+      notifyToast(
         typeof pallet?.palletNo === "string"
           ? `Pallet ${pallet.palletNo} received into the warehouse.`
           : "Finished goods received into the warehouse.",
@@ -6088,7 +6162,7 @@ function WarehouseDispatchBoard({
         },
       );
       const dispatch = isRecord(result.dispatch) ? result.dispatch : null;
-      setStatus(
+      notifyToast(
         typeof dispatch?.deliveryNoteNo === "string"
           ? `Dispatch created. Delivery note ${dispatch.deliveryNoteNo} is ready to print.`
           : "Finished goods dispatched.",
@@ -6121,7 +6195,7 @@ function WarehouseDispatchBoard({
         `/api/production/organizations/${encodeURIComponent(organizationId)}/warehouse/dispatches/${encodeURIComponent(deliveryDispatchId)}`,
         { method: "PATCH", body: JSON.stringify(deliveryForm) },
       );
-      setStatus("Delivery acknowledgement recorded.");
+      notifyToast("Delivery acknowledgement recorded.");
       setDeliveryDispatchId("");
       setDeliveryForm({ receivedBy: "", deliveryNotes: "" });
       onSaved();
@@ -6546,8 +6620,6 @@ function MaintenanceBoard({
   onSaved: () => void;
 }) {
   const [organizationId, setOrganizationId] = useState(preferredOrganizationId);
-  const [message, setMessage] = useState("");
-  const [hasError, setHasError] = useState(false);
   const orgMachines = machines.filter((machine) => machine.organizationId === organizationId);
   const orgPlans = maintenancePlans.filter((plan) => plan.organizationId === organizationId);
   const orgTickets = maintenanceTickets.filter((ticket) => ticket.organizationId === organizationId);
@@ -6569,16 +6641,13 @@ function MaintenanceBoard({
   ).length;
 
   const showError = (error: unknown, fallback: string) => {
-    setMessage(error instanceof Error ? error.message : fallback);
-    setHasError(true);
+    notifyToast(error instanceof Error ? error.message : fallback, "error");
   };
 
   const createMachine = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = event.currentTarget;
     const data = new FormData(form);
-    setMessage("");
-    setHasError(false);
     try {
       await requestProductionJson(
         `/api/production/organizations/${encodeURIComponent(organizationId)}/maintenance/assets`,
@@ -6594,7 +6663,7 @@ function MaintenanceBoard({
         },
       );
       form.reset();
-      setMessage("Machine registered.");
+      notifyToast("Machine registered.");
       onSaved();
     } catch (error) {
       showError(error, "Could not register machine.");
@@ -6605,8 +6674,6 @@ function MaintenanceBoard({
     event.preventDefault();
     const form = event.currentTarget;
     const data = new FormData(form);
-    setMessage("");
-    setHasError(false);
     try {
       await requestProductionJson(
         `/api/production/organizations/${encodeURIComponent(organizationId)}/maintenance/schedules`,
@@ -6622,7 +6689,7 @@ function MaintenanceBoard({
         },
       );
       form.reset();
-      setMessage("Preventive maintenance plan created.");
+      notifyToast("Preventive maintenance plan created.");
       onSaved();
     } catch (error) {
       showError(error, "Could not create preventive plan.");
@@ -6634,8 +6701,6 @@ function MaintenanceBoard({
     const form = event.currentTarget;
     const data = new FormData(form);
     const ticketType = String(data.get("ticketType") ?? "");
-    setMessage("");
-    setHasError(false);
     try {
       await requestProductionJson(
         `/api/production/organizations/${encodeURIComponent(organizationId)}/maintenance/tickets`,
@@ -6654,7 +6719,7 @@ function MaintenanceBoard({
         },
       );
       form.reset();
-      setMessage("Maintenance ticket opened.");
+      notifyToast("Maintenance ticket opened.");
       onSaved();
     } catch (error) {
       showError(error, "Could not open maintenance ticket.");
@@ -6665,8 +6730,6 @@ function MaintenanceBoard({
     event.preventDefault();
     const form = event.currentTarget;
     const data = new FormData(form);
-    setMessage("");
-    setHasError(false);
     try {
       await requestProductionJson(
         `/api/production/organizations/${encodeURIComponent(organizationId)}/maintenance/tickets/${encodeURIComponent(ticket.id)}`,
@@ -6679,7 +6742,7 @@ function MaintenanceBoard({
           }),
         },
       );
-      setMessage(`${ticket.ticketNo} updated.`);
+      notifyToast(`${ticket.ticketNo} updated.`);
       onSaved();
     } catch (error) {
       showError(error, "Could not update maintenance ticket.");
@@ -6690,8 +6753,6 @@ function MaintenanceBoard({
     event.preventDefault();
     const form = event.currentTarget;
     const data = new FormData(form);
-    setMessage("");
-    setHasError(false);
     try {
       await requestProductionJson(
         `/api/production/organizations/${encodeURIComponent(organizationId)}/maintenance/tickets/${encodeURIComponent(ticket.id)}/parts`,
@@ -6704,7 +6765,7 @@ function MaintenanceBoard({
         },
       );
       form.reset();
-      setMessage(`Spare part issued to ${ticket.ticketNo}.`);
+      notifyToast(`Spare part issued to ${ticket.ticketNo}.`);
       onSaved();
     } catch (error) {
       showError(error, "Could not issue spare part.");
@@ -6712,14 +6773,12 @@ function MaintenanceBoard({
   };
 
   const setPlanActive = async (plan: ProductionDashboardMaintenancePlan, active: boolean) => {
-    setMessage("");
-    setHasError(false);
     try {
       await requestProductionJson(
         `/api/production/organizations/${encodeURIComponent(organizationId)}/maintenance/schedules/${encodeURIComponent(plan.id)}`,
         { method: "PATCH", body: JSON.stringify({ active }) },
       );
-      setMessage(`${plan.taskName} ${active ? "activated" : "paused"}.`);
+      notifyToast(`${plan.taskName} ${active ? "activated" : "paused"}.`);
       onSaved();
     } catch (error) {
       showError(error, "Could not update preventive plan.");
@@ -6732,8 +6791,6 @@ function MaintenanceBoard({
   ) => {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
-    setMessage("");
-    setHasError(false);
     try {
       await requestProductionJson(
         `/api/production/organizations/${encodeURIComponent(organizationId)}/maintenance/assets/${encodeURIComponent(machine.id)}`,
@@ -6745,7 +6802,7 @@ function MaintenanceBoard({
           }),
         },
       );
-      setMessage(`${machine.machineNo} updated.`);
+      notifyToast(`${machine.machineNo} updated.`);
       onSaved();
     } catch (error) {
       showError(error, "Could not update machine.");
@@ -6753,12 +6810,13 @@ function MaintenanceBoard({
   };
 
   return (
-    <div className="production-board-stack">
+    <div className="production-board-stack production-maintenance-board">
       <section className="production-panel production-list-panel">
         <div className="production-panel-heading">
           <div>
-            <span className="production-panel-kicker">ASSETS · PREVENTIVE CARE · BREAKDOWNS</span>
+            <span className="production-panel-kicker">CMMS · ASSET RELIABILITY</span>
             <h2>Maintenance control center</h2>
+            <p>Manage equipment, preventive care, breakdowns, downtime, and spare parts.</p>
           </div>
           <label>
             <span className="sr-only">Production organization</span>
@@ -6775,9 +6833,11 @@ function MaintenanceBoard({
           <article className="production-kpi-card"><span>Overdue PM plans</span><strong>{overduePlans}</strong></article>
           <article className="production-kpi-card"><span>Downtime logged</span><strong>{downtimeMinutes.toLocaleString("en-KE")} min</strong></article>
         </div>
-        {message && <p className={hasError ? "production-order-booking-error" : "production-order-booking-status"} role={hasError ? "alert" : "status"}>{message}</p>}
-        <h3>Register machine / work center</h3>
-        <form className="production-reel-form production-maintenance-form" onSubmit={createMachine}>
+        <h3>Register a machine</h3>
+        <form
+          className="production-reel-form production-maintenance-form production-maintenance-register-form"
+          onSubmit={createMachine}
+        >
           <label><span>Asset number</span><input name="machineNo" required maxLength={60} /></label>
           <label><span>Machine name</span><input name="name" required maxLength={120} /></label>
           <label><span>Machine type</span><input name="machineType" placeholder="Corrugator, flexo, die-cutter…" required maxLength={80} /></label>
@@ -6788,36 +6848,55 @@ function MaintenanceBoard({
 
         <h3>Machine register</h3>
         {orgMachines.length ? (
-          <div className="production-table-scroll">
-            <table className="production-data-table">
-              <thead><tr><th>Asset</th><th>Type</th><th>Work center</th><th>Status</th><th>Location / action</th></tr></thead>
-              <tbody>
-                {orgMachines.map((machine) => (
-                  <tr key={machine.id}>
-                    <td><strong>{machine.machineNo}</strong><small>{machine.name}</small></td>
-                    <td>{machine.machineType}</td>
-                    <td>{machine.workCenter}</td>
-                    <td>{machine.status}</td>
-                    <td>
-                      {machine.status === "MAINTENANCE" ? machine.location || "—" : (
-                        <form
-                          className="production-maintenance-machine-form"
-                          key={`${machine.id}:${machine.status}:${machine.location}`}
-                          onSubmit={(event) => updateMachine(event, machine)}
-                        >
-                          <select name="status" defaultValue={machine.status}>
-                            <option value="ACTIVE">ACTIVE</option>
-                            <option value="RETIRED">RETIRED</option>
-                          </select>
-                          <input name="location" aria-label="Plant or location" defaultValue={machine.location} maxLength={120} />
-                          <button className="production-table-action" type="submit">Save</button>
-                        </form>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="production-machine-register-grid">
+            {orgMachines.map((machine) => (
+              <article className="production-machine-register-card" key={machine.id}>
+                <div className="production-machine-register-heading">
+                  <div>
+                    <span className="production-panel-kicker">{machine.machineType}</span>
+                    <h4>{machine.name}</h4>
+                    <p>{machine.machineNo}</p>
+                  </div>
+                  <span className={`production-machine-status status-${machine.status.toLowerCase()}`}>
+                    {machine.status}
+                  </span>
+                </div>
+                <dl className="production-machine-register-details">
+                  <div>
+                    <dt>Work center</dt>
+                    <dd>{machine.workCenter}</dd>
+                  </div>
+                  <div>
+                    <dt>Plant / location</dt>
+                    <dd>{machine.location || "Not set"}</dd>
+                  </div>
+                </dl>
+                {machine.status === "MAINTENANCE" ? (
+                  <p className="production-machine-maintenance-note">
+                    Status is managed by the active maintenance ticket.
+                  </p>
+                ) : (
+                  <form
+                    className="production-maintenance-machine-form"
+                    key={`${machine.id}:${machine.status}:${machine.location}`}
+                    onSubmit={(event) => updateMachine(event, machine)}
+                  >
+                    <label>
+                      <span>Machine status</span>
+                      <select name="status" defaultValue={machine.status}>
+                        <option value="ACTIVE">Active</option>
+                        <option value="RETIRED">Retired</option>
+                      </select>
+                    </label>
+                    <label>
+                      <span>Plant / location</span>
+                      <input name="location" defaultValue={machine.location} maxLength={120} />
+                    </label>
+                    <button className="production-table-action" type="submit">Save changes</button>
+                  </form>
+                )}
+              </article>
+            ))}
           </div>
         ) : <p className="production-chart-empty">No machine assets registered.</p>}
 
@@ -6883,7 +6962,7 @@ function MaintenanceBoard({
             <select name="operationScheduleId" defaultValue="">
               <option value="">No operation reference</option>
               {orgSchedules.map((schedule) => (
-                <option key={schedule.id} value={schedule.id}>{schedule.jobNo} · {schedule.workCenter} · {schedule.operation}</option>
+                <option key={schedule.id} value={schedule.id}>{schedule.jobNo} · {schedule.machineLabel} · {schedule.operation}</option>
               ))}
             </select>
           </label>
@@ -7063,7 +7142,7 @@ function ToolingManagementBoard({
       );
       form.reset();
       setOwnerType("COMPANY");
-      setStatus("Tooling record created.");
+      notifyToast("Tooling record created.");
       onSaved();
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Could not create tooling record.");
@@ -7087,7 +7166,7 @@ function ToolingManagementBoard({
           }),
         },
       );
-      setStatus(`${tool.toolNo} updated.`);
+      notifyToast(`${tool.toolNo} updated.`);
       onSaved();
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Could not update tooling record.");
@@ -7112,7 +7191,7 @@ function ToolingManagementBoard({
         },
       );
       form.reset();
-      setStatus("Tooling history recorded.");
+      notifyToast("Tooling history recorded.");
       onSaved();
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Could not record tooling history.");
@@ -7369,7 +7448,7 @@ function ProductionInvoiceBoard({
         },
       );
       const invoice = isRecord(result.invoice) ? result.invoice : null;
-      setStatus(
+      notifyToast(
         typeof invoice?.invoiceNo === "string"
           ? `Invoice ${invoice.invoiceNo} issued.`
           : "Invoice issued.",
@@ -7411,7 +7490,7 @@ function ProductionInvoiceBoard({
         `/api/production/organizations/${encodeURIComponent(organizationId)}/invoices/${encodeURIComponent(editor.invoiceId)}/payments`,
         { method: "POST", body: JSON.stringify(paymentForm) },
       );
-      setStatus("Payment recorded against the invoice.");
+      notifyToast("Payment recorded against the invoice.");
       setEditor(null);
       onSaved();
     } catch (error) {
@@ -7433,7 +7512,7 @@ function ProductionInvoiceBoard({
         `/api/production/organizations/${encodeURIComponent(organizationId)}/invoices/${encodeURIComponent(editor.invoiceId)}/credit-notes`,
         { method: "POST", body: JSON.stringify(creditForm) },
       );
-      setStatus("Credit note issued and applied to the invoice balance.");
+      notifyToast("Credit note issued and applied to the invoice balance.");
       setEditor(null);
       onSaved();
     } catch (error) {
@@ -7909,7 +7988,8 @@ function ProductionQuotesBoard({
           }),
         },
       );
-      setStatus(revisionOf ? "Quote revision created as a new draft." : "Draft quote created.");
+      notifyToast(revisionOf ? "Quote revision created as a new draft." : "Draft quote created.");
+      setStatus("");
       resetForm();
       onSaved();
     } catch (error) {
@@ -7933,7 +8013,7 @@ function ProductionQuotesBoard({
         `/api/production/organizations/${encodeURIComponent(quote.organizationId)}/quotes/${encodeURIComponent(quote.id)}`,
         { method: "PATCH", body: JSON.stringify({ action, reason }) },
       );
-      setStatus(
+      notifyToast(
         action === "SUBMIT"
           ? "Quote submitted for approval."
           : action === "APPROVE"
@@ -7978,7 +8058,8 @@ function ProductionQuotesBoard({
       })),
     });
     setIsFormOpen(true);
-    setStatus(`Preparing revision of ${quote.quoteNo} v${quote.version}. Review the cost inputs and expiry before saving.`);
+    notifyToast(`Preparing revision of ${quote.quoteNo} v${quote.version}.`, "info");
+    setStatus("");
     setHasError(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -7994,7 +8075,7 @@ function ProductionQuotesBoard({
         { method: "POST", body: JSON.stringify(conversionForm) },
       );
       const jobCount = Array.isArray(result.jobs) ? result.jobs.length : 0;
-      setStatus(`${quote.quoteNo} converted into ${jobCount} order job${jobCount === 1 ? "" : "s"}.`);
+      notifyToast(`${quote.quoteNo} converted into ${jobCount} order job${jobCount === 1 ? "" : "s"}.`);
       setConversionQuoteId(null);
       onSaved();
     } catch (error) {
@@ -8928,7 +9009,7 @@ export default function ProductionDashboard({
       lines.push("", "PRODUCTION SCHEDULES");
       for (const schedule of jobSheetSchedules) {
         lines.push(
-          `${schedule.operation} — ${schedule.workCenter}`,
+          `${schedule.operation} — ${schedule.machineLabel}`,
           `Status: ${schedule.status.replaceAll("_", " ")} | Planned: ${schedule.plannedQty.toLocaleString("en-KE")} | Good: ${schedule.actualGoodQty.toLocaleString("en-KE")} | Rejected: ${schedule.actualRejectedQty.toLocaleString("en-KE")}`,
           `Start: ${formatScheduleDate(schedule.scheduledStartAt)} | End: ${formatScheduleDate(schedule.scheduledEndAt)}`,
           `Notes: ${schedule.notes || "—"}`,
@@ -9255,6 +9336,7 @@ export default function ProductionDashboard({
                   <CorrugatorScheduleForm
                     existingSchedule={selectedCorrugatorSchedule}
                     job={selectedJob}
+                    machines={machines}
                     onCancel={() => setIsSchedulingCorrugator(false)}
                     onSaved={() => {
                       setIsSchedulingCorrugator(false);
@@ -9339,7 +9421,7 @@ export default function ProductionDashboard({
                               <thead>
                                 <tr>
                                   <th>Operation</th>
-                                  <th>Work center</th>
+                                  <th>Machine</th>
                                   <th>Start</th>
                                   <th>End</th>
                                   <th>Planned</th>
@@ -9353,7 +9435,7 @@ export default function ProductionDashboard({
                                 {jobSheetSchedules.map((schedule) => (
                                   <tr key={schedule.id}>
                                     <td>{schedule.operation}</td>
-                                    <td>{schedule.workCenter}</td>
+                                    <td>{schedule.machineLabel}</td>
                                     <td>{formatScheduleDate(schedule.scheduledStartAt)}</td>
                                     <td>{formatScheduleDate(schedule.scheduledEndAt)}</td>
                                     <td>{schedule.plannedQty.toLocaleString("en-KE")}</td>
@@ -10037,6 +10119,7 @@ export default function ProductionDashboard({
                   <PlanningBoard
                     key={planningOrganizationId}
                     jobs={jobs}
+                    machines={machines}
                     onSaved={() => router.refresh()}
                     organizations={organizations}
                     preferredOrganizationId={planningOrganizationId}
@@ -10367,7 +10450,7 @@ function ProductionHrBoard({
         body: JSON.stringify(body),
       });
       form.reset();
-      setMessage(success);
+      notifyToast(success);
       onSaved();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : String(error));
@@ -10453,7 +10536,7 @@ function ProductionHrBoard({
           }),
         },
       );
-      setMessage("Attendance clock-out recorded.");
+      notifyToast("Attendance clock-out recorded.");
       onSaved();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : String(error));
@@ -10498,7 +10581,7 @@ function ProductionHrBoard({
           }),
         },
       );
-      setMessage(`Leave request ${status.toLowerCase()}.`);
+      notifyToast(`Leave request ${status.toLowerCase()}.`);
       onSaved();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : String(error));

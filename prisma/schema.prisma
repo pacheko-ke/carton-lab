@@ -461,6 +461,7 @@ model ProductionOperationSchedule {
   createdByUserId    String?
   operation          String
   workCenter         String
+  machineId          String?
   scheduledStartAt   DateTime
   scheduledEndAt     DateTime
   plannedQty         Int
@@ -471,6 +472,7 @@ model ProductionOperationSchedule {
   organization       ProductionOrganization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   job                ProductionJob                 @relation(fields: [jobId], references: [id], onDelete: Cascade)
   createdBy          User?                         @relation("ProductionOperationScheduleCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  machine            ProductionMachine?            @relation(fields: [machineId], references: [id], onDelete: SetNull)
   runs               ProductionOperationRun[]
   qualityInspections ProductionQualityInspection[]
   maintenanceTickets ProductionMaintenanceTicket[]
@@ -478,6 +480,7 @@ model ProductionOperationSchedule {
   @@unique([jobId, operation])
   @@index([organizationId, scheduledStartAt])
   @@index([organizationId, workCenter, scheduledStartAt])
+  @@index([machineId, scheduledStartAt])
 }
 
 model ProductionOperationRun {
@@ -614,6 +617,7 @@ model ProductionMachine {
   updatedAt       DateTime                      @updatedAt
   organization    ProductionOrganization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   createdBy       User?                         @relation("ProductionMachineCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  operationSchedules ProductionOperationSchedule[]
   plans           ProductionMaintenancePlan[]
   tickets         ProductionMaintenanceTicket[]
 

@@ -1,6 +1,6 @@
 import {
   canBookProductionOrders,
-  validateProductionCustomer,
+  validateProductionCustomerCreation,
 } from "@/lib/production-data";
 import {
   getProductionOrganizationMembership,
@@ -66,8 +66,11 @@ export async function POST(request: Request, { params }: RouteContext) {
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
-  if (!validateProductionCustomer(body)) {
-    return NextResponse.json({ error: "Invalid customer details" }, { status: 400 });
+  if (!validateProductionCustomerCreation(body)) {
+    return NextResponse.json(
+      { error: "All customer details are required and email must be valid" },
+      { status: 400 },
+    );
   }
 
   const customer = await prisma.productionCustomer.create({

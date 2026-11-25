@@ -181,7 +181,9 @@ async function AuthenticatedProductionAdminPage() {
           organizationId: true,
           jobId: true,
           operation: true,
+          machineId: true,
           workCenter: true,
+          machine: { select: { machineNo: true, name: true } },
           scheduledStartAt: true,
           scheduledEndAt: true,
           plannedQty: true,
@@ -214,6 +216,7 @@ async function AuthenticatedProductionAdminPage() {
             schedule: {
               select: {
                 operation: true,
+                machine: { select: { machineNo: true, name: true } },
                 workCenter: true,
                 job: { select: { data: true } },
               },
@@ -240,6 +243,9 @@ async function AuthenticatedProductionAdminPage() {
       jobNo: job.jobNo,
       jobName: job.jobName,
       customer: job.customer,
+      machineLabel: schedule.machine
+        ? `${schedule.machine.machineNo} — ${schedule.machine.name}`
+        : schedule.workCenter,
       scheduledStartAt: schedule.scheduledStartAt.toISOString(),
       scheduledEndAt: schedule.scheduledEndAt.toISOString(),
       operation: schedule.operation,
@@ -281,7 +287,9 @@ async function AuthenticatedProductionAdminPage() {
       scheduleId: run.scheduleId,
       operation: run.schedule.operation,
       jobNo: textValue(run.schedule.job.data, "jobNo"),
-      workCenter: run.schedule.workCenter,
+      machineLabel: run.schedule.machine
+        ? `${run.schedule.machine.machineNo} — ${run.schedule.machine.name}`
+        : run.schedule.workCenter,
       goodQty: run.goodQty,
       rejectedQty: run.rejectedQty,
       notes: run.notes,

@@ -124,14 +124,20 @@ export async function POST(request: Request, { params }: RouteContext) {
       where: {
         id: body.operationScheduleId,
         organizationId,
-        workCenter: machine.workCenter,
+        OR: [
+          { machineId: machine.id },
+          {
+            machineId: null,
+            workCenter: machine.workCenter,
+          },
+        ],
         ...(jobId ? { jobId } : {}),
       },
       select: { id: true, jobId: true },
     });
     if (!schedule) {
       return NextResponse.json(
-        { error: "Select an operation at this machine's work center and organization" },
+        { error: "Select an operation assigned to this machine in this organization" },
         { status: 404 },
       );
     }

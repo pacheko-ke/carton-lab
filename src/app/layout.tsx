@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import InspectionGuard from "./inspection-guard";
 import ThemeProvider from "./theme-provider";
+import ToastProvider from "./toast-provider";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -31,7 +32,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
 }`}
         </Script>
         <InspectionGuard />
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <ToastProvider>{children}</ToastProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

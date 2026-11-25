@@ -15,6 +15,7 @@ import {
   sanitizeArtworkFileName,
   validateProductionItem,
   validateProductionCustomer,
+  validateProductionCustomerCreation,
   validateProductionQualityInspection,
   validateProductionNonconformanceUpdate,
   validateProductionOrderBooking,
@@ -171,6 +172,25 @@ test("validates shared customer details and optional contact information", () =>
   );
 });
 
+test("requires every customer detail when creating a customer", () => {
+  const customer = {
+    name: "Carton customer",
+    kraPin: "A000000000Z",
+    contactPerson: "Jane Doe",
+    phone: "+254700000000",
+    email: "jane@example.com",
+    address: "Nairobi",
+  };
+  assert.equal(validateProductionCustomerCreation(customer), true);
+  for (const field of ["name", "kraPin", "contactPerson", "phone", "email", "address"]) {
+    assert.equal(validateProductionCustomerCreation({ ...customer, [field]: "" }), false, field);
+    assert.equal(validateProductionCustomerCreation({ ...customer, [field]: " " }), false, field);
+    const incompleteCustomer = { ...customer };
+    delete incompleteCustomer[field];
+    assert.equal(validateProductionCustomerCreation(incompleteCustomer), false, field);
+  }
+});
+
 test("validates organization catalog item fields and dimensions", () => {
   const item = {
     customerId: "customer-123",
@@ -213,7 +233,7 @@ test("validates operation schedules and rejects invalid quantities and time rang
   const schedule = {
     jobId: "job-123",
     operation: PRODUCTION_OPERATIONS[0],
-    workCenter: "Corrugator 1",
+    machineId: "machine-123",
     scheduledStartAt: "2026-11-23T08:00:00.000Z",
     scheduledEndAt: "2026-11-23T09:00:00.000Z",
     plannedQty: "1200",
@@ -221,6 +241,7 @@ test("validates operation schedules and rejects invalid quantities and time rang
     notes: "",
   };
   assert.equal(validateProductionOperationSchedule(schedule), true);
+  assert.equal(validateProductionOperationSchedule({ ...schedule, machineId: "" }), false);
   assert.equal(
     validateProductionOperationSchedule({ ...schedule, scheduledEndAt: schedule.scheduledStartAt }),
     false,
