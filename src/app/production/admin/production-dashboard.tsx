@@ -8344,9 +8344,10 @@ export default function ProductionDashboard({
         })
         .then((result) => {
           const data = result.job?.data;
-          setJobSheetData(data && typeof data === "object" && !Array.isArray(data)
+          const jobDetails = data && typeof data === "object" && !Array.isArray(data)
             ? data as Record<string, unknown>
-            : {});
+            : {};
+          setJobSheetData({ ...jobDetails, workflowStage: job.workflowStage });
         })
         .catch((error) => {
           setJobSheetData(null);
@@ -8765,6 +8766,12 @@ export default function ProductionDashboard({
                     onCancel={() => setIsSchedulingCorrugator(false)}
                     onSaved={() => {
                       setIsSchedulingCorrugator(false);
+                      setSelectedJob((current) =>
+                        current ? { ...current, workflowStage: "Board Production" } : current,
+                      );
+                      setJobSheetData((current) =>
+                        current ? { ...current, workflowStage: "Board Production" } : current,
+                      );
                       router.refresh();
                     }}
                   />

@@ -16,6 +16,7 @@ import {
   isProductionNonconformanceSeverity,
   isProductionNonconformanceStatus,
   isProductionWorkflowStage,
+  PRODUCTION_WORKFLOW_STAGES,
   isRecord,
 } from "@/lib/production-data";
 import { prisma } from "@/lib/prisma";
@@ -247,6 +248,29 @@ async function AuthenticatedProductionAdminPage() {
       actualRejectedQty: operationRunTotalsByScheduleId.get(schedule.id)?._sum.rejectedQty ?? 0,
       runCount: operationRunTotalsByScheduleId.get(schedule.id)?._count._all ?? 0,
     };
+  });
+  const scheduledWorkflowStages = new Map<string, ProductionDashboardJob["workflowStage"]>();
+  for (const schedule of dashboardSchedules) {
+    const targetStage =
+      schedule.operation === "Corrugating"
+        ? "Board Production"
+        : schedule.operation === "Printing"
+          ? "Printing"
+          : null;
+    if (!targetStage) continue;
+    const job = jobsById.get(schedule.jobId);
+    if (!job) continue;
+    const currentStage = scheduledWorkflowStages.get(job.id) ?? job.workflowStage;
+    if (
+      PRODUCTION_WORKFLOW_STAGES.indexOf(targetStage) >
+      PRODUCTION_WORKFLOW_STAGES.indexOf(currentStage)
+    ) {
+      scheduledWorkflowStages.set(job.id, targetStage);
+    }
+  }
+  const dashboardJobsWithScheduledStages = dashboardJobs.map((job) => {
+    const workflowStage = scheduledWorkflowStages.get(job.id);
+    return workflowStage ? { ...job, workflowStage } : job;
   });
   const dashboardOperationRuns: ProductionDashboardRun[] = operationRunRows.map((run) => {
     if (!isProductionOperation(run.schedule.operation)) {
@@ -1181,7 +1205,7 @@ async function AuthenticatedProductionAdminPage() {
       profileQrCode={profileQrCode}
       cartonTypes={cartonTypes}
       organizations={organizations}
-      jobs={dashboardJobs}
+      jobs={dashboardJobsWithScheduledStages}
       schedules={dashboardSchedules}
       operationRuns={dashboardOperationRuns}
       qualityInspections={dashboardQualityInspections}

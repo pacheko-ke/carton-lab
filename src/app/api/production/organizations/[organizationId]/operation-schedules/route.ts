@@ -1,5 +1,7 @@
 import {
   canEditProductionJobs,
+  isProductionWorkflowStage,
+  PRODUCTION_WORKFLOW_STAGES,
   validateProductionOperationSchedule,
 } from "@/lib/production-data";
 import {
@@ -40,11 +42,33 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   const job = await prisma.productionJob.findFirst({
     where: { id: body.jobId, organizationId },
-    select: { id: true },
+    select: { id: true, data: true },
   });
   if (!job) {
     return NextResponse.json({ error: "Production job not found" }, { status: 404 });
   }
+
+  const jobData =
+    job.data !== null && typeof job.data === "object" && !Array.isArray(job.data)
+      ? job.data
+      : null;
+  const currentWorkflowStage =
+    jobData && isProductionWorkflowStage(jobData.workflowStage)
+      ? jobData.workflowStage
+      : null;
+  const targetWorkflowStage =
+    body.operation === "Corrugating"
+      ? "Board Production"
+      : body.operation === "Printing"
+        ? "Printing"
+        : null;
+  const workflowStageUpdate =
+    jobData &&
+    targetWorkflowStage &&
+    PRODUCTION_WORKFLOW_STAGES.indexOf(currentWorkflowStage ?? "Order Booking") <
+      PRODUCTION_WORKFLOW_STAGES.indexOf(targetWorkflowStage)
+      ? { ...jobData, workflowStage: targetWorkflowStage }
+      : null;
 
   const existing = await prisma.productionOperationSchedule.findUnique({
     where: {
@@ -94,30 +118,39 @@ export async function POST(request: Request, { params }: RouteContext) {
     status: body.status,
     notes: body.notes.trim(),
   };
-  const schedule = await prisma.productionOperationSchedule.upsert({
-    where: {
-      jobId_operation: { jobId: job.id, operation: body.operation },
-    },
-    create: {
-      organizationId,
-      jobId: job.id,
-      createdByUserId: user.id,
-      operation: body.operation,
-      ...scheduleData,
-    },
-    update: scheduleData,
-    select: {
-      id: true,
-      jobId: true,
-      operation: true,
-      workCenter: true,
-      scheduledStartAt: true,
-      scheduledEndAt: true,
-      plannedQty: true,
-      status: true,
-      notes: true,
-      updatedAt: true,
-    },
+  const schedule = await prisma.$transaction(async (transaction) => {
+    const savedSchedule = await transaction.productionOperationSchedule.upsert({
+      where: {
+        jobId_operation: { jobId: job.id, operation: body.operation },
+      },
+      create: {
+        organizationId,
+        jobId: job.id,
+        createdByUserId: user.id,
+        operation: body.operation,
+        ...scheduleData,
+      },
+      update: scheduleData,
+      select: {
+        id: true,
+        jobId: true,
+        operation: true,
+        workCenter: true,
+        scheduledStartAt: true,
+        scheduledEndAt: true,
+        plannedQty: true,
+        status: true,
+        notes: true,
+        updatedAt: true,
+      },
+    });
+    if (workflowStageUpdate) {
+      await transaction.productionJob.update({
+        where: { id: job.id },
+        data: { data: workflowStageUpdate },
+      });
+    }
+    return savedSchedule;
   });
 
   return NextResponse.json(
