@@ -111,15 +111,7 @@ export async function GET(request: Request, { params }: RouteContext) {
       }),
       prisma.productionCustomer.findMany({
         orderBy: [{ name: "asc" }, { createdAt: "desc" }],
-        select: {
-          id: true,
-          name: true,
-          kraPin: true,
-          contactPerson: true,
-          phone: true,
-          email: true,
-          address: true,
-        },
+        select: { id: true, name: true },
       }),
     ]);
     return NextResponse.json(

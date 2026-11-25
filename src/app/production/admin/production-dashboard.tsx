@@ -25,7 +25,6 @@ import {
   FiChevronDown,
   FiClipboard,
   FiDollarSign,
-  FiFileText,
   FiFlag,
   FiGrid,
   FiLayers,
@@ -104,6 +103,8 @@ export type ProductionDashboardOrganization = {
   name: string;
   role: "PRODUCTION" | "DESIGNER" | "ORDER_BOOKER";
 };
+
+type ProductionDashboardCustomerSummary = Pick<ProductionDashboardCustomer, "id" | "name">;
 
 export type ProductionDashboardJob = {
   id: string;
@@ -737,7 +738,7 @@ const WORKSPACE_GROUPS: Array<{ id: WorkspaceNavGroup; label: string }> = [
 ];
 
 const WORKSPACE_ITEMS: Array<{
-  id: "overview" | "jobs" | "Order Booking" | "origination" | "quotes" | "planning" | "execution" | "quality" | "Printing" | "customers" | "products" | "procurement" | "inventory" | "reels" | "warehouse" | "invoicing" | "tooling" | "maintenance" | "hr" | "job-sheet";
+  id: "overview" | "jobs" | "Order Booking" | "origination" | "quotes" | "planning" | "execution" | "quality" | "Printing" | "customers" | "products" | "procurement" | "inventory" | "reels" | "warehouse" | "invoicing" | "tooling" | "maintenance" | "hr";
   label: string;
   icon: IconType;
   group: WorkspaceNavGroup;
@@ -749,7 +750,6 @@ const WORKSPACE_ITEMS: Array<{
   { id: "quotes", label: "Costing & quotes", icon: FiDollarSign, group: "orders" },
   { id: "customers", label: "Customers", icon: FiUsers, group: "customers" },
   { id: "products", label: "Products", icon: FiPackage, group: "products" },
-  { id: "job-sheet", label: "Job sheet", icon: FiFileText, group: "orders" },
   { id: "planning", label: "Planning & scheduling", icon: FiCalendar, group: "production" },
   { id: "execution", label: "Shop floor execution", icon: FiActivity, group: "production" },
   { id: "quality", label: "Quality management", icon: FiCheckSquare, group: "production" },
@@ -939,6 +939,10 @@ function isProductionDashboardCustomer(value: unknown): value is ProductionDashb
     (value.phone === null || typeof value.phone === "string") &&
     (value.email === null || typeof value.email === "string") &&
     (value.address === null || typeof value.address === "string");
+}
+
+function isProductionDashboardCustomerSummary(value: unknown): value is ProductionDashboardCustomerSummary {
+  return isRecord(value) && typeof value.id === "string" && typeof value.name === "string";
 }
 
 function ProductionProductCatalog({
@@ -7689,7 +7693,7 @@ function ProductionQuotesBoard({
   const [revisionOf, setRevisionOf] = useState<string | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [items, setItems] = useState<ProductionDashboardItem[]>([]);
-  const [customers, setCustomers] = useState<ProductionDashboardCustomer[]>([]);
+  const [customers, setCustomers] = useState<ProductionDashboardCustomerSummary[]>([]);
   const [catalogLoadedOrganizationId, setCatalogLoadedOrganizationId] = useState("");
   const [catalogRefreshCount, setCatalogRefreshCount] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
@@ -7721,7 +7725,7 @@ function ProductionQuotesBoard({
           throw new Error("The server returned an invalid product or customer list.");
         }
         setItems(catalog.items.filter(isProductionDashboardItem));
-        setCustomers(catalog.customers.filter(isProductionDashboardCustomer));
+        setCustomers(catalog.customers.filter(isProductionDashboardCustomerSummary));
         setCatalogLoadedOrganizationId(organizationId);
       })
       .catch((error) => {
@@ -8504,7 +8508,6 @@ export default function ProductionDashboard({
       !productionOrganizationIds.size
     ) return false;
     if (item.id === "quotes" && !quoteOrganizations.length) return false;
-    if (item.id === "job-sheet" && !canManageJobs) return false;
     if (item.id === "Order Booking" && !canBookOrders) return false;
     if (item.id === "Printing" && !productionOrganizationIds.size) return false;
     if (["customers", "products"].includes(item.id) && !canBookOrders) return false;
