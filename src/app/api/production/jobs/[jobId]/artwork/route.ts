@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { get } from "@vercel/blob";
 import { canAttachProductionArtwork, getArtworkContentType, MAX_ARTWORK_FILE_BYTES, sanitizeArtworkFileName } from "@/lib/production-data";
 import {
@@ -108,6 +109,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     );
   }
 
+  const pathname = body.pathname;
   const blob = await get(body.pathname, { access: "private" });
   if (!blob || blob.statusCode !== 200 || !blob.blob.size || !blob.blob.contentType) {
     return NextResponse.json(
@@ -126,32 +128,77 @@ export async function POST(request: Request, { params }: RouteContext) {
     );
   }
 
-  const attachment = await prisma.productionAttachment.upsert({
-    where: { pathname: body.pathname },
-    create: {
-      jobId,
-      uploadedByUserId: user.id,
-      pathname: body.pathname,
-      originalName: fileName,
-      contentType,
-      size: blob.blob.size,
-    },
-    update: {},
-    select: {
-      id: true,
-      originalName: true,
-      contentType: true,
-      size: true,
-      createdAt: true,
-      jobId: true,
-    },
-  });
-  if (attachment.jobId !== jobId) {
+  let result;
+  try {
+    result = await prisma.$transaction(async (transaction) => {
+      const existingPath = await transaction.productionAttachment.findUnique({
+        where: { pathname },
+        select: {
+          id: true,
+          jobId: true,
+          originalName: true,
+          contentType: true,
+          size: true,
+          createdAt: true,
+        },
+      });
+      if (existingPath) {
+        return existingPath.jobId === jobId
+          ? { attachment: existingPath, created: false as const }
+          : { conflict: true as const };
+      }
+
+      const existingJobArtwork = await transaction.productionAttachment.findFirst({
+        where: { jobId },
+        select: { id: true },
+      });
+      if (existingJobArtwork) return { conflict: true as const };
+
+      const attachment = await transaction.productionAttachment.create({
+        data: {
+          jobId,
+          uploadedByUserId: user.id,
+          pathname,
+          originalName: fileName,
+          contentType,
+          size: blob.blob.size,
+        },
+        select: {
+          id: true,
+          jobId: true,
+          originalName: true,
+          contentType: true,
+          size: true,
+          createdAt: true,
+        },
+      });
+      return { attachment, created: true as const };
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      (error.code === "P2034" || error.code === "P2002")
+    ) {
+      return NextResponse.json(
+        { error: "Only one artwork file can be attached to a job." },
+        { status: 409 },
+      );
+    }
+    throw error;
+  }
+
+  if ("conflict" in result) {
     return NextResponse.json(
-      { error: "Artwork is already attached to another job" },
+      { error: "Only one artwork file can be attached to a job." },
       { status: 409 },
     );
   }
 
-  return NextResponse.json({ attachment }, { status: 201 });
+  return NextResponse.json(
+    { attachment: result.attachment },
+    {
+      status: result.created ? 201 : 200,
+      headers: { "Cache-Control": "private, no-store" },
+    },
+  );
 }

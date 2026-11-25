@@ -9,7 +9,7 @@ import { NextResponse } from "next/server";
 
 type RouteContext = { params: Promise<{ attachmentId: string }> };
 
-export async function GET(_request: Request, { params }: RouteContext) {
+export async function GET(request: Request, { params }: RouteContext) {
   const user = await getVerifiedProductionUser();
   if (!user) {
     return NextResponse.json(
@@ -24,6 +24,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
     select: {
       pathname: true,
       originalName: true,
+      contentType: true,
       size: true,
       job: { select: { organizationId: true } },
     },
@@ -53,13 +54,16 @@ export async function GET(_request: Request, { params }: RouteContext) {
     /['()*]/g,
     (character) => `%${character.charCodeAt(0).toString(16).toUpperCase()}`,
   );
+  const isInlinePdf =
+    new URL(request.url).searchParams.get("preview") === "1" &&
+    attachment.contentType === "application/pdf";
 
   return new NextResponse(blob.stream, {
     headers: {
       "Cache-Control": "private, no-store",
-      "Content-Disposition": `attachment; filename="${fallbackName}"; filename*=UTF-8''${encodedName}`,
+      "Content-Disposition": `${isInlinePdf ? "inline" : "attachment"}; filename="${fallbackName}"; filename*=UTF-8''${encodedName}`,
       "Content-Length": String(attachment.size),
-      "Content-Type": "application/octet-stream",
+      "Content-Type": isInlinePdf ? attachment.contentType : "application/octet-stream",
       "X-Content-Type-Options": "nosniff",
     },
   });

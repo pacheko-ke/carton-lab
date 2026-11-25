@@ -5,6 +5,7 @@ import {
   getVerifiedProductionUser,
   isProductionAdmin,
 } from "@/lib/production-access";
+import { prisma } from "@/lib/prisma";
 import { randomUUID } from "node:crypto";
 import { isPrivateBlobStorageConfigured } from "@/lib/blob-storage";
 import { NextResponse } from "next/server";
@@ -30,6 +31,16 @@ export async function POST(request: Request, { params }: RouteContext) {
     return NextResponse.json(
       { error: "Designer role required to attach artwork" },
       { status: 403 },
+    );
+  }
+  const existingArtwork = await prisma.productionAttachment.findFirst({
+    where: { jobId },
+    select: { id: true },
+  });
+  if (existingArtwork) {
+    return NextResponse.json(
+      { error: "Only one artwork file can be attached to a job." },
+      { status: 409 },
     );
   }
   if (!isPrivateBlobStorageConfigured()) {

@@ -5578,18 +5578,93 @@ input {
   font-size: 12px;
 }
 
-.production-printing-artwork ul {
+.production-printing-artwork-files {
   display: grid;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+  gap: 12px;
 }
 
-.production-printing-artwork a {
-  color: #66d3e8;
-  font-size: 12px;
+.production-printing-artwork-file {
+  overflow: hidden;
+  border: 1px solid rgba(165, 190, 214, 0.18);
+  border-radius: 12px;
+  background: #0c1928;
+}
+
+.production-printing-artwork-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(165, 190, 214, 0.14);
+}
+
+.production-printing-artwork-toolbar > strong,
+.production-printing-artwork-toolbar > div:first-child {
+  min-width: 0;
   overflow-wrap: anywhere;
+}
+
+.production-printing-artwork-toolbar > strong {
+  font-size: 12px;
+}
+
+.production-printing-artwork-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.production-printing-artwork-controls :is(button, a),
+.production-printing-artwork-toolbar > a {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 8px;
+  border: 1px solid rgba(165, 190, 214, 0.22);
+  border-radius: 7px;
+  background: #12263b;
+  color: #b7d5e8;
+  font: inherit;
+  font-size: 11px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.production-printing-artwork-controls :is(button, a):hover,
+.production-printing-artwork-toolbar > a:hover {
+  border-color: rgba(102, 211, 232, 0.55);
+  background: #17334d;
+}
+
+.production-printing-artwork-controls button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.production-printing-artwork-controls output {
+  min-width: 42px;
+  color: #d7e5ef;
+  font-size: 11px;
+  text-align: center;
+}
+
+.production-printing-artwork-pdf {
+  display: block;
+  width: 100%;
+  height: min(72vh, 820px);
+  min-height: 360px;
+  border: 0;
+  background: #ffffff;
+}
+
+.production-artwork-attached {
+  color: #b6cadd;
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .production-printing-artwork p {
@@ -6058,10 +6133,10 @@ input {
 :root[data-theme="light"] {
   color-scheme: light;
   --ink: #203449;
-  --muted: #62758a;
+  --muted: #526579;
   --navy: #f2f6fa;
   --panel: #ffffff;
-  --line: rgba(43, 69, 96, 0.16);
+  --line: rgba(43, 69, 96, 0.24);
 }
 
 :root[data-theme="light"] body {
@@ -6172,6 +6247,27 @@ input {
   color: #29445d;
 }
 
+:root[data-theme="light"] .drawing-caption,
+:root[data-theme="light"] .artwork-legend {
+  color: #526579;
+}
+
+:root[data-theme="light"] .legend-cut {
+  background: #16729e;
+}
+
+:root[data-theme="light"] .legend-crease {
+  border-top-color: #71839a;
+}
+
+:root[data-theme="light"] .artwork-legend .legend-status {
+  color: #176b4a;
+}
+
+:root[data-theme="light"] .artwork-legend .legend-status i {
+  background: #176b4a;
+}
+
 :root[data-theme="light"] .auth-config-notice {
   border-color: #eab9b9;
   background: #fff2f1;
@@ -6180,9 +6276,14 @@ input {
 
 :root[data-theme="light"] .account-page :is(input, select, textarea),
 :root[data-theme="light"] .auth-page :is(input, select, textarea) {
-  border-color: #cbd8e4;
+  border-color: #8295a8;
   background: #ffffff;
   color: #203449;
+}
+
+:root[data-theme="light"] .auth-mini-mark {
+  border-color: #155d89;
+  background: #155d89;
 }
 
 :root[data-theme="light"] .production-dashboard-shell {
@@ -6356,9 +6457,33 @@ input {
 :root[data-theme="light"] .production-dashboard-shell textarea,
 :root[data-theme="light"] .production-maintenance-machine-form input,
 :root[data-theme="light"] .production-maintenance-machine-form select {
-  border-color: #cbd8e4;
+  border-color: #8295a8;
   background: #ffffff;
   color: #203449;
+}
+
+:root[data-theme="light"] .production-dashboard-shell :is(input, textarea)::placeholder,
+:root[data-theme="light"] .auth-page :is(input, textarea)::placeholder,
+:root[data-theme="light"] .account-page :is(input, textarea)::placeholder,
+:root[data-theme="light"] .admin-content :is(input, textarea)::placeholder {
+  color: #526579;
+  opacity: 1;
+}
+
+:root[data-theme="light"] :is(
+  .production-dashboard-shell,
+  .auth-page,
+  .account-page,
+  .admin-content
+) :is(input, select, textarea):focus-visible {
+  border-color: #12699e;
+  outline: 2px solid #12699e;
+  outline-offset: 2px;
+}
+
+:root[data-theme="light"] .production-dashboard-shell button:disabled {
+  color: #526579;
+  opacity: 1;
 }
 
 :root[data-theme="light"] .production-dashboard-shell option {
@@ -6374,6 +6499,18 @@ input {
 :root[data-theme="light"] .production-dashboard-shell td {
   border-color: #e2e9f0;
   color: #40566b;
+}
+
+:root[data-theme="light"] .production-empty-mark {
+  border-color: #b9d8e9;
+  background: #e5f3fb;
+  color: #155d89;
+}
+
+:root[data-theme="light"] .production-notification-count {
+  border-color: #ffffff;
+  background: #b42318;
+  color: #ffffff;
 }
 
 :root[data-theme="light"] .production-dashboard-shell :is(
@@ -6438,6 +6575,43 @@ input {
   color: #126b99;
 }
 
+:root[data-theme="light"] .production-printing-artwork-file {
+  border-color: #cbd8e4;
+  background: #f7fafc;
+}
+
+:root[data-theme="light"] .production-printing-artwork-toolbar {
+  border-bottom-color: #dbe4ec;
+}
+
+:root[data-theme="light"] .production-printing-artwork-controls :is(button, a),
+:root[data-theme="light"] .production-printing-artwork-toolbar > a {
+  border-color: #b9d8e9;
+  background: #e5f3fb;
+  color: #155d89;
+}
+
+:root[data-theme="light"] .production-printing-artwork-controls :is(button, a):hover,
+:root[data-theme="light"] .production-printing-artwork-toolbar > a:hover {
+  border-color: #8dbfdd;
+  background: #d5ebf8;
+}
+
+:root[data-theme="light"] .production-printing-artwork-controls output {
+  color: #29445d;
+}
+
+:root[data-theme="light"] .production-printing-artwork-controls button:disabled {
+  border-color: #cbd8e4;
+  background: #f0f4f7;
+  color: #526579;
+  opacity: 1;
+}
+
+:root[data-theme="light"] .production-artwork-attached {
+  color: #526579;
+}
+
 :root[data-theme="light"] .production-dashboard-shell .production-order-booking-error,
 :root[data-theme="light"] .production-dashboard-shell .production-error,
 :root[data-theme="light"] .production-dashboard-shell .status-rejected {
@@ -6459,7 +6633,7 @@ input {
 }
 
 :root[data-theme="light"] .admin-content :is(input, select, textarea) {
-  border-color: #cbd8e4;
+  border-color: #8295a8;
   background: #ffffff;
   color: #203449;
 }

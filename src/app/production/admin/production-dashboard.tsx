@@ -144,6 +144,13 @@ export type ProductionDashboardSchedule = {
   notes: string;
 };
 
+type ProductionDashboardAttachment = {
+  id: string;
+  originalName: string;
+  contentType: string;
+  size: number;
+};
+
 export type ProductionDashboardRun = {
   id: string;
   organizationId: string;
@@ -5757,6 +5764,10 @@ function ArtworkUploadButton({
     }
   };
 
+  if (job.artworkCount > 0) {
+    return <span className="production-artwork-attached">Artwork attached</span>;
+  }
+
   return (
     <div className="production-artwork-upload">
       <input
@@ -5778,6 +5789,69 @@ function ArtworkUploadButton({
       </button>
       {status && <small aria-live="polite" role={hasError ? "alert" : "status"}>{status}</small>}
     </div>
+  );
+}
+
+function PrintingArtworkViewer({
+  attachment,
+}: {
+  attachment: ProductionDashboardAttachment;
+}) {
+  const [zoom, setZoom] = useState(100);
+  const fileUrl = `/api/production/artwork/${encodeURIComponent(attachment.id)}`;
+  const isPdf = attachment.contentType === "application/pdf";
+  const previewUrl = `${fileUrl}?preview=1#toolbar=1&navpanes=0&zoom=${zoom}`;
+
+  return (
+    <article className="production-printing-artwork-file">
+      {isPdf ? (
+        <>
+          <div className="production-printing-artwork-toolbar">
+            <strong>{attachment.originalName}</strong>
+            <div
+              aria-label={`PDF controls for ${attachment.originalName}`}
+              className="production-printing-artwork-controls"
+              role="group"
+            >
+              <button
+                aria-label="Zoom out"
+                disabled={zoom <= 50}
+                onClick={() => setZoom((current) => Math.max(50, current - 25))}
+                type="button"
+              >
+                −
+              </button>
+              <output aria-live="polite">{zoom}%</output>
+              <button
+                aria-label="Zoom in"
+                disabled={zoom >= 200}
+                onClick={() => setZoom((current) => Math.min(200, current + 25))}
+                type="button"
+              >
+                +
+              </button>
+              <button onClick={() => setZoom(100)} type="button">Reset zoom</button>
+              <a href={previewUrl} rel="noopener" target="_blank">Open in new tab</a>
+              <a download={attachment.originalName} href={fileUrl}>Download</a>
+            </div>
+          </div>
+          <iframe
+            className="production-printing-artwork-pdf"
+            loading="lazy"
+            src={previewUrl}
+            title={`PDF preview: ${attachment.originalName}`}
+          />
+        </>
+      ) : (
+        <div className="production-printing-artwork-toolbar">
+          <div>
+            <strong>{attachment.originalName}</strong>
+            <p>Inline preview is available for PDF artwork.</p>
+          </div>
+          <a download={attachment.originalName} href={fileUrl}>Download artwork</a>
+        </div>
+      )}
+    </article>
   );
 }
 
@@ -8406,12 +8480,7 @@ export default function ProductionDashboard({
   const [jobSheetError, setJobSheetError] = useState("");
   const [jobSheetShareStatus, setJobSheetShareStatus] = useState("");
   const [isSchedulingCorrugator, setIsSchedulingCorrugator] = useState(false);
-  const [printingAttachments, setPrintingAttachments] = useState<Array<{
-    id: string;
-    originalName: string;
-    contentType: string;
-    size: number;
-  }>>([]);
+  const [printingAttachments, setPrintingAttachments] = useState<ProductionDashboardAttachment[]>([]);
   const [printingLoading, setPrintingLoading] = useState(false);
   const [isBookingOrder, setIsBookingOrder] = useState(false);
   const [isCreatingProduct, setIsCreatingProduct] = useState(false);
@@ -8492,7 +8561,8 @@ export default function ProductionDashboard({
     : orderBookingOrganizations.filter((organization) => organization.id === organizationFilter);
   const originationJobs = useMemo(
     () => visibleJobs.filter(
-      (job) => job.workflowStage === "Origination" &&
+      (job) => PRODUCTION_WORKFLOW_STAGES.indexOf(job.workflowStage) <
+          PRODUCTION_WORKFLOW_STAGES.indexOf("Printing") &&
         designerOrganizationIds.has(job.organizationId),
     ),
     [visibleJobs, designerOrganizationIds],
@@ -8528,17 +8598,19 @@ export default function ProductionDashboard({
         !jobsScheduledForProduction.has(job.id),
       );
     }
-    const scheduledOperation = stage === "Printing" ? "Printing" : null;
+    if (stage === "Printing") {
+      return visibleJobs.filter((job) =>
+        !job.flag &&
+        schedules.some((schedule) =>
+          schedule.jobId === job.id &&
+          schedule.operation === "Printing" &&
+          schedule.status !== "COMPLETED",
+        ),
+      );
+    }
     return visibleJobs.filter((job) =>
       (stage === "Origination" || !job.flag) &&
-      (
-        job.workflowStage === stage ||
-        (scheduledOperation !== null && schedules.some((schedule) =>
-          schedule.jobId === job.id &&
-          schedule.operation === scheduledOperation &&
-          schedule.status !== "COMPLETED",
-        ))
-      ),
+      job.workflowStage === stage,
     );
   };
   const boardProductionJobs = jobsForWorkflowStage("Board Production");
@@ -9554,19 +9626,11 @@ export default function ProductionDashboard({
                   <div className="production-printing-artwork">
                     <h3>Artwork</h3>
                     {printingAttachments.length ? (
-                      <ul>
+                      <div className="production-printing-artwork-files">
                         {printingAttachments.map((attachment) => (
-                          <li key={attachment.id}>
-                            <a
-                              href={`/api/production/artwork/${encodeURIComponent(attachment.id)}`}
-                              rel="noopener"
-                              target="_blank"
-                            >
-                              {attachment.originalName}
-                            </a>
-                          </li>
+                          <PrintingArtworkViewer attachment={attachment} key={attachment.id} />
                         ))}
-                      </ul>
+                      </div>
                     ) : (
                       <p>No artwork attached to this job.</p>
                     )}
@@ -9771,7 +9835,7 @@ export default function ProductionDashboard({
                     <span className="production-panel-total">{originationJobs.length} jobs</span>
                   </div>
                   <JobTable
-                    emptyDescription="Planned jobs for your designer organizations will appear here."
+                    emptyDescription="Jobs from booking through board production for your designer organizations will appear here."
                     emptyHeading="No planned jobs"
                     jobs={originationJobs}
                     onOpen={openJob}
