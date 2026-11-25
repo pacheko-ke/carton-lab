@@ -251,15 +251,14 @@ async function AuthenticatedProductionAdminPage() {
   });
   const scheduledWorkflowStages = new Map<string, ProductionDashboardJob["workflowStage"]>();
   for (const schedule of dashboardSchedules) {
-    const targetStage =
-      schedule.operation === "Corrugating"
-        ? "Board Production"
-        : schedule.operation === "Printing"
-          ? "Printing"
-          : null;
+    let targetStage: ProductionDashboardJob["workflowStage"] | null = null;
+    if (schedule.operation === "Corrugating") targetStage = "Board Production";
+    if (schedule.operation === "Printing") {
+      targetStage = schedule.status === "COMPLETED" ? "Dispatch" : "Printing";
+    }
     if (!targetStage) continue;
     const job = jobsById.get(schedule.jobId);
-    if (!job) continue;
+    if (!job || job.flag) continue;
     const currentStage = scheduledWorkflowStages.get(job.id) ?? job.workflowStage;
     if (
       PRODUCTION_WORKFLOW_STAGES.indexOf(targetStage) >

@@ -42,10 +42,20 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   const job = await prisma.productionJob.findFirst({
     where: { id: body.jobId, organizationId },
-    select: { id: true, data: true },
+    select: {
+      id: true,
+      data: true,
+      flag: { select: { resolvedAt: true } },
+    },
   });
   if (!job) {
     return NextResponse.json({ error: "Production job not found" }, { status: 404 });
+  }
+  if (job.flag && !job.flag.resolvedAt) {
+    return NextResponse.json(
+      { error: "Clear the active job flag before scheduling its next operation." },
+      { status: 409 },
+    );
   }
 
   const jobData =

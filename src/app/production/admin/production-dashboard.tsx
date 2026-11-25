@@ -757,15 +757,6 @@ const WORKSPACE_ITEMS: Array<{
   { id: "hr", label: "HR & safety", icon: FiUsers, group: "people" },
 ];
 
-const WORKFLOW_STAGE_ICONS: Record<ProductionWorkflowStage, IconType> = {
-  "Order Booking": FiClipboard,
-  Origination: FiPenTool,
-  "Paper Booking": FiFileText,
-  "Board Production": FiLayers,
-  Printing: FiPrinter,
-  Dispatch: FiTruck,
-};
-
 function dateKey(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
@@ -7989,7 +7980,6 @@ export default function ProductionDashboard({
   const [view, setView] = useState<DashboardView>("overview");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [expandedNavGroup, setExpandedNavGroup] = useState<WorkspaceNavGroup | null>("orders");
-  const [workflowQueuesExpanded, setWorkflowQueuesExpanded] = useState(false);
   const [organizationFilter, setOrganizationFilter] = useState("all");
   const [selectedJob, setSelectedJob] = useState<ProductionDashboardJob | null>(null);
   const handledJobDeepLink = useRef("");
@@ -8059,11 +8049,7 @@ export default function ProductionDashboard({
     setView(nextView);
     setIsMobileMenuOpen(false);
     const group = WORKSPACE_ITEMS.find((item) => item.id === nextView)?.group;
-    if (group) {
-      setExpandedNavGroup(group);
-    } else if (PRODUCTION_WORKFLOW_STAGES.some((stage) => stage === nextView)) {
-      setWorkflowQueuesExpanded(true);
-    }
+    if (group) setExpandedNavGroup(group);
   };
   useEffect(() => {
     if (!isMobileMenuOpen) return;
@@ -8121,15 +8107,22 @@ export default function ProductionDashboard({
   const jobsForWorkflowStage = (stage: ProductionWorkflowStage) => {
     if (stage === "Board Production") {
       return visibleJobs.filter((job) =>
-        job.workflowStage === stage && !jobsScheduledForProduction.has(job.id),
+        !job.flag &&
+        job.workflowStage === stage &&
+        !jobsScheduledForProduction.has(job.id),
       );
     }
     const scheduledOperation = stage === "Printing" ? "Printing" : null;
     return visibleJobs.filter((job) =>
-      job.workflowStage === stage ||
-      (scheduledOperation !== null && schedules.some((schedule) =>
-        schedule.jobId === job.id && schedule.operation === scheduledOperation,
-      )),
+      (stage === "Origination" || !job.flag) &&
+      (
+        job.workflowStage === stage ||
+        (scheduledOperation !== null && schedules.some((schedule) =>
+          schedule.jobId === job.id &&
+          schedule.operation === scheduledOperation &&
+          schedule.status !== "COMPLETED",
+        ))
+      ),
     );
   };
   const boardProductionJobs = jobsForWorkflowStage("Board Production");
@@ -8561,47 +8554,6 @@ export default function ProductionDashboard({
             );
           })}
 
-          <section className="production-nav-group">
-            <button
-              aria-controls="production-workflow-queues"
-              aria-expanded={workflowQueuesExpanded}
-              className="production-nav-group-toggle"
-              onClick={() => setWorkflowQueuesExpanded((expanded) => !expanded)}
-              type="button"
-            >
-              <span>Workflow queues</span>
-              <span className="production-nav-group-count">
-                {PRODUCTION_WORKFLOW_STAGES.filter((stage) =>
-                  stage !== "Dispatch" && stage !== "Printing" && stage !== "Order Booking"
-                ).length}
-              </span>
-              <FiChevronDown className={workflowQueuesExpanded ? "is-expanded" : ""} aria-hidden="true" />
-            </button>
-            {workflowQueuesExpanded && (
-              <div className="production-nav-group-items" id="production-workflow-queues">
-                {PRODUCTION_WORKFLOW_STAGES.map((stage) => {
-                  if (stage === "Dispatch" || stage === "Printing" || stage === "Order Booking") return null;
-                  if (stage === "Origination" && designerOrganizationIds.size > 0) return null;
-                  const StageIcon = WORKFLOW_STAGE_ICONS[stage];
-                  return (
-                    <button
-                      aria-current={view === stage ? "page" : undefined}
-                      className={`production-nav-item${view === stage ? " is-active" : ""}`}
-                      key={stage}
-                      onClick={() => navigateTo(stage)}
-                      type="button"
-                    >
-                      <span className="production-nav-stage" aria-hidden="true"><StageIcon /></span>
-                      {stage}
-                      <span className="production-nav-count">
-                        {stageCounts.find((entry) => entry.stage === stage)?.count ?? 0}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </section>
         </nav>
 
         <div className="production-sidebar-footer">

@@ -1,4 +1,10 @@
-import { canEditProductionJobs, isRecord, validateProductionJobData } from "@/lib/production-data";
+import {
+  canEditProductionJobs,
+  isProductionWorkflowStage,
+  isRecord,
+  PRODUCTION_WORKFLOW_STAGES,
+  validateProductionJobData,
+} from "@/lib/production-data";
 import {
   getAuthorizedProductionJob,
   getVerifiedProductionUser,
@@ -73,12 +79,47 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       { status: 400 },
     );
   }
+  const requestedData = body.data as Prisma.InputJsonObject;
 
-  const job = await prisma.productionJob.update({
-    where: { id: jobId },
-    data: { data: body.data as Prisma.InputJsonObject },
-    select: { id: true, organizationId: true, data: true, createdAt: true, updatedAt: true },
+  const result = await prisma.$transaction(async (transaction) => {
+    const currentJob = await transaction.productionJob.findUnique({
+      where: { id: jobId },
+      select: {
+        data: true,
+        flag: { select: { resolvedAt: true } },
+      },
+    });
+    if (!currentJob) return null;
+
+    const currentStage =
+      isRecord(currentJob.data) && isProductionWorkflowStage(currentJob.data.workflowStage)
+        ? currentJob.data.workflowStage
+        : "Origination";
+    const requestedStage = isProductionWorkflowStage(requestedData.workflowStage)
+      ? requestedData.workflowStage
+      : currentStage;
+    const advancesWorkflow =
+      PRODUCTION_WORKFLOW_STAGES.indexOf(requestedStage) >
+      PRODUCTION_WORKFLOW_STAGES.indexOf(currentStage);
+    if (currentJob.flag && !currentJob.flag.resolvedAt && advancesWorkflow) {
+      return false;
+    }
+
+    return transaction.productionJob.update({
+      where: { id: jobId },
+      data: { data: requestedData },
+      select: { id: true, organizationId: true, data: true, createdAt: true, updatedAt: true },
+    });
   });
+  if (result === null) {
+    return NextResponse.json({ error: "Production job not found" }, { status: 404 });
+  }
+  if (result === false) {
+    return NextResponse.json(
+      { error: "Clear the active job flag before advancing its workflow stage." },
+      { status: 409 },
+    );
+  }
 
-  return NextResponse.json({ job });
+  return NextResponse.json({ job: result });
 }

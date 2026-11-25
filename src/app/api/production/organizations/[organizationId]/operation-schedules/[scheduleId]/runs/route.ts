@@ -6,7 +6,9 @@ import {
 } from "@/lib/production-access";
 import {
   canEditProductionJobs,
+  isProductionWorkflowStage,
   isProductionOperationStatus,
+  PRODUCTION_WORKFLOW_STAGES,
   validateProductionOperationRun,
 } from "@/lib/production-data";
 import { prisma } from "@/lib/prisma";
@@ -46,7 +48,18 @@ export async function POST(request: Request, { params }: RouteContext) {
     const result = await prisma.$transaction(async (transaction) => {
       const schedule = await transaction.productionOperationSchedule.findFirst({
         where: { id: scheduleId, organizationId },
-        select: { id: true, status: true },
+        select: {
+          id: true,
+          status: true,
+          operation: true,
+          job: {
+            select: {
+              id: true,
+              data: true,
+              flag: { select: { resolvedAt: true } },
+            },
+          },
+        },
       });
       if (!schedule) return { error: "Scheduled operation not found", status: 404 as const };
       if (!isProductionOperationStatus(schedule.status)) {
@@ -54,6 +67,12 @@ export async function POST(request: Request, { params }: RouteContext) {
       }
       if (schedule.status === "COMPLETED") {
         return { error: "This operation is already complete", status: 409 as const };
+      }
+      if (schedule.job.flag && !schedule.job.flag.resolvedAt) {
+        return {
+          error: "Clear the active job flag before recording production output.",
+          status: 409 as const,
+        };
       }
 
       const run = await transaction.productionOperationRun.create({
@@ -77,6 +96,28 @@ export async function POST(request: Request, { params }: RouteContext) {
         where: { id: schedule.id },
         data: { status: body.completeOperation ? "COMPLETED" : "IN_PROGRESS" },
       });
+      if (schedule.operation === "Printing" && body.completeOperation) {
+        const jobData =
+          schedule.job.data !== null &&
+          typeof schedule.job.data === "object" &&
+          !Array.isArray(schedule.job.data)
+            ? schedule.job.data
+            : null;
+        const currentStage =
+          jobData && isProductionWorkflowStage(jobData.workflowStage)
+            ? jobData.workflowStage
+            : "Order Booking";
+        if (
+          jobData &&
+          PRODUCTION_WORKFLOW_STAGES.indexOf(currentStage) <
+            PRODUCTION_WORKFLOW_STAGES.indexOf("Dispatch")
+        ) {
+          await transaction.productionJob.update({
+            where: { id: schedule.job.id },
+            data: { data: { ...jobData, workflowStage: "Dispatch" } },
+          });
+        }
+      }
       return { run, status: 201 as const };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
