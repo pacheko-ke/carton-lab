@@ -1025,6 +1025,7 @@ model ProductionCustomer {
   id              String           @id @default(cuid())
   createdByUserId String?
   name            String
+  kraPin          String?
   contactPerson   String?
   phone           String?
   email           String?

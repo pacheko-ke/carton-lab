@@ -667,7 +667,15 @@ async function AuthenticatedProductionAdminPage() {
         prisma.productionCustomer.findMany({
           orderBy: { name: "asc" },
           take: 500,
-          select: { id: true, name: true, contactPerson: true, phone: true, email: true, address: true },
+          select: {
+            id: true,
+            name: true,
+            kraPin: true,
+            contactPerson: true,
+            phone: true,
+            email: true,
+            address: true,
+          },
         }),
       ])
     : [[], []];

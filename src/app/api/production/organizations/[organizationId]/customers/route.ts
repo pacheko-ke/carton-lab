@@ -15,6 +15,7 @@ type RouteContext = { params: Promise<{ organizationId: string }> };
 const customerSelection = {
   id: true,
   name: true,
+  kraPin: true,
   contactPerson: true,
   phone: true,
   email: true,
@@ -73,6 +74,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     data: {
       createdByUserId: access.user.id,
       name: body.name.trim(),
+      kraPin: body.kraPin?.trim().toUpperCase() || null,
       contactPerson: body.contactPerson.trim() || null,
       phone: body.phone.trim() || null,
       email: body.email.trim().toLowerCase() || null,

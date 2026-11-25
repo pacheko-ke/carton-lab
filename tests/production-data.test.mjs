@@ -144,13 +144,18 @@ test("validates multi-line order bookings and line quantities", () => {
 test("validates shared customer details and optional contact information", () => {
   const customer = {
     name: "Carton customer",
+    kraPin: "A000000000Z",
     contactPerson: "Jane Doe",
     phone: "+254700000000",
     email: "jane@example.com",
     address: "Nairobi",
   };
   assert.equal(validateProductionCustomer(customer), true);
+  const legacyCustomer = { ...customer };
+  delete legacyCustomer.kraPin;
+  assert.equal(validateProductionCustomer(legacyCustomer), true);
   assert.equal(validateProductionCustomer({ ...customer, name: " " }), false);
+  assert.equal(validateProductionCustomer({ ...customer, kraPin: "X".repeat(21) }), false);
   assert.equal(validateProductionCustomer({ ...customer, email: "not-an-email" }), false);
   assert.equal(validateProductionCustomer({ ...customer, phone: "x".repeat(41) }), false);
   assert.equal(

@@ -331,6 +331,7 @@ type ProductionOrderLineDraft = {
 export type ProductionDashboardCustomer = {
   id: string;
   name: string;
+  kraPin: string | null;
   contactPerson: string | null;
   phone: string | null;
   email: string | null;
@@ -933,6 +934,7 @@ function isProductionDashboardCustomer(value: unknown): value is ProductionDashb
   return isRecord(value) &&
     typeof value.id === "string" &&
     typeof value.name === "string" &&
+    (value.kraPin === null || typeof value.kraPin === "string") &&
     (value.contactPerson === null || typeof value.contactPerson === "string") &&
     (value.phone === null || typeof value.phone === "string") &&
     (value.email === null || typeof value.email === "string") &&
@@ -943,17 +945,20 @@ function ProductionProductCatalog({
   organizationId,
   customers,
   cartonTypes,
+  canEdit,
   routerRefresh,
 }: {
   organizationId: string;
   customers: ProductionDashboardCustomer[];
   cartonTypes: string[];
+  canEdit: boolean;
   routerRefresh: () => void;
 }) {
   const [items, setItems] = useState<ProductionDashboardItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState("");
   const [isCreating, setIsCreating] = useState(false);
+  const [editingItem, setEditingItem] = useState<ProductionDashboardItem | null>(null);
   const [productSearch, setProductSearch] = useState("");
 
   useEffect(() => {
@@ -994,20 +999,28 @@ function ProductionProductCatalog({
     };
   }, [organizationId]);
 
-  if (isCreating) {
+  if (isCreating || editingItem) {
     return (
       <CreateProductionItemForm
         cartonTypes={cartonTypes}
-        onCancel={() => setIsCreating(false)}
-        onCreated={(item) => {
-          setItems((current) =>
-            [...current, item].sort((left, right) => left.itemCode.localeCompare(right.itemCode)),
-          );
+        item={editingItem ?? undefined}
+        onCancel={() => {
           setIsCreating(false);
+          setEditingItem(null);
+        }}
+        onCreated={(item) => {
+          setItems((current) => {
+            const nextItems = editingItem
+              ? current.map((currentItem) => currentItem.id === item.id ? item : currentItem)
+              : [...current, item];
+            return nextItems.sort((left, right) => left.itemCode.localeCompare(right.itemCode));
+          });
+          setIsCreating(false);
+          setEditingItem(null);
           routerRefresh();
         }}
         organizationId={organizationId}
-        title="Add product"
+        title={editingItem ? "Edit product" : "Add product"}
       />
     );
   }
@@ -1057,6 +1070,7 @@ function ProductionProductCatalog({
                 <th>Carton</th>
                 <th>Board spec</th>
                 <th>Size</th>
+                {canEdit && <th>Actions</th>}
               </tr>
             </thead>
             <tbody>
@@ -1068,6 +1082,17 @@ function ProductionProductCatalog({
                   <td>{item.boxType}</td>
                   <td>{[item.topLiner, item.medium, item.bottomLiner].filter(Boolean).join("/") || "—"}</td>
                   <td>{item.length} × {item.width} × {item.height} {item.unit}</td>
+                  {canEdit && (
+                    <td>
+                      <button
+                        className="production-text-action"
+                        onClick={() => setEditingItem(item)}
+                        type="button"
+                      >
+                        Edit
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -4616,6 +4641,7 @@ function JobFlagControl({
 function CreateProductionItemForm({
   organizationId,
   cartonTypes,
+  item,
   title = "Create an item",
   onCreated,
   onCustomerCreated,
@@ -4623,22 +4649,23 @@ function CreateProductionItemForm({
 }: {
   organizationId: string;
   cartonTypes: string[];
+  item?: ProductionDashboardItem;
   title?: string;
   onCreated: (item: ProductionDashboardItem) => void;
   onCustomerCreated?: (customer: ProductionDashboardCustomer) => void;
   onCancel: () => void;
 }) {
-  const [name, setName] = useState("");
-  const [boxType, setBoxType] = useState("");
+  const [name, setName] = useState(item?.name ?? "");
+  const [boxType, setBoxType] = useState(item?.boxType ?? "");
   const [customers, setCustomers] = useState<ProductionDashboardCustomer[]>([]);
-  const [selectedCustomerId, setSelectedCustomerId] = useState("");
-  const [topLiner, setTopLiner] = useState("");
-  const [medium, setMedium] = useState("");
-  const [bottomLiner, setBottomLiner] = useState("");
-  const [length, setLength] = useState("");
-  const [width, setWidth] = useState("");
-  const [height, setHeight] = useState("");
-  const [unit, setUnit] = useState<"mm" | "in">("mm");
+  const [selectedCustomerId, setSelectedCustomerId] = useState(item?.customerId ?? "");
+  const [topLiner, setTopLiner] = useState(item?.topLiner ?? "");
+  const [medium, setMedium] = useState(item?.medium ?? "");
+  const [bottomLiner, setBottomLiner] = useState(item?.bottomLiner ?? "");
+  const [length, setLength] = useState(item?.length ?? "");
+  const [width, setWidth] = useState(item?.width ?? "");
+  const [height, setHeight] = useState(item?.height ?? "");
+  const [unit, setUnit] = useState<"mm" | "in">(item?.unit ?? "mm");
   const [isLoadingCustomers, setIsLoadingCustomers] = useState(true);
   const [isCreatingCustomer, setIsCreatingCustomer] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -4679,9 +4706,11 @@ function CreateProductionItemForm({
     setHasError(false);
     try {
       const result = await requestProductionJson(
-        `/api/production/organizations/${encodeURIComponent(organizationId)}/items`,
+        item
+          ? `/api/production/organizations/${encodeURIComponent(organizationId)}/items/${encodeURIComponent(item.id)}`
+          : `/api/production/organizations/${encodeURIComponent(organizationId)}/items`,
         {
-          method: "POST",
+          method: item ? "PATCH" : "POST",
           body: JSON.stringify({
             customerId: selectedCustomerId,
             name,
@@ -4883,7 +4912,7 @@ function CreateProductionItemForm({
           disabled={isSaving || isLoadingCustomers}
           type="submit"
         >
-          {isSaving ? "Saving…" : "Save item"}
+          {isSaving ? "Saving…" : item ? "Save changes" : "Save item"}
         </button>
         <button className="production-text-action" disabled={isSaving} onClick={onCancel} type="button">
           Cancel
@@ -4973,18 +5002,21 @@ function CreateProductionItemDialog({
 
 function CreateProductionCustomerForm({
   organizationId,
+  customer,
   onCreated,
   onCancel,
 }: {
   organizationId: string;
+  customer?: ProductionDashboardCustomer;
   onCreated: (customer: ProductionDashboardCustomer) => void;
   onCancel: () => void;
 }) {
-  const [name, setName] = useState("");
-  const [contactPerson, setContactPerson] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-  const [address, setAddress] = useState("");
+  const [name, setName] = useState(customer?.name ?? "");
+  const [kraPin, setKraPin] = useState(customer?.kraPin ?? "");
+  const [contactPerson, setContactPerson] = useState(customer?.contactPerson ?? "");
+  const [phone, setPhone] = useState(customer?.phone ?? "");
+  const [email, setEmail] = useState(customer?.email ?? "");
+  const [address, setAddress] = useState(customer?.address ?? "");
   const [isSaving, setIsSaving] = useState(false);
   const [status, setStatus] = useState("");
 
@@ -4994,10 +5026,12 @@ function CreateProductionCustomerForm({
     setStatus("");
     try {
       const result = await requestProductionJson(
-        `/api/production/organizations/${encodeURIComponent(organizationId)}/customers`,
+        customer
+          ? `/api/production/organizations/${encodeURIComponent(organizationId)}/customers/${encodeURIComponent(customer.id)}`
+          : `/api/production/organizations/${encodeURIComponent(organizationId)}/customers`,
         {
-          method: "POST",
-          body: JSON.stringify({ name, contactPerson, phone, email, address }),
+          method: customer ? "PATCH" : "POST",
+          body: JSON.stringify({ name, kraPin, contactPerson, phone, email, address }),
         },
       );
       if (!isProductionDashboardCustomer(result.customer)) {
@@ -5005,7 +5039,10 @@ function CreateProductionCustomerForm({
       }
       onCreated(result.customer);
     } catch (error) {
-      console.error("Could not create the production customer:", error);
+      console.error(
+        customer ? "Could not update the production customer:" : "Could not create the production customer:",
+        error,
+      );
       setStatus(error instanceof Error ? error.message : String(error));
     } finally {
       setIsSaving(false);
@@ -5014,14 +5051,25 @@ function CreateProductionCustomerForm({
 
   return (
     <form className="production-item-create-form" onSubmit={submitCustomer}>
-      <h3>Add a customer</h3>
+      <h3>{customer ? "Update customer" : "Add a customer"}</h3>
       <label className="production-order-booking-field">
         Customer name
         <input
+          disabled={Boolean(customer)}
           maxLength={120}
           onChange={(event) => setName(event.currentTarget.value)}
           required
           value={name}
+        />
+      </label>
+      <label className="production-order-booking-field">
+        KRA PIN (optional)
+        <input
+          autoCapitalize="characters"
+          disabled={Boolean(customer)}
+          maxLength={20}
+          onChange={(event) => setKraPin(event.currentTarget.value)}
+          value={kraPin}
         />
       </label>
       <label className="production-order-booking-field">
@@ -5063,7 +5111,7 @@ function CreateProductionCustomerForm({
       {status && <p className="production-order-booking-error" role="alert">{status}</p>}
       <div className="production-order-booking-actions">
         <button className="production-primary-button" disabled={isSaving} type="submit">
-          {isSaving ? "Saving…" : "Save customer"}
+          {isSaving ? "Saving…" : customer ? "Save changes" : "Save customer"}
         </button>
         <button className="production-text-action" disabled={isSaving} onClick={onCancel} type="button">
           Cancel
@@ -5077,12 +5125,14 @@ function CreateProductionCustomerDialog({
   open,
   organizations,
   defaultOrganizationId,
+  customer,
   onClose,
   onCreated,
 }: {
   open: boolean;
   organizations: ProductionDashboardOrganization[];
   defaultOrganizationId: string;
+  customer?: ProductionDashboardCustomer;
   onClose: () => void;
   onCreated: (customer: ProductionDashboardCustomer) => void;
 }) {
@@ -5117,10 +5167,10 @@ function CreateProductionCustomerDialog({
       <div className="production-order-booking-content">
         <div className="production-order-booking-heading">
           <span className="production-panel-kicker">CUSTOMER CATALOG</span>
-          <h2 id="production-create-customer-title">Create a customer</h2>
+          <h2 id="production-create-customer-title">{customer ? "Update customer" : "Create a customer"}</h2>
           <p>Customer details are shared across organizations.</p>
         </div>
-        {organizations.length > 1 && (
+        {!customer && organizations.length > 1 && (
           <label className="production-order-booking-field">
             Organization
             <select
@@ -5137,7 +5187,8 @@ function CreateProductionCustomerDialog({
           </label>
         )}
         <CreateProductionCustomerForm
-          key={organizationId}
+          customer={customer}
+          key={`${organizationId}-${customer?.id ?? "new"}`}
           onCancel={onClose}
           onCreated={onCreated}
           organizationId={organizationId}
@@ -5575,6 +5626,7 @@ function OrderBookingDialog({
           {selectedCustomer && (
             <div className="production-order-item-summary">
               <strong>{selectedCustomer.name}</strong>
+              {selectedCustomer.kraPin && <span>KRA PIN: {selectedCustomer.kraPin}</span>}
               {selectedCustomer.contactPerson && <span>Contact: {selectedCustomer.contactPerson}</span>}
               {selectedCustomer.phone && <span>Phone: {selectedCustomer.phone}</span>}
               {selectedCustomer.email && <span>Email: {selectedCustomer.email}</span>}
@@ -8360,6 +8412,7 @@ export default function ProductionDashboard({
   const [isBookingOrder, setIsBookingOrder] = useState(false);
   const [isCreatingProduct, setIsCreatingProduct] = useState(false);
   const [isCreatingCustomer, setIsCreatingCustomer] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState<ProductionDashboardCustomer | null>(null);
   const [productCreationStatus, setProductCreationStatus] = useState("");
   const [customerCreationStatus, setCustomerCreationStatus] = useState("");
   const [isRefreshing, startRefresh] = useTransition();
@@ -9736,13 +9789,22 @@ export default function ProductionDashboard({
                     {canBookOrders && (
                       <button
                         className="production-primary-button"
-                        onClick={() => setIsCreatingCustomer(true)}
+                        onClick={() => {
+                          setCustomerCreationStatus("");
+                          setEditingCustomer(null);
+                          setIsCreatingCustomer(true);
+                        }}
                         type="button"
                       >
                         <FiPlus aria-hidden="true" /> Add customer
                       </button>
                     )}
                   </div>
+                  {customerCreationStatus && (
+                    <p className="production-order-booking-status" role="status">
+                      {customerCreationStatus}
+                    </p>
+                  )}
                   <label className="production-catalog-search">
                     <span>Search customers</span>
                     <input
@@ -9758,6 +9820,7 @@ export default function ProductionDashboard({
                       ? customers.filter((customer) =>
                         [
                           customer.name,
+                          customer.kraPin,
                           customer.contactPerson,
                           customer.phone,
                           customer.email,
@@ -9771,20 +9834,38 @@ export default function ProductionDashboard({
                         <thead>
                           <tr>
                             <th>Customer</th>
+                            <th>KRA PIN</th>
                             <th>Contact person</th>
                             <th>Phone</th>
                             <th>Email</th>
                             <th>Address</th>
+                            {canBookOrders && <th>Actions</th>}
                           </tr>
                         </thead>
                         <tbody>
-                          {customers.map((customer) => (
+                          {filteredCustomers.map((customer) => (
                             <tr key={customer.id}>
                               <td><strong>{customer.name}</strong></td>
+                              <td>{customer.kraPin || "—"}</td>
                               <td>{customer.contactPerson || "—"}</td>
                               <td>{customer.phone || "—"}</td>
                               <td>{customer.email || "—"}</td>
                               <td>{customer.address || "—"}</td>
+                              {canBookOrders && (
+                                <td>
+                                  <button
+                                    className="production-text-action"
+                                    onClick={() => {
+                                      setCustomerCreationStatus("");
+                                      setIsCreatingCustomer(false);
+                                      setEditingCustomer(customer);
+                                    }}
+                                    type="button"
+                                  >
+                                    Edit
+                                  </button>
+                                </td>
+                              )}
                             </tr>
                           ))}
                         </tbody>
@@ -9822,6 +9903,7 @@ export default function ProductionDashboard({
                   </div>
                   <ProductionProductCatalog
                     cartonTypes={cartonTypes}
+                    canEdit={canBookOrders}
                     customers={customers}
                     organizationId={
                       organizationFilter === "all"
@@ -10090,14 +10172,23 @@ export default function ProductionDashboard({
         organizations={productOrganizations}
       />
       <CreateProductionCustomerDialog
+        customer={editingCustomer ?? undefined}
         defaultOrganizationId={defaultOrderBookingOrganizationId}
-        onClose={() => setIsCreatingCustomer(false)}
-        onCreated={(customer) => {
-          setCustomerCreationStatus(`${customer.name} added to the shared catalog.`);
+        onClose={() => {
           setIsCreatingCustomer(false);
+          setEditingCustomer(null);
+        }}
+        onCreated={(customer) => {
+          setCustomerCreationStatus(
+            editingCustomer
+              ? `${customer.name} updated in the shared catalog.`
+              : `${customer.name} added to the shared catalog.`,
+          );
+          setIsCreatingCustomer(false);
+          setEditingCustomer(null);
           router.refresh();
         }}
-        open={isCreatingCustomer}
+        open={isCreatingCustomer || Boolean(editingCustomer)}
         organizations={productOrganizations}
       />
     </div>

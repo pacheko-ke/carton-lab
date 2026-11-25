@@ -356,6 +356,7 @@ export function validateProductionOperationSchedule(
 
 export type ProductionCustomerInput = {
   name: string;
+  kraPin?: string;
   contactPerson: string;
   phone: string;
   email: string;
@@ -370,6 +371,7 @@ export function validateProductionCustomer(value: unknown): value is ProductionC
   if (!isRecord(value)) return false;
   return (
     isNonEmptyString(value.name, 120) &&
+    (value.kraPin === undefined || isBoundedString(value.kraPin, 20)) &&
     isBoundedString(value.contactPerson, 120) &&
     isBoundedString(value.phone, 40) &&
     isBoundedString(value.email, 254) &&
