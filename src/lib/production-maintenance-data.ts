@@ -89,6 +89,66 @@ export type ProductionMaintenancePartInput = {
   quantity: string;
 };
 
+export function getProductionMachineMaintenanceWarnings(
+  machineId: string,
+  scheduledStartAt: string,
+  scheduledEndAt: string,
+  plans: ReadonlyArray<{
+    machineId: string;
+    taskName: string;
+    nextDueAt: string;
+    active: boolean;
+  }>,
+  tickets: ReadonlyArray<{
+    machineId: string;
+    ticketNo: string;
+    status: string;
+    openedAt: string;
+  }>,
+): string[] {
+  if (!machineId) return [];
+
+  const scheduledStart = new Date(scheduledStartAt);
+  const scheduledEnd = new Date(scheduledEndAt);
+  if (
+    Number.isNaN(scheduledStart.getTime()) ||
+    Number.isNaN(scheduledEnd.getTime()) ||
+    scheduledEnd < scheduledStart
+  ) {
+    return [];
+  }
+
+  const localDateKey = (date: Date) => [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
+  const scheduleStartDate = localDateKey(scheduledStart);
+  const scheduleEndDate = localDateKey(scheduledEnd);
+  const warnings = plans
+    .filter((plan) => {
+      if (!plan.active || plan.machineId !== machineId) return false;
+      const dueDate = plan.nextDueAt.slice(0, 10);
+      return dueDate >= scheduleStartDate && dueDate <= scheduleEndDate;
+    })
+    .map((plan) => `Preventive maintenance due ${plan.nextDueAt.slice(0, 10)}: ${plan.taskName}`);
+
+  for (const ticket of tickets) {
+    if (
+      ticket.machineId !== machineId ||
+      (ticket.status !== "OPEN" && ticket.status !== "IN_PROGRESS")
+    ) {
+      continue;
+    }
+    const openedAt = new Date(ticket.openedAt);
+    if (!Number.isNaN(openedAt.getTime()) && openedAt <= scheduledEnd) {
+      warnings.push(`Open maintenance ticket ${ticket.ticketNo} (${ticket.status.replaceAll("_", " ")})`);
+    }
+  }
+
+  return warnings;
+}
+
 export function validateProductionMachine(value: unknown): value is ProductionMachineInput {
   return isRecord(value) &&
     isNonEmptyString(value.machineNo, 60) &&

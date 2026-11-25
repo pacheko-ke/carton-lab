@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  getProductionMachineMaintenanceWarnings,
   isProductionMaintenanceTransitionAllowed,
   validateProductionMachine,
   validateProductionMaintenancePart,
@@ -8,6 +9,61 @@ import {
   validateProductionMaintenanceTicket,
   validateProductionMaintenanceTicketUpdate,
 } from "../src/lib/production-maintenance-data.ts";
+
+test("warns when a scheduled machine has due preventive work or an open ticket", () => {
+  const plans = [
+    {
+      machineId: "machine-1",
+      taskName: "Lubricate bearings",
+      nextDueAt: "2026-12-24",
+      active: true,
+    },
+    {
+      machineId: "machine-2",
+      taskName: "Inspect belts",
+      nextDueAt: "2026-12-24",
+      active: true,
+    },
+  ];
+  const tickets = [
+    {
+      machineId: "machine-1",
+      ticketNo: "MT-001",
+      status: "IN_PROGRESS",
+      openedAt: "2026-12-23T12:00:00.000Z",
+    },
+    {
+      machineId: "machine-1",
+      ticketNo: "MT-002",
+      status: "COMPLETED",
+      openedAt: "2026-12-23T12:00:00.000Z",
+    },
+  ];
+
+  assert.deepEqual(
+    getProductionMachineMaintenanceWarnings(
+      "machine-1",
+      "2026-12-24T08:00",
+      "2026-12-24T10:00",
+      plans,
+      tickets,
+    ),
+    [
+      "Preventive maintenance due 2026-12-24: Lubricate bearings",
+      "Open maintenance ticket MT-001 (IN PROGRESS)",
+    ],
+  );
+  assert.deepEqual(
+    getProductionMachineMaintenanceWarnings(
+      "machine-1",
+      "2026-12-23T08:00",
+      "2026-12-23T10:00",
+      plans,
+      tickets,
+    ),
+    [],
+  );
+});
 
 test("validates machine records and preventive maintenance cadence", () => {
   assert.equal(validateProductionMachine({

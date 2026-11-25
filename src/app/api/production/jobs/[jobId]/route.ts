@@ -1,9 +1,11 @@
 import {
   canEditProductionJobs,
   isProductionWorkflowStage,
+  isProductionOriginationQueueStage,
   isRecord,
   PRODUCTION_WORKFLOW_STAGES,
   validateProductionJobData,
+  validateProductionOriginationPrintDetails,
 } from "@/lib/production-data";
 import {
   getAuthorizedProductionJob,
@@ -60,7 +62,8 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   if (!access) {
     return NextResponse.json({ error: "Production job not found" }, { status: 404 });
   }
-  if (!isAdmin && !canEditProductionJobs(access.membership.role)) {
+  const isOriginationDesigner = access.membership.role === "DESIGNER";
+  if (!isAdmin && !canEditProductionJobs(access.membership.role) && !isOriginationDesigner) {
     return NextResponse.json(
       { error: "Production role required to update jobs" },
       { status: 403 },
@@ -73,7 +76,11 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
-  if (!isRecord(body) || !validateProductionJobData(body.data)) {
+  if (
+    !isRecord(body) ||
+    !validateProductionJobData(body.data) ||
+    (isOriginationDesigner && !isAdmin && !validateProductionOriginationPrintDetails(body.data))
+  ) {
     return NextResponse.json(
       { error: "Invalid production job details" },
       { status: 400 },
@@ -95,6 +102,13 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       isRecord(currentJob.data) && isProductionWorkflowStage(currentJob.data.workflowStage)
         ? currentJob.data.workflowStage
         : "Origination";
+    if (
+      isOriginationDesigner &&
+      !isAdmin &&
+      !isProductionOriginationQueueStage(currentStage)
+    ) {
+      return "forbidden" as const;
+    }
     const requestedStage = isProductionWorkflowStage(requestedData.workflowStage)
       ? requestedData.workflowStage
       : currentStage;
@@ -105,9 +119,16 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       return false;
     }
 
+    const updatedData = isOriginationDesigner && !isAdmin
+      ? {
+          ...(isRecord(currentJob.data) ? currentJob.data : {}),
+          ...requestedData,
+        }
+      : requestedData;
+
     return transaction.productionJob.update({
       where: { id: jobId },
-      data: { data: requestedData },
+      data: { data: updatedData as Prisma.InputJsonObject },
       select: { id: true, organizationId: true, data: true, createdAt: true, updatedAt: true },
     });
   });
@@ -118,6 +139,12 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     return NextResponse.json(
       { error: "Clear the active job flag before advancing its workflow stage." },
       { status: 409 },
+    );
+  }
+  if (result === "forbidden") {
+    return NextResponse.json(
+      { error: "Origination can only update print details before printing begins." },
+      { status: 403 },
     );
   }
 

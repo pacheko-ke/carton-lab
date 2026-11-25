@@ -54,17 +54,21 @@ export async function GET(request: Request, { params }: RouteContext) {
     /['()*]/g,
     (character) => `%${character.charCodeAt(0).toString(16).toUpperCase()}`,
   );
-  const isInlinePdf =
+  const isInlinePreview =
     new URL(request.url).searchParams.get("preview") === "1" &&
-    attachment.contentType === "application/pdf";
+    ["application/pdf", "image/jpeg", "image/png", "image/svg+xml"].includes(attachment.contentType);
+  const isSvgPreview = isInlinePreview && attachment.contentType === "image/svg+xml";
 
   return new NextResponse(blob.stream, {
     headers: {
       "Cache-Control": "private, no-store",
-      "Content-Disposition": `${isInlinePdf ? "inline" : "attachment"}; filename="${fallbackName}"; filename*=UTF-8''${encodedName}`,
+      "Content-Disposition": `${isInlinePreview ? "inline" : "attachment"}; filename="${fallbackName}"; filename*=UTF-8''${encodedName}`,
       "Content-Length": String(attachment.size),
-      "Content-Type": isInlinePdf ? attachment.contentType : "application/octet-stream",
+      "Content-Type": isInlinePreview ? attachment.contentType : "application/octet-stream",
       "X-Content-Type-Options": "nosniff",
+      ...(isSvgPreview
+        ? { "Content-Security-Policy": "sandbox; default-src 'none'; img-src data:; style-src 'unsafe-inline'" }
+        : {}),
     },
   });
 }

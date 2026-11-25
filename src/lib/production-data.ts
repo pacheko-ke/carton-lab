@@ -40,6 +40,24 @@ export const PRODUCTION_OPERATIONS = [
 
 export type ProductionOperation = (typeof PRODUCTION_OPERATIONS)[number];
 
+export const PRODUCTION_ORIGINATION_PRINT_FIELDS = [
+  "printing",
+  "printMethod",
+  "printColor",
+  "inkType",
+  "artwork",
+  "artworkRef",
+  "plateRef",
+  "printArea",
+  "registration",
+  "registrationTolerance",
+  "printPosition",
+  "printInstructions",
+] as const;
+const PRODUCTION_ORIGINATION_PRINT_FIELD_SET = new Set<string>(
+  PRODUCTION_ORIGINATION_PRINT_FIELDS,
+);
+
 export const PRODUCTION_OPERATION_STATUSES = [
   "PLANNED",
   "IN_PROGRESS",
@@ -501,6 +519,7 @@ const JOB_SHEET_FIELD_LIMITS: Record<string, number> = {
   plateRef: 80,
   printArea: 60,
   registration: 30,
+  registrationTolerance: 30,
   printPosition: 80,
   printInstructions: 300,
   packAs: 60,
@@ -594,6 +613,15 @@ export function validateProductionJobData(
   }
 
   return true;
+}
+
+export function validateProductionOriginationPrintDetails(
+  value: unknown,
+): value is Record<string, unknown> {
+  return isRecord(value) &&
+    Object.keys(value).length > 0 &&
+    Object.keys(value).every((key) => PRODUCTION_ORIGINATION_PRINT_FIELD_SET.has(key)) &&
+    validateProductionJobData(value);
 }
 
 export function canEditProductionJobs(role: string): boolean {

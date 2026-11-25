@@ -55,6 +55,7 @@ import {
   PRODUCTION_NONCONFORMANCE_DISPOSITIONS,
   PRODUCTION_NONCONFORMANCE_SEVERITIES,
   PRODUCTION_NONCONFORMANCE_STATUSES,
+  PRODUCTION_ORIGINATION_PRINT_FIELDS,
   PRODUCTION_WORKFLOW_STAGES,
   isProductionOriginationQueueStage,
   isProductionOperation,
@@ -94,6 +95,7 @@ import {
   PRODUCTION_TOOLING_STATUSES,
 } from "@/lib/production-tooling-data";
 import {
+  getProductionMachineMaintenanceWarnings,
   isProductionMaintenanceTransitionAllowed,
   PRODUCTION_MAINTENANCE_PRIORITIES,
   PRODUCTION_MAINTENANCE_TICKET_TYPES,
@@ -816,6 +818,7 @@ function JobTable({
   canFlagJobs = false,
   canResolveJobFlag,
   onFlagChanged,
+  onEditPrintDetails,
 }: {
   jobs: ProductionDashboardJob[];
   onOpen: (job: ProductionDashboardJob) => void;
@@ -831,6 +834,7 @@ function JobTable({
   canFlagJobs?: boolean;
   canResolveJobFlag?: (job: ProductionDashboardJob) => boolean;
   onFlagChanged?: () => void;
+  onEditPrintDetails?: (job: ProductionDashboardJob) => void;
 }) {
   if (!jobs.length) {
     return (
@@ -868,7 +872,7 @@ function JobTable({
             <th scope="col">Organization</th>
             {(showArtwork || showJobSheetActions) && (
               <th scope="col">
-                {showArtwork ? "Attach artwork" : <span className="sr-only">Action</span>}
+                {showArtwork ? "Artwork / print details" : <span className="sr-only">Action</span>}
               </th>
             )}
           </tr>
@@ -901,7 +905,18 @@ function JobTable({
               {(showArtwork || showJobSheetActions) && (
                 <td>
                   {showArtwork ? (
-                    <ArtworkUploadButton job={job} onUploaded={onArtworkUploaded} />
+                    <div className="production-job-row-actions">
+                      <ArtworkUploadButton job={job} onUploaded={onArtworkUploaded} />
+                      {onEditPrintDetails && (
+                        <button
+                          className="production-table-action"
+                          onClick={() => onEditPrintDetails(job)}
+                          type="button"
+                        >
+                          Edit print details
+                        </button>
+                      )}
+                    </div>
                   ) : canOpenJobSheet && (canOpenJobSheetForJob?.(job) ?? true) ? (
                     <button
                       className="production-table-action"
@@ -920,6 +935,169 @@ function JobTable({
         </tbody>
       </table>
     </div>
+  );
+}
+
+type OriginationPrintField =
+  (typeof PRODUCTION_ORIGINATION_PRINT_FIELDS)[number];
+
+const ORIGINATION_PRINT_FIELD_DETAILS: Record<
+  OriginationPrintField,
+  { label: string; maxLength: number; multiline?: boolean }
+> = {
+  printing: { label: "Printing", maxLength: 10 },
+  printMethod: { label: "Printing method", maxLength: 80 },
+  printColor: { label: "Print colour", maxLength: 80 },
+  inkType: { label: "Ink type", maxLength: 60 },
+  artwork: { label: "Artwork description", maxLength: 80 },
+  artworkRef: { label: "Artwork reference", maxLength: 80 },
+  plateRef: { label: "Plate / cylinder", maxLength: 80 },
+  printArea: { label: "Print area", maxLength: 60 },
+  registration: { label: "Registration", maxLength: 30 },
+  registrationTolerance: { label: "Registration tolerance", maxLength: 30 },
+  printPosition: { label: "Print position", maxLength: 80 },
+  printInstructions: { label: "Print instructions", maxLength: 300, multiline: true },
+};
+
+function OriginationPrintDetailsForm({
+  job,
+  onCancel,
+  onSaved,
+}: {
+  job: ProductionDashboardJob;
+  onCancel: () => void;
+  onSaved: () => void;
+}) {
+  const [details, setDetails] = useState<Record<OriginationPrintField, string>>({
+    printing: "",
+    printMethod: "",
+    printColor: "",
+    inkType: "",
+    artwork: "",
+    artworkRef: "",
+    plateRef: "",
+    printArea: "",
+    registration: "",
+    registrationTolerance: "",
+    printPosition: "",
+    printInstructions: "",
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    requestProductionJson(`/api/production/jobs/${encodeURIComponent(job.id)}`, {
+      method: "GET",
+    })
+      .then((result) => {
+        if (!isRecord(result.job) || !isRecord(result.job.data)) {
+          throw new Error("The server returned invalid job details.");
+        }
+        const jobData = result.job.data;
+        if (active) {
+          setDetails({
+            printing: typeof jobData.printing === "string" ? jobData.printing : "",
+            printMethod: typeof jobData.printMethod === "string" ? jobData.printMethod : "",
+            printColor: typeof jobData.printColor === "string" ? jobData.printColor : "",
+            inkType: typeof jobData.inkType === "string" ? jobData.inkType : "",
+            artwork: typeof jobData.artwork === "string" ? jobData.artwork : "",
+            artworkRef: typeof jobData.artworkRef === "string" ? jobData.artworkRef : "",
+            plateRef: typeof jobData.plateRef === "string" ? jobData.plateRef : "",
+            printArea: typeof jobData.printArea === "string" ? jobData.printArea : "",
+            registration: typeof jobData.registration === "string" ? jobData.registration : "",
+            registrationTolerance: typeof jobData.registrationTolerance === "string"
+              ? jobData.registrationTolerance
+              : "",
+            printPosition: typeof jobData.printPosition === "string" ? jobData.printPosition : "",
+            printInstructions: typeof jobData.printInstructions === "string"
+              ? jobData.printInstructions
+              : "",
+          });
+        }
+      })
+      .catch((loadError) => {
+        if (active) {
+          setError(loadError instanceof Error ? loadError.message : "Could not load print details.");
+        }
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [job.id]);
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError("");
+    setIsSaving(true);
+    try {
+      await requestProductionJson(`/api/production/jobs/${encodeURIComponent(job.id)}`, {
+        method: "PATCH",
+        body: JSON.stringify({ data: details }),
+      });
+      onSaved();
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "Could not save print details.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <form className="production-origination-print-form production-planning-form" onSubmit={submit}>
+      <div className="production-order-booking-heading">
+        <h2>Printing details · {job.jobNo || job.jobName || "Selected job"}</h2>
+        <p>Update the print specifications for this job. Other job details remain unchanged.</p>
+      </div>
+      {isLoading ? (
+        <p className="production-quote-message" role="status">Loading print details…</p>
+      ) : (
+        <div className="production-origination-print-fields">
+          {PRODUCTION_ORIGINATION_PRINT_FIELDS.map((field) => {
+            const metadata = ORIGINATION_PRINT_FIELD_DETAILS[field];
+            return (
+              <label className="production-order-booking-field" key={field}>
+                {metadata.label}
+                {metadata.multiline ? (
+                  <textarea
+                    maxLength={metadata.maxLength}
+                    onChange={(event) => setDetails((current) => ({
+                      ...current,
+                      [field]: event.currentTarget.value,
+                    }))}
+                    rows={3}
+                    value={details[field]}
+                  />
+                ) : (
+                  <input
+                    maxLength={metadata.maxLength}
+                    onChange={(event) => setDetails((current) => ({
+                      ...current,
+                      [field]: event.currentTarget.value,
+                    }))}
+                    value={details[field]}
+                  />
+                )}
+              </label>
+            );
+          })}
+        </div>
+      )}
+      {error && <p className="production-order-booking-error" role="alert">{error}</p>}
+      <div className="production-order-booking-actions">
+        <button className="production-table-action" disabled={isSaving} onClick={onCancel} type="button">
+          Cancel
+        </button>
+        <button className="production-primary-button" disabled={isLoading || isSaving} type="submit">
+          {isSaving ? "Saving…" : "Save print details"}
+        </button>
+      </div>
+    </form>
   );
 }
 
@@ -1204,17 +1382,54 @@ type BulkProductionScheduleEntry = {
   plannedQty: string;
 };
 
+function MachineMaintenanceNotice({
+  machineId,
+  scheduledStartAt,
+  scheduledEndAt,
+  plans,
+  tickets,
+}: {
+  machineId: string;
+  scheduledStartAt: string;
+  scheduledEndAt: string;
+  plans: ProductionDashboardMaintenancePlan[];
+  tickets: ProductionDashboardMaintenanceTicket[];
+}) {
+  const warnings = getProductionMachineMaintenanceWarnings(
+    machineId,
+    scheduledStartAt,
+    scheduledEndAt,
+    plans,
+    tickets,
+  );
+  if (!warnings.length) return null;
+
+  return (
+    <div className="production-maintenance-planning-warning" role="status" aria-live="polite">
+      <FiAlertTriangle aria-hidden="true" />
+      <div>
+        <strong>Maintenance conflict for this schedule</strong>
+        <ul>{warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul>
+      </div>
+    </div>
+  );
+}
+
 function BulkScheduleForm({
   organizationId,
   machines,
   jobs,
   schedules,
+  maintenancePlans,
+  maintenanceTickets,
   onSaved,
 }: {
   organizationId: string;
   machines: ProductionDashboardMachine[];
   jobs: ProductionDashboardJob[];
   schedules: ProductionDashboardSchedule[];
+  maintenancePlans: ProductionDashboardMaintenancePlan[];
+  maintenanceTickets: ProductionDashboardMaintenanceTicket[];
   onSaved: () => void;
 }) {
   const [operation, setOperation] = useState<ProductionOperation>(PRODUCTION_OPERATIONS[0]);
@@ -1431,6 +1646,13 @@ function BulkScheduleForm({
                     />
                   </label>
                 </div>
+                <MachineMaintenanceNotice
+                  machineId={machineId}
+                  scheduledStartAt={entry.scheduledStartAt}
+                  scheduledEndAt={entry.scheduledEndAt}
+                  plans={maintenancePlans}
+                  tickets={maintenanceTickets}
+                />
               </fieldset>
             );
           })}
@@ -1474,6 +1696,7 @@ const JOB_SHEET_CORE_FIELDS = new Set([
   "jobNo",
   "jobName",
   "customer",
+  "workflowStage",
   "customerPO",
   "itemCode",
   "itemId",
@@ -1493,19 +1716,82 @@ const JOB_SHEET_FIELD_LABELS: Record<string, string> = {
   itemCode: "Item code",
   workflowStage: "Workflow stage",
   topLiner: "Top liner",
+  medium: "Medium",
   bottomLiner: "Bottom liner",
+  printing: "Printing",
   printColor: "Print colour",
   printMethod: "Printing method",
+  artwork: "Artwork description",
   printPosition: "Print position",
   printArea: "Print area",
   plateRef: "Plate / cylinder",
-  boardGsm: "Board GSM",
+  artworkRef: "Artwork reference",
+  inkType: "Ink type",
+  registrationTolerance: "Registration tolerance",
+  registration: "Registration",
+  printInstructions: "Print instructions",
+  boardGsm: "Nominal board weight",
   bwadd: "B/W add",
   bct: "BCT",
+  slotWidth: "Slot width",
+  jointType: "Joint type",
+  stitches: "Stitches",
+  stitchPosition: "Stitch position",
+  boxSquareness: "Box squareness",
   pcsPerBundle: "Pieces per bundle",
+  packAs: "Pack as",
+  strapping: "Strapping",
+  palletSize: "Pallet size",
   pcsPerPallet: "Pieces per pallet",
   qcApproved: "QC approved",
   dispatchBy: "Dispatched by",
+  deliveryWindow: "Delivery window",
+  deliveryAddress: "Delivery address",
+  deliveryContact: "Delivery contact",
+  specialInstructions: "Special instructions",
+};
+
+const JOB_SHEET_FIELD_SECTIONS: Record<
+  string,
+  "board" | "printing" | "converting" | "quality" | "packing" | "dispatch"
+> = {
+  topLiner: "board",
+  medium: "board",
+  bottomLiner: "board",
+  boardGsm: "board",
+  bwadd: "board",
+  bct: "quality",
+  printColor: "printing",
+  printing: "printing",
+  artwork: "printing",
+  printMethod: "printing",
+  printPosition: "printing",
+  printArea: "printing",
+  plateRef: "printing",
+  artworkRef: "printing",
+  inkType: "printing",
+  registrationTolerance: "printing",
+  registration: "printing",
+  printInstructions: "printing",
+  slotWidth: "converting",
+  jointType: "converting",
+  stitches: "converting",
+  stitchPosition: "converting",
+  boxSquareness: "converting",
+  qcApproved: "quality",
+  sizeTolerance: "quality",
+  sampling: "quality",
+  printCheck: "quality",
+  jointCheck: "quality",
+  packAs: "packing",
+  pcsPerBundle: "packing",
+  strapping: "packing",
+  palletSize: "packing",
+  pcsPerPallet: "packing",
+  dispatchBy: "dispatch",
+  deliveryWindow: "dispatch",
+  deliveryAddress: "dispatch",
+  deliveryContact: "dispatch",
 };
 
 function formatJobSheetFieldLabel(key: string) {
@@ -1813,6 +2099,8 @@ function PlanningBoard({
   jobs,
   machines,
   schedules,
+  maintenancePlans,
+  maintenanceTickets,
   preferredOrganizationId,
   onSaved,
 }: {
@@ -1820,6 +2108,8 @@ function PlanningBoard({
   jobs: ProductionDashboardJob[];
   machines: ProductionDashboardMachine[];
   schedules: ProductionDashboardSchedule[];
+  maintenancePlans: ProductionDashboardMaintenancePlan[];
+  maintenanceTickets: ProductionDashboardMaintenanceTicket[];
   preferredOrganizationId: string;
   onSaved: () => void;
 }) {
@@ -1831,6 +2121,12 @@ function PlanningBoard({
   const organizationJobs = jobs.filter((job) => job.organizationId === organizationId);
   const organizationMachines = machines.filter(
     (machine) => machine.organizationId === organizationId && machine.status !== "RETIRED",
+  );
+  const organizationMaintenancePlans = maintenancePlans.filter(
+    (plan) => plan.organizationId === organizationId,
+  );
+  const organizationMaintenanceTickets = maintenanceTickets.filter(
+    (ticket) => ticket.organizationId === organizationId,
   );
   const [form, setForm] = useState(() =>
     createProductionScheduleForm(organizationJobs[0]?.id ?? ""),
@@ -1934,6 +2230,8 @@ function PlanningBoard({
             key={organizationId}
             jobs={organizationJobs}
             machines={machines}
+            maintenancePlans={organizationMaintenancePlans}
+            maintenanceTickets={organizationMaintenanceTickets}
             onSaved={onSaved}
             organizationId={organizationId}
             schedules={organizationSchedules}
@@ -2018,6 +2316,13 @@ function PlanningBoard({
               />
             </label>
           </div>
+          <MachineMaintenanceNotice
+            machineId={form.machineId}
+            scheduledStartAt={form.scheduledStartAt}
+            scheduledEndAt={form.scheduledEndAt}
+            plans={organizationMaintenancePlans}
+            tickets={organizationMaintenanceTickets}
+          />
           <div className="production-order-booking-row">
             <label className="production-order-booking-field">
               Start
@@ -2174,12 +2479,16 @@ function PlanningBoard({
 function CorrugatorScheduleForm({
   job,
   machines,
+  maintenancePlans,
+  maintenanceTickets,
   existingSchedule,
   onSaved,
   onCancel,
 }: {
   job: ProductionDashboardJob;
   machines: ProductionDashboardMachine[];
+  maintenancePlans: ProductionDashboardMaintenancePlan[];
+  maintenanceTickets: ProductionDashboardMaintenanceTicket[];
   existingSchedule: ProductionDashboardSchedule | null;
   onSaved: () => void;
   onCancel: () => void;
@@ -2205,6 +2514,12 @@ function CorrugatorScheduleForm({
   });
   const availableMachines = machines.filter(
     (machine) => machine.organizationId === job.organizationId && machine.status !== "RETIRED",
+  );
+  const organizationMaintenancePlans = maintenancePlans.filter(
+    (plan) => plan.organizationId === job.organizationId,
+  );
+  const organizationMaintenanceTickets = maintenanceTickets.filter(
+    (ticket) => ticket.organizationId === job.organizationId,
   );
   const [isSaving, setIsSaving] = useState(false);
   const [status, setStatus] = useState("");
@@ -2297,6 +2612,13 @@ function CorrugatorScheduleForm({
           />
         </label>
       </div>
+      <MachineMaintenanceNotice
+        machineId={form.machineId}
+        scheduledStartAt={form.scheduledStartAt}
+        scheduledEndAt={form.scheduledEndAt}
+        plans={organizationMaintenancePlans}
+        tickets={organizationMaintenanceTickets}
+      />
       <label className="production-order-booking-field">
         Notes
         <input
@@ -6603,8 +6925,6 @@ function MaintenanceBoard({
   machines,
   maintenancePlans,
   maintenanceTickets,
-  jobs,
-  schedules,
   materials,
   preferredOrganizationId,
   onSaved,
@@ -6613,8 +6933,6 @@ function MaintenanceBoard({
   machines: ProductionDashboardMachine[];
   maintenancePlans: ProductionDashboardMaintenancePlan[];
   maintenanceTickets: ProductionDashboardMaintenanceTicket[];
-  jobs: ProductionDashboardJob[];
-  schedules: ProductionDashboardSchedule[];
   materials: ProductionDashboardMaterial[];
   preferredOrganizationId: string;
   onSaved: () => void;
@@ -6623,8 +6941,6 @@ function MaintenanceBoard({
   const orgMachines = machines.filter((machine) => machine.organizationId === organizationId);
   const orgPlans = maintenancePlans.filter((plan) => plan.organizationId === organizationId);
   const orgTickets = maintenanceTickets.filter((ticket) => ticket.organizationId === organizationId);
-  const orgJobs = jobs.filter((job) => job.organizationId === organizationId);
-  const orgSchedules = schedules.filter((schedule) => schedule.organizationId === organizationId);
   const orgMaterials = materials.filter(
     (material) => material.organizationId === organizationId &&
       material.active &&
@@ -6710,8 +7026,8 @@ function MaintenanceBoard({
             machineId: String(data.get("machineId") ?? ""),
             ticketType,
             planId: ticketType === "PREVENTIVE" ? String(data.get("planId") ?? "") : "",
-            jobId: String(data.get("jobId") ?? ""),
-            operationScheduleId: String(data.get("operationScheduleId") ?? ""),
+            jobId: "",
+            operationScheduleId: "",
             priority: String(data.get("priority") ?? ""),
             description: String(data.get("description") ?? ""),
             downtimeMinutes: String(data.get("downtimeMinutes") ?? "0"),
@@ -6948,22 +7264,6 @@ function MaintenanceBoard({
             <span>Priority</span>
             <select name="priority" defaultValue="MEDIUM">
               {PRODUCTION_MAINTENANCE_PRIORITIES.map((priority) => <option key={priority} value={priority}>{priority}</option>)}
-            </select>
-          </label>
-          <label>
-            <span>Related job (optional)</span>
-            <select name="jobId" defaultValue="">
-              <option value="">No job reference</option>
-              {orgJobs.map((job) => <option key={job.id} value={job.id}>{job.jobNo} · {job.jobName}</option>)}
-            </select>
-          </label>
-          <label>
-            <span>Scheduled operation (optional)</span>
-            <select name="operationScheduleId" defaultValue="">
-              <option value="">No operation reference</option>
-              {orgSchedules.map((schedule) => (
-                <option key={schedule.id} value={schedule.id}>{schedule.jobNo} · {schedule.machineLabel} · {schedule.operation}</option>
-              ))}
             </select>
           </label>
           <label><span>Initial downtime (minutes)</span><input name="downtimeMinutes" type="number" min="0" max="1000000" defaultValue="0" required /></label>
@@ -8568,6 +8868,109 @@ function ProductionQuotesBoard({
   );
 }
 
+function ProductionJobSheetOperationSummary({
+  schedules,
+  emptyMessage,
+}: {
+  schedules: ProductionDashboardSchedule[];
+  emptyMessage: string;
+}) {
+  if (!schedules.length) {
+    return <p className="production-chart-empty">{emptyMessage}</p>;
+  }
+
+  return (
+    <div className="production-job-sheet-operations">
+      {schedules.map((schedule) => (
+        <article className="production-job-sheet-operation" key={schedule.id}>
+          <div className="production-job-sheet-operation-heading">
+            <strong>{schedule.operation}</strong>
+            <span className={`production-schedule-status status-${schedule.status.toLowerCase()}`}>
+              {schedule.status.replaceAll("_", " ")}
+            </span>
+          </div>
+          <div className="production-printing-details">
+            {[
+              ["Machine", schedule.machineLabel],
+              ["Start", formatScheduleDate(schedule.scheduledStartAt)],
+              ["End", formatScheduleDate(schedule.scheduledEndAt)],
+              ["Planned quantity", schedule.plannedQty.toLocaleString("en-KE")],
+              ["Good quantity", schedule.actualGoodQty.toLocaleString("en-KE")],
+              ["Rejected quantity", schedule.actualRejectedQty.toLocaleString("en-KE")],
+            ].map(([label, value]) => (
+              <div className="production-printing-detail" key={label}>
+                <span>{label}</span>
+                <strong>{value || "—"}</strong>
+              </div>
+            ))}
+          </div>
+          {schedule.notes && <p>{schedule.notes}</p>}
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function ProductionJobSheetFieldGrid({
+  fields,
+}: {
+  fields: Array<[string, string]>;
+}) {
+  return (
+    <div className="production-job-sheet-fields">
+      {fields.map(([label, value]) => (
+        <div className="production-job-sheet-field" key={label}>
+          <span>{label}</span>
+          <strong>{value || "—"}</strong>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ProductionJobSheetArtworkPreviews({
+  attachments,
+}: {
+  attachments: ProductionDashboardAttachment[];
+}) {
+  if (!attachments.length) {
+    return (
+      <p className="production-chart-empty">
+        No artwork is attached to this job.
+      </p>
+    );
+  }
+
+  return (
+    <div className="production-job-sheet-artwork-previews">
+      {attachments.map((attachment, index) => {
+        const fileUrl = `/api/production/artwork/${encodeURIComponent(attachment.id)}`;
+        const canPreview = ["application/pdf", "image/jpeg", "image/png", "image/svg+xml"]
+          .includes(attachment.contentType);
+
+        return (
+          <div className="production-job-sheet-artwork-preview" key={attachment.id}>
+            {canPreview ? (
+              <iframe
+                loading="eager"
+                referrerPolicy="no-referrer"
+                sandbox="allow-scripts"
+                src={`${fileUrl}?preview=1`}
+                title={`Attached artwork preview ${index + 1}`}
+              />
+            ) : (
+              <p>
+                Preview is not available for this file type.{" "}
+                <a download href={fileUrl}>Download attached artwork</a>
+              </p>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function ProductionDashboard({
   accountName,
   cartonTypes,
@@ -8606,10 +9009,12 @@ export default function ProductionDashboard({
   const [expandedNavGroup, setExpandedNavGroup] = useState<WorkspaceNavGroup | null>("orders");
   const [organizationFilter, setOrganizationFilter] = useState("all");
   const [selectedJob, setSelectedJob] = useState<ProductionDashboardJob | null>(null);
+  const [editingOriginationJob, setEditingOriginationJob] = useState<ProductionDashboardJob | null>(null);
   const handledJobDeepLink = useRef("");
   const [customerSearch, setCustomerSearch] = useState("");
   const [printingData, setPrintingData] = useState<Record<string, unknown> | null>(null);
   const [jobSheetData, setJobSheetData] = useState<Record<string, unknown> | null>(null);
+  const [jobSheetAttachments, setJobSheetAttachments] = useState<ProductionDashboardAttachment[]>([]);
   const [jobSheetLoading, setJobSheetLoading] = useState(false);
   const [jobSheetError, setJobSheetError] = useState("");
   const [jobSheetShareStatus, setJobSheetShareStatus] = useState("");
@@ -8787,8 +9192,21 @@ export default function ProductionDashboard({
       .filter((schedule) => schedule.jobId === selectedJob.id)
       .sort((left, right) => left.scheduledStartAt.localeCompare(right.scheduledStartAt))
     : [];
+  const schedulesForOperations = (operations: ProductionOperation[]) =>
+    jobSheetSchedules.filter((schedule) => operations.includes(schedule.operation));
+  const jobSheetBoardSchedules = schedulesForOperations(["Corrugating"]);
+  const jobSheetPrintingSchedules = schedulesForOperations(["Printing"]);
+  const jobSheetConvertingSchedules = schedulesForOperations([
+    "Die Cutting",
+    "Folder Gluing",
+    "Stitching",
+  ]);
+  const jobSheetQualitySchedules = schedulesForOperations(["Quality Control"]);
+  const jobSheetPackingSchedules = schedulesForOperations(["Packing"]);
   const jobSheetScheduleIds = new Set(jobSheetSchedules.map((schedule) => schedule.id));
-  const jobSheetRuns = operationRuns.filter((run) => jobSheetScheduleIds.has(run.scheduleId));
+  const jobSheetRuns = operationRuns
+    .filter((run) => jobSheetScheduleIds.has(run.scheduleId))
+    .sort((left, right) => left.recordedAt.localeCompare(right.recordedAt));
   const jobSheetInspections = selectedJob
     ? qualityInspections.filter((inspection) => inspection.jobId === selectedJob.id)
     : [];
@@ -8809,28 +9227,91 @@ export default function ProductionDashboard({
       .filter((dispatch) => dispatch.jobId === selectedJob.id)
       .sort((left, right) => left.dispatchedAt.localeCompare(right.dispatchedAt))
     : [];
-  const jobSheetCoreDetails: Array<[string, string]> = [
-    ["Job no.", selectedJob?.jobNo ?? ""],
-    ["Job name", selectedJob?.jobName ?? ""],
+  const jobSheetSectionDetails: Record<
+    "board" | "printing" | "converting" | "quality" | "packing" | "dispatch",
+    Array<[string, string]>
+  > = {
+    board: [],
+    printing: [],
+    converting: [],
+    quality: [],
+    packing: [],
+    dispatch: [],
+  };
+  const jobSheetAdditionalDetails: Array<[string, string]> = [];
+  for (const [key, value] of Object.entries(jobSheetData ?? {})) {
+    const formattedValue = formatJobSheetValue(value);
+    if (
+      JOB_SHEET_CORE_FIELDS.has(key) ||
+      key === "instructions" ||
+      key === "specialInstructions" ||
+      !formattedValue
+    ) continue;
+    const section = JOB_SHEET_FIELD_SECTIONS[key];
+    const detail: [string, string] = [formatJobSheetFieldLabel(key), formattedValue];
+    if (section) jobSheetSectionDetails[section].push(detail);
+    else jobSheetAdditionalDetails.push(detail);
+  }
+  const jobSheetValue = (key: string) => formatJobSheetValue(jobSheetData?.[key]);
+  const jobSheetJobDetails: Array<[string, string]> = [
     ["Customer", selectedJob?.customer ?? ""],
-    ["Organization", selectedJob?.organizationName ?? ""],
-    ["Customer PO", typeof jobSheetData?.customerPO === "string" ? jobSheetData.customerPO : ""],
-    ["Item code", typeof jobSheetData?.itemCode === "string" ? jobSheetData.itemCode : ""],
-    ["Carton spec", selectedJob?.cartonSpec ?? ""],
-    ["Size", selectedJob?.size ?? ""],
-    ["Order quantity", selectedJob?.orderQty === null || selectedJob?.orderQty === undefined
-      ? ""
-      : selectedJob.orderQty.toLocaleString("en-KE")],
-    ["Order date", typeof jobSheetData?.orderDate === "string" ? jobSheetData.orderDate : ""],
-    ["Delivery date", selectedJob?.deliveryDate ? formatDate(selectedJob.deliveryDate) : ""],
+    ["Job name", selectedJob?.jobName ?? ""],
+    ["Customer PO no.", jobSheetValue("customerPO")],
+    ["Order date", jobSheetValue("orderDate")],
+    ["Delivery date", selectedJob?.deliveryDate ? formatDate(selectedJob.deliveryDate) : jobSheetValue("deliveryDate")],
+    ["Priority", selectedJob?.priority ?? ""],
   ];
-  const jobSheetAdditionalDetails: Array<[string, string]> = Object.entries(jobSheetData ?? {})
-    .filter(([key, value]) => !JOB_SHEET_CORE_FIELDS.has(key) && formatJobSheetValue(value))
-    .map(([key, value]): [string, string] =>
-      [formatJobSheetFieldLabel(key), formatJobSheetValue(value)],
-    );
-  const jobSheetDetails = [...jobSheetCoreDetails, ...jobSheetAdditionalDetails]
-    .filter(([, value]) => Boolean(value));
+  const jobSheetBoxDetails: Array<[string, string]> = [
+    ["Box type", jobSheetValue("boxType") || selectedJob?.cartonSpec || ""],
+    ["Size (OD) L x W x H", selectedJob?.size ?? ""],
+    ["Plies / flute", jobSheetValue("pliesFlute") || [jobSheetValue("plies"), jobSheetValue("flute")].filter(Boolean).join(", ")],
+    ["Glue flap / slot width", [jobSheetValue("glueFlap"), jobSheetValue("slotWidth")].filter(Boolean).join(" / ")],
+    ["Joint", jobSheetValue("jointType")],
+  ];
+  const jobSheetBoardSpecificationDetails: Array<[string, string]> = [
+    ["Top liner", jobSheetValue("topLiner")],
+    ["Medium (fluting)", jobSheetValue("medium")],
+    ["Bottom liner", jobSheetValue("bottomLiner")],
+    ["Nominal board weight", jobSheetValue("boardGsm")],
+    ["Moisture content", jobSheetValue("moistureContent")],
+    ["Board supplier / batch", jobSheetValue("boardSupplierBatch")],
+  ];
+  const jobSheetBoardCuttingDetails: Array<[string, string]> = [
+    ["Board length (cut-off)", jobSheetValue("boardLength")],
+    ["Board width", jobSheetValue("boardWidth")],
+    ["Creasing dimension", jobSheetValue("creasingDimension")],
+    ["Reel width / ups", jobSheetValue("reelWidthUps")],
+    ["Trim", jobSheetValue("trim")],
+    ["Grain / flute direction", jobSheetValue("grainDirection")],
+    ["B/W add", jobSheetValue("bwadd")],
+  ];
+  const jobSheetBoardKnownLabels = new Set([
+    "Top liner",
+    "Medium",
+    "Bottom liner",
+    "Nominal board weight",
+    "B/W add",
+  ]);
+  const jobSheetBoardAdditionalDetails = jobSheetSectionDetails.board.filter(
+    ([label]) => !jobSheetBoardKnownLabels.has(label),
+  );
+  const jobSheetQuantityDetails: Array<[string, string]> = [
+    ["Order quantity", selectedJob?.orderQty?.toLocaleString("en-KE") ?? ""],
+    ["Production quantity", jobSheetValue("productionQty")],
+    ["Reel run length (approx.)", jobSheetValue("reelRunLength")],
+    ["Spoilage allowance", jobSheetValue("spoilageAllowance")],
+    ["Cuts to run", jobSheetValue("cutsToRun")],
+    ["Board area (approx.)", jobSheetValue("boardArea")],
+  ];
+  const jobSheetDetails = [
+    ...jobSheetJobDetails,
+    ...jobSheetBoxDetails,
+    ...jobSheetBoardSpecificationDetails,
+    ...jobSheetBoardCuttingDetails,
+    ...jobSheetQuantityDetails,
+    ...Object.values(jobSheetSectionDetails).flat(),
+    ...jobSheetAdditionalDetails,
+  ].filter(([, value]) => Boolean(value));
   const barMax = Math.max(1, ...stageCounts.map(({ count }) => count));
   const deliveryDays = Array.from({ length: 7 }, (_, index) => {
     const date = new Date(today);
@@ -8950,21 +9431,36 @@ export default function ProductionDashboard({
       setView(isOrderBooking ? "order-detail" : "job-sheet");
       setJobSheetLoading(true);
       setJobSheetData(null);
+      setJobSheetAttachments([]);
       setJobSheetError("");
-      void fetch(`/api/production/jobs/${encodeURIComponent(job.id)}`, { cache: "no-store" })
+      const jobRequest = fetch(`/api/production/jobs/${encodeURIComponent(job.id)}`, { cache: "no-store" })
         .then(async (response) => {
           if (!response.ok) throw new Error(isOrderBooking ? "Could not load order details." : "Could not load job sheet.");
           return response.json();
-        })
-        .then((result) => {
+        });
+      const artworkRequest = isOrderBooking
+        ? Promise.resolve(null)
+        : fetch(`/api/production/jobs/${encodeURIComponent(job.id)}/artwork`, { cache: "no-store" })
+          .then(async (response) => {
+            if (!response.ok) throw new Error("Could not load job-sheet artwork.");
+            return response.json();
+          });
+      void Promise.all([jobRequest, artworkRequest])
+        .then(([result, artworkResult]) => {
           const data = result.job?.data;
           const jobDetails = data && typeof data === "object" && !Array.isArray(data)
             ? data as Record<string, unknown>
             : {};
           setJobSheetData({ ...jobDetails, workflowStage: job.workflowStage });
+          setJobSheetAttachments(
+            artworkResult && Array.isArray(artworkResult.attachments)
+              ? artworkResult.attachments
+              : [],
+          );
         })
         .catch((error) => {
           setJobSheetData(null);
+          setJobSheetAttachments([]);
           setJobSheetError(error instanceof Error ? error.message : "Could not load job details.");
         })
         .finally(() => setJobSheetLoading(false));
@@ -9231,6 +9727,7 @@ export default function ProductionDashboard({
                 onChange={(event) => {
                   setOrganizationFilter(event.target.value);
                   setSelectedJob(null);
+                  setEditingOriginationJob(null);
                   setProductCreationStatus("");
                   setCustomerCreationStatus("");
                 }}
@@ -9337,6 +9834,8 @@ export default function ProductionDashboard({
                     existingSchedule={selectedCorrugatorSchedule}
                     job={selectedJob}
                     machines={machines}
+                    maintenancePlans={maintenancePlans}
+                    maintenanceTickets={maintenanceTickets}
                     onCancel={() => setIsSchedulingCorrugator(false)}
                     onSaved={() => {
                       setIsSchedulingCorrugator(false);
@@ -9358,7 +9857,7 @@ export default function ProductionDashboard({
                 className="production-panel production-list-panel production-job-sheet"
                 id="production-job-sheet"
               >
-                <div className="production-panel-heading">
+                <div className="production-panel-heading production-no-print">
                   <div>
                     <span className="production-panel-kicker">JOB SHEET</span>
                     <h2>{selectedJob?.jobName || selectedJob?.jobNo || "Production job sheet"}</h2>
@@ -9399,96 +9898,157 @@ export default function ProductionDashboard({
                 ) : jobSheetError ? (
                   <p className="production-order-booking-error" role="alert">{jobSheetError}</p>
                 ) : (
-                  <>
-                    <section className="production-job-sheet-section">
-                      <h3>Order and production specifications</h3>
-                      <div className="production-printing-details">
-                        {jobSheetDetails.map(([label, value]) => (
-                          <div className="production-printing-detail" key={label}>
-                            <span>{label}</span>
-                            <strong>{value || "—"}</strong>
+                  <div className="production-job-sheet-template">
+                    <div className="production-job-sheet-page">
+                      <header className="production-job-sheet-template-header">
+                        <div>
+                          <h1>JOB SHEET</h1>
+                          <p>Production copy · internal · no prices</p>
+                        </div>
+                        <dl>
+                          <div><dt>No.</dt><dd>{selectedJob?.jobNo || "—"}</dd></div>
+                          <div>
+                            <dt>Issued</dt>
+                            <dd>{new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" }).format(new Date())}</dd>
                           </div>
-                        ))}
-                      </div>
+                        </dl>
+                      </header>
+                    <section className="production-job-sheet-section">
+                      <h3>JOB</h3>
+                      <ProductionJobSheetFieldGrid fields={jobSheetJobDetails} />
                     </section>
 
                     <section className="production-job-sheet-section">
-                      <h3>Production schedule and output</h3>
-                      {jobSheetSchedules.length ? (
-                        <>
+                      <h3>BOX SPECIFICATION</h3>
+                      <ProductionJobSheetFieldGrid fields={jobSheetBoxDetails} />
+                    </section>
+
+                    <section className="production-job-sheet-section">
+                      <h3>KEYLINE</h3>
+                      <ProductionJobSheetArtworkPreviews attachments={jobSheetAttachments} />
+                    </section>
+
+                    <section className="production-job-sheet-section">
+                      <h3>BOARD SPECIFICATION</h3>
+                      <ProductionJobSheetFieldGrid fields={jobSheetBoardSpecificationDetails} />
+                      {jobSheetBoardAdditionalDetails.length > 0 && (
+                        <ProductionJobSheetFieldGrid fields={jobSheetBoardAdditionalDetails} />
+                      )}
+                      <div className="production-job-sheet-subsection">
+                        <h4>BOARD &amp; CUTTING</h4>
+                        <ProductionJobSheetFieldGrid fields={jobSheetBoardCuttingDetails} />
+                      </div>
+                      <div className="production-job-sheet-subsection">
+                        <h4>QUANTITY &amp; MATERIAL REQUIREMENT</h4>
+                        <ProductionJobSheetFieldGrid fields={jobSheetQuantityDetails} />
+                      </div>
+                      <div className="production-job-sheet-subsection">
+                        <h4>Corrugating schedule</h4>
+                        <ProductionJobSheetOperationSummary
+                          emptyMessage="No corrugating operation has been scheduled."
+                          schedules={jobSheetBoardSchedules}
+                        />
+                      </div>
+                      <div className="production-job-sheet-subsection">
+                        <h4>Board and material movements</h4>
+                        {jobSheetStockMovements.length || jobSheetReelMovements.length ? (
                           <div className="production-table-scroll">
-                            <table className="production-jobs-table production-schedule-table">
+                            <table className="production-jobs-table">
                               <thead>
                                 <tr>
-                                  <th>Operation</th>
-                                  <th>Machine</th>
-                                  <th>Start</th>
-                                  <th>End</th>
-                                  <th>Planned</th>
-                                  <th>Good</th>
-                                  <th>Rejected</th>
-                                  <th>Status</th>
+                                  <th>Recorded</th>
+                                  <th>Movement</th>
+                                  <th>Material / reel</th>
+                                  <th>Quantity</th>
+                                  <th>Reference</th>
                                   <th>Notes</th>
                                 </tr>
                               </thead>
                               <tbody>
-                                {jobSheetSchedules.map((schedule) => (
-                                  <tr key={schedule.id}>
-                                    <td>{schedule.operation}</td>
-                                    <td>{schedule.machineLabel}</td>
-                                    <td>{formatScheduleDate(schedule.scheduledStartAt)}</td>
-                                    <td>{formatScheduleDate(schedule.scheduledEndAt)}</td>
-                                    <td>{schedule.plannedQty.toLocaleString("en-KE")}</td>
-                                    <td>{schedule.actualGoodQty.toLocaleString("en-KE")}</td>
-                                    <td>{schedule.actualRejectedQty.toLocaleString("en-KE")}</td>
-                                    <td>{schedule.status.replaceAll("_", " ")}</td>
-                                    <td>{schedule.notes || "—"}</td>
+                                {jobSheetStockMovements.map((movement) => (
+                                  <tr key={`stock-${movement.id}`}>
+                                    <td>{new Date(movement.createdAt).toLocaleString("en-KE")}</td>
+                                    <td>{movement.type}</td>
+                                    <td>{movement.material.code} · {movement.material.name}</td>
+                                    <td>{movement.quantity} {movement.material.unit}</td>
+                                    <td>{movement.reference || "—"}</td>
+                                    <td>{movement.notes || "—"}</td>
+                                  </tr>
+                                ))}
+                                {jobSheetReelMovements.map((movement) => (
+                                  <tr key={`reel-${movement.id}`}>
+                                    <td>{new Date(movement.createdAt).toLocaleString("en-KE")}</td>
+                                    <td>{movement.type}</td>
+                                    <td>Reel {movement.reelNo}{movement.relatedReelNo ? ` · related ${movement.relatedReelNo}` : ""}</td>
+                                    <td>{movement.deltaKg} kg</td>
+                                    <td>{movement.jobNo || "—"}</td>
+                                    <td>{movement.notes || "—"}</td>
                                   </tr>
                                 ))}
                               </tbody>
                             </table>
                           </div>
-                          {jobSheetSchedules.map((schedule) => {
-                            const runs = jobSheetRuns.filter((run) => run.scheduleId === schedule.id);
-                            if (!runs.length) return null;
-                            return (
-                              <div className="production-job-sheet-subsection" key={`runs-${schedule.id}`}>
-                                <h4>{schedule.operation} run history</h4>
-                                <div className="production-table-scroll">
-                                  <table className="production-jobs-table">
-                                    <thead>
-                                      <tr>
-                                        <th>Recorded</th>
-                                        <th>Operator</th>
-                                        <th>Good qty</th>
-                                        <th>Rejected qty</th>
-                                        <th>Notes</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      {runs.map((run) => (
-                                        <tr key={`${run.scheduleId}-${run.recordedAt}-${run.recordedByName}`}>
-                                          <td>{new Date(run.recordedAt).toLocaleString("en-KE")}</td>
-                                          <td>{run.recordedByName || "—"}</td>
-                                          <td>{run.goodQty.toLocaleString("en-KE")}</td>
-                                          <td>{run.rejectedQty.toLocaleString("en-KE")}</td>
-                                          <td>{run.notes || "—"}</td>
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </>
-                      ) : (
-                        <p className="production-chart-empty">No production operations have been scheduled.</p>
-                      )}
+                        ) : (
+                          <p className="production-chart-empty">No board or material movements recorded.</p>
+                        )}
+                      </div>
                     </section>
 
                     <section className="production-job-sheet-section">
-                      <h3>Quality inspections</h3>
+                      <h3>SPECIAL INSTRUCTIONS</h3>
+                      <p className="production-job-sheet-instructions">
+                        {jobSheetValue("specialInstructions") || jobSheetValue("instructions") || "—"}
+                      </p>
+                      {jobSheetAdditionalDetails.length > 0 && (
+                        <ProductionJobSheetFieldGrid fields={jobSheetAdditionalDetails} />
+                      )}
+                    </section>
+
+                    <div className="production-job-sheet-signatures">
+                      {["Prepared by", "Approved by", "Received by (production)"].map((label) => (
+                        <div key={label}><span>{label}</span><i /></div>
+                      ))}
+                    </div>
+                    <footer className="production-job-sheet-page-footer">Generated with Keyline Generator &amp; Board Calculator · Page 1 of 2</footer>
+                    </div>
+
+                    <div className="production-job-sheet-page">
+                      <header className="production-job-sheet-template-header production-job-sheet-template-header-compact">
+                        <strong>JOB SHEET</strong>
+                        <span>{selectedJob?.jobNo || "—"} · {selectedJob?.jobName || "—"} · {selectedJob?.size || "—"}</span>
+                      </header>
+
+                    <section className="production-job-sheet-section">
+                      <h3>PRINTING</h3>
+                      {jobSheetSectionDetails.printing.length > 0 && (
+                        <ProductionJobSheetFieldGrid fields={jobSheetSectionDetails.printing} />
+                      )}
+                      <ProductionJobSheetOperationSummary
+                        emptyMessage="No printing operation has been scheduled."
+                        schedules={jobSheetPrintingSchedules}
+                      />
+                    </section>
+
+                    <section className="production-job-sheet-section">
+                      <h3>CONVERTING (SLOT, JOINT)</h3>
+                      {jobSheetSectionDetails.converting.length > 0 && (
+                        <ProductionJobSheetFieldGrid fields={jobSheetSectionDetails.converting} />
+                      )}
+                      <ProductionJobSheetOperationSummary
+                        emptyMessage="No converting operations have been scheduled."
+                        schedules={jobSheetConvertingSchedules}
+                      />
+                    </section>
+
+                    <section className="production-job-sheet-section">
+                      <h3>QUALITY CONTROL</h3>
+                      {jobSheetSectionDetails.quality.length > 0 && (
+                        <ProductionJobSheetFieldGrid fields={jobSheetSectionDetails.quality} />
+                      )}
+                      <ProductionJobSheetOperationSummary
+                        emptyMessage="No quality-control operation has been scheduled."
+                        schedules={jobSheetQualitySchedules}
+                      />
                       {jobSheetInspections.length ? (
                         <div className="production-table-scroll">
                           <table className="production-jobs-table">
@@ -9523,10 +10083,9 @@ export default function ProductionDashboard({
                       ) : (
                         <p className="production-chart-empty">No quality inspections recorded.</p>
                       )}
-                    </section>
 
-                    <section className="production-job-sheet-section">
-                      <h3>Nonconformances</h3>
+                      <div className="production-job-sheet-subsection">
+                        <h4>Nonconformances</h4>
                       {jobSheetNonconformances.length ? (
                         <div className="production-table-scroll">
                           <table className="production-jobs-table">
@@ -9561,54 +10120,18 @@ export default function ProductionDashboard({
                       ) : (
                         <p className="production-chart-empty">No nonconformances recorded.</p>
                       )}
+                      </div>
                     </section>
 
                     <section className="production-job-sheet-section">
-                      <h3>Paper and material movements</h3>
-                      {jobSheetStockMovements.length || jobSheetReelMovements.length ? (
-                        <div className="production-table-scroll">
-                          <table className="production-jobs-table">
-                            <thead>
-                              <tr>
-                                <th>Recorded</th>
-                                <th>Movement</th>
-                                <th>Material / reel</th>
-                                <th>Quantity</th>
-                                <th>Reference</th>
-                                <th>Notes</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {jobSheetStockMovements.map((movement) => (
-                                <tr key={`stock-${movement.id}`}>
-                                  <td>{new Date(movement.createdAt).toLocaleString("en-KE")}</td>
-                                  <td>{movement.type}</td>
-                                  <td>{movement.material.code} · {movement.material.name}</td>
-                                  <td>{movement.quantity} {movement.material.unit}</td>
-                                  <td>{movement.reference || "—"}</td>
-                                  <td>{movement.notes || "—"}</td>
-                                </tr>
-                              ))}
-                              {jobSheetReelMovements.map((movement) => (
-                                <tr key={`reel-${movement.id}`}>
-                                  <td>{new Date(movement.createdAt).toLocaleString("en-KE")}</td>
-                                  <td>{movement.type}</td>
-                                  <td>Reel {movement.reelNo}{movement.relatedReelNo ? ` · related ${movement.relatedReelNo}` : ""}</td>
-                                  <td>{movement.deltaKg} kg</td>
-                                  <td>{movement.jobNo || "—"}</td>
-                                  <td>{movement.notes || "—"}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      ) : (
-                        <p className="production-chart-empty">No paper or material movements recorded.</p>
+                      <h3>PACKING</h3>
+                      {jobSheetSectionDetails.packing.length > 0 && (
+                        <ProductionJobSheetFieldGrid fields={jobSheetSectionDetails.packing} />
                       )}
-                    </section>
-
-                    <section className="production-job-sheet-section">
-                      <h3>Warehouse pallets</h3>
+                      <ProductionJobSheetOperationSummary
+                        emptyMessage="No packing operation has been scheduled."
+                        schedules={jobSheetPackingSchedules}
+                      />
                       {jobSheetPallets.length ? (
                         <div className="production-table-scroll">
                           <table className="production-jobs-table">
@@ -9642,7 +10165,10 @@ export default function ProductionDashboard({
                     </section>
 
                     <section className="production-job-sheet-section">
-                      <h3>Dispatch and delivery</h3>
+                      <h3>DISPATCH</h3>
+                      {jobSheetSectionDetails.dispatch.length > 0 && (
+                        <ProductionJobSheetFieldGrid fields={jobSheetSectionDetails.dispatch} />
+                      )}
                       {jobSheetDispatches.length ? (
                         jobSheetDispatches.map((dispatch) => (
                           <article className="production-quote-card production-job-sheet-dispatch" key={dispatch.id}>
@@ -9704,7 +10230,50 @@ export default function ProductionDashboard({
                         <p className="production-chart-empty">No dispatches recorded.</p>
                       )}
                     </section>
-                  </>
+
+                    <section className="production-job-sheet-section">
+                      <h3>PRODUCTION TRACKING</h3>
+                      {jobSheetRuns.length ? (
+                        <div className="production-table-scroll">
+                          <table className="production-jobs-table">
+                            <thead>
+                              <tr>
+                                <th>Stage</th>
+                                <th>Date</th>
+                                <th>Machine</th>
+                                <th>Operator</th>
+                                <th>Good qty</th>
+                                <th>Rejects</th>
+                                <th>Notes</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {jobSheetRuns.map((run, index) => (
+                                <tr key={`${run.scheduleId}-${run.recordedAt}-${index}`}>
+                                  <td>{run.operation}</td>
+                                  <td>{new Date(run.recordedAt).toLocaleString("en-KE")}</td>
+                                  <td>{run.machineLabel || "—"}</td>
+                                  <td>{run.recordedByName || "—"}</td>
+                                  <td>{run.goodQty.toLocaleString("en-KE")}</td>
+                                  <td>{run.rejectedQty.toLocaleString("en-KE")}</td>
+                                  <td>{run.notes || "—"}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <p className="production-chart-empty">No operator production records have been entered.</p>
+                      )}
+                    </section>
+                    <div className="production-job-sheet-signatures">
+                      {["Production supervisor", "QC approved", "Dispatch / driver"].map((label) => (
+                        <div key={label}><span>{label}</span><i /></div>
+                      ))}
+                    </div>
+                    <footer className="production-job-sheet-page-footer">Generated with Keyline Generator &amp; Board Calculator · Page 2 of 2</footer>
+                    </div>
+                  </div>
                 )}
               </section>
             </div>
@@ -9968,17 +10537,30 @@ export default function ProductionDashboard({
                     </div>
                     <span className="production-panel-total">{originationJobs.length} jobs</span>
                   </div>
-                  <JobTable
-                    emptyDescription="Jobs from booking through board production for your designer organizations will appear here."
-                    emptyHeading="No planned jobs"
-                    jobs={originationJobs}
-                    onOpen={openJob}
-                    onArtworkUploaded={() => router.refresh()}
-                    onFlagChanged={() => router.refresh()}
-                    canFlagJobs
-                    canResolveJobFlag={(job) => productionOrganizationIds.has(job.organizationId)}
-                    showArtwork
-                  />
+                  {editingOriginationJob ? (
+                    <OriginationPrintDetailsForm
+                      job={editingOriginationJob}
+                      onCancel={() => setEditingOriginationJob(null)}
+                      onSaved={() => {
+                        setEditingOriginationJob(null);
+                        router.refresh();
+                        notifyToast("Printing details updated.");
+                      }}
+                    />
+                  ) : (
+                    <JobTable
+                      emptyDescription="Jobs from booking through board production for your designer organizations will appear here."
+                      emptyHeading="No planned jobs"
+                      jobs={originationJobs}
+                      onOpen={openJob}
+                      onArtworkUploaded={() => router.refresh()}
+                      onFlagChanged={() => router.refresh()}
+                      onEditPrintDetails={setEditingOriginationJob}
+                      canFlagJobs
+                      canResolveJobFlag={(job) => productionOrganizationIds.has(job.organizationId)}
+                      showArtwork
+                    />
+                  )}
                 </section>
               ) : view === "customers" ? (
                 <section className="production-panel production-list-panel">
@@ -10120,6 +10702,8 @@ export default function ProductionDashboard({
                     key={planningOrganizationId}
                     jobs={jobs}
                     machines={machines}
+                    maintenancePlans={maintenancePlans}
+                    maintenanceTickets={maintenanceTickets}
                     onSaved={() => router.refresh()}
                     organizations={organizations}
                     preferredOrganizationId={planningOrganizationId}
@@ -10264,8 +10848,6 @@ export default function ProductionDashboard({
                   machines={machines}
                   maintenancePlans={maintenancePlans}
                   maintenanceTickets={maintenanceTickets}
-                  jobs={jobs}
-                  schedules={schedules}
                   materials={materials}
                   onSaved={() => router.refresh()}
                   organizations={organizations.filter((organization) =>

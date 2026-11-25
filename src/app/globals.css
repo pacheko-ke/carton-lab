@@ -3647,6 +3647,22 @@ input {
   background: rgba(12, 20, 29, 0.5);
 }
 
+.production-origination-print-form {
+  margin-top: 12px;
+}
+
+.production-origination-print-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.production-job-row-actions {
+  display: grid;
+  min-width: 120px;
+  gap: 6px;
+}
+
 .production-planning-mode-actions {
   display: flex;
   align-items: center;
@@ -5628,6 +5644,32 @@ input {
   color: #ff9a9a;
 }
 
+.production-maintenance-planning-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 10px 12px;
+  border: 1px solid rgba(236, 177, 82, 0.45);
+  border-radius: 9px;
+  background: rgba(130, 82, 21, 0.16);
+  color: #f0c271;
+  font-size: 12px;
+}
+
+.production-maintenance-planning-warning > svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.production-maintenance-planning-warning ul {
+  margin: 5px 0 0;
+  padding-left: 17px;
+}
+
+.production-maintenance-planning-warning li + li {
+  margin-top: 3px;
+}
+
 .production-order-booking-actions {
   display: flex;
   align-items: center;
@@ -5860,13 +5902,342 @@ input {
   padding-top: 8px;
 }
 
-.production-job-sheet .production-printing-detail strong {
+.production-job-sheet-operations {
+  display: grid;
+  gap: 10px;
+}
+
+.production-job-sheet-operation {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid rgba(165, 190, 214, 0.16);
+  border-radius: 8px;
+}
+
+.production-job-sheet-operation-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.production-job-sheet-operation > p {
+  margin: 0;
+  font-size: 12px;
   white-space: pre-wrap;
 }
 
 .production-job-sheet-dispatch {
   display: grid;
   gap: 10px;
+}
+
+.production-job-sheet-template {
+  display: grid;
+  gap: 20px;
+  color: #111;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.production-job-sheet-page {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  width: min(100%, 210mm);
+  min-height: 297mm;
+  margin: 0 auto;
+  padding: 8mm;
+  border: 1px solid #222;
+  background: #fff;
+  color: #111;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.18);
+  font-size: 9px;
+}
+
+.production-job-sheet-template-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 7px;
+  border-bottom: 2px solid #111;
+}
+
+.production-job-sheet-template-header h1 {
+  margin: 0;
+  font-size: 19px;
+  letter-spacing: 0.08em;
+}
+
+.production-job-sheet-template-header p {
+  margin: 3px 0 0;
+  font-size: 8px;
+  text-transform: uppercase;
+}
+
+.production-job-sheet-template-header dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(65px, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.production-job-sheet-template-header dl > div {
+  display: grid;
+  gap: 2px;
+}
+
+.production-job-sheet-template-header dt,
+.production-job-sheet-template-header dd {
+  margin: 0;
+}
+
+.production-job-sheet-template-header dt,
+.production-job-sheet-field > span {
+  font-size: 7px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.production-job-sheet-template-header dd {
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.production-job-sheet-template-header-compact {
+  align-items: center;
+  font-size: 10px;
+}
+
+.production-job-sheet-template-header-compact strong {
+  font-size: 12px;
+  letter-spacing: 0.06em;
+}
+
+.production-job-sheet-section {
+  display: grid;
+  gap: 0;
+  padding: 0;
+  border: 1px solid #222;
+}
+
+.production-job-sheet-section > h3 {
+  padding: 4px 6px;
+  border-bottom: 1px solid #222;
+  background: #e8e8e8;
+  color: #111;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.production-job-sheet-section > :not(h3) {
+  margin-right: 6px;
+  margin-left: 6px;
+}
+
+.production-job-sheet-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.production-job-sheet-field {
+  display: grid;
+  min-width: 0;
+  min-height: 34px;
+  align-content: start;
+  gap: 3px;
+  padding: 4px 6px;
+  border-right: 1px solid #bbb;
+  border-bottom: 1px solid #bbb;
+}
+
+.production-job-sheet-field > strong {
+  min-width: 0;
+  color: #111;
+  font-size: 9px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.production-job-sheet-subsection {
+  gap: 0;
+  padding-top: 5px;
+  border-top: 1px solid #bbb;
+}
+
+.production-job-sheet-subsection > h4 {
+  padding: 4px 6px;
+  color: #111;
+  font-size: 8px;
+  text-transform: uppercase;
+}
+
+.production-job-sheet-operation {
+  gap: 4px;
+  padding: 5px 6px;
+  border: 0;
+  border-top: 1px solid #ddd;
+  border-radius: 0;
+}
+
+.production-job-sheet-operation-heading {
+  font-size: 8px;
+}
+
+.production-job-sheet-operation > p,
+.production-job-sheet-template .production-chart-empty {
+  margin: 0;
+  padding: 4px 6px;
+  font-size: 8px;
+}
+
+.production-job-sheet-artwork-previews {
+  display: grid;
+  gap: 6px;
+  padding: 6px;
+}
+
+.production-job-sheet-artwork-preview iframe {
+  display: block;
+  width: 100%;
+  height: 300px;
+  border: 1px solid #777;
+  background: #fff;
+}
+
+.production-job-sheet-artwork-preview p {
+  margin: 0;
+  padding: 8px;
+  font-size: 8px;
+}
+
+.production-job-sheet-artwork-preview a {
+  color: #111;
+  text-decoration: underline;
+}
+
+.production-job-sheet-instructions {
+  min-height: 35px;
+  padding: 6px;
+  font-size: 9px;
+  white-space: pre-wrap;
+}
+
+.production-job-sheet-template .production-table-scroll {
+  margin: 4px 6px;
+}
+
+.production-job-sheet-template .production-jobs-table {
+  min-width: 0;
+  width: 100%;
+  font-size: 7px;
+  color: #111;
+  background: #fff;
+}
+
+.production-job-sheet-template .production-jobs-table th,
+.production-job-sheet-template .production-jobs-table td {
+  border-color: #777;
+  background: #fff;
+  color: #111;
+}
+
+.production-job-sheet-template .production-jobs-table th {
+  background: #e8e8e8;
+  font-size: 7px;
+  text-transform: uppercase;
+}
+
+.production-job-sheet-template .production-jobs-table th,
+.production-job-sheet-template .production-jobs-table td {
+  padding: 3px 4px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.production-job-sheet-template .production-quote-card {
+  gap: 4px;
+  margin: 4px 6px;
+  padding: 5px;
+  border: 1px solid #bbb;
+  border-radius: 0;
+  background: #fff;
+  box-shadow: none;
+}
+
+.production-job-sheet-template .production-quote-card-header {
+  align-items: center;
+  padding-bottom: 3px;
+  border-bottom: 1px solid #ddd;
+}
+
+.production-job-sheet-template .production-quote-card-header h4,
+.production-job-sheet-template .production-quote-card-header p,
+.production-job-sheet-template .production-quote-total span,
+.production-job-sheet-template .production-quote-total strong {
+  color: #111;
+  font-size: 8px;
+}
+
+.production-job-sheet-template .production-chart-empty {
+  color: #444;
+}
+
+.production-job-sheet-signatures {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: auto;
+  padding-top: 14px;
+}
+
+.production-job-sheet-signatures > div {
+  display: grid;
+  min-height: 32px;
+  align-content: end;
+  gap: 4px;
+  font-size: 7px;
+  text-transform: uppercase;
+}
+
+.production-job-sheet-signatures i {
+  display: block;
+  height: 1px;
+  border-top: 1px solid #111;
+}
+
+.production-job-sheet-page-footer {
+  padding-top: 5px;
+  border-top: 1px solid #777;
+  font-size: 7px;
+  text-align: right;
+}
+
+@media (max-width: 720px) {
+  .production-origination-print-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .production-job-sheet-page {
+    min-height: 0;
+    padding: 16px;
+  }
+
+  .production-job-sheet-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .production-job-sheet-template .production-jobs-table {
+    font-size: 6px;
+  }
+
+  .production-job-sheet-artwork-preview iframe {
+    height: 240px;
+  }
 }
 
 .production-printing-artwork {
@@ -6343,6 +6714,11 @@ input {
 }
 
 @media print {
+  @page job-sheet {
+    size: A4 portrait;
+    margin: 8mm;
+  }
+
   body[data-print-target] * {
     visibility: hidden !important;
   }
@@ -6380,11 +6756,49 @@ input {
   }
 
   body[data-print-target="job-sheet"] .production-job-sheet {
+    position: static !important;
+    inset: auto !important;
     overflow: visible !important;
+    width: 100% !important;
+    height: auto !important;
     padding: 0 !important;
     border: 0 !important;
     background: #fff !important;
     color: #111 !important;
+    page: job-sheet;
+  }
+
+  body[data-print-target="job-sheet"] .production-job-sheet-template {
+    display: block;
+  }
+
+  body[data-print-target="job-sheet"] .production-job-sheet-page {
+    width: 194mm;
+    min-height: 281mm;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    break-after: page;
+    page-break-after: always;
+  }
+
+  body[data-print-target="job-sheet"] .production-job-sheet-page:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+
+  body[data-print-target="job-sheet"] .production-job-sheet-section > h3 {
+    background-color: #e8e8e8 !important;
+  }
+
+  body[data-print-target="job-sheet"] .production-jobs-table th {
+    background-color: #e8e8e8 !important;
+  }
+
+  body[data-print-target="job-sheet"] .production-job-sheet-artwork-preview iframe {
+    height: 82mm;
   }
 
   body[data-print-target="job-sheet"] .production-job-sheet * {
@@ -6411,7 +6825,8 @@ input {
   }
 
   body[data-print-target="job-sheet"] .production-job-sheet-section,
-  body[data-print-target="job-sheet"] .production-job-sheet-dispatch {
+  body[data-print-target="job-sheet"] .production-job-sheet-dispatch,
+  body[data-print-target="job-sheet"] .production-job-sheet-signatures {
     break-inside: avoid;
   }
 
@@ -6895,6 +7310,16 @@ input {
 :root[data-theme="light"] .production-dashboard-shell .production-order-booking-status,
 :root[data-theme="light"] .production-dashboard-shell .production-quote-message {
   color: #126b99;
+}
+
+:root[data-theme="light"] .production-dashboard-shell .production-maintenance-planning-warning {
+  border-color: #e8c77d;
+  background: #fff8e7;
+  color: #88550b;
+}
+
+:root[data-theme="light"] .production-dashboard-shell .production-maintenance-planning-warning :is(strong, li) {
+  color: inherit;
 }
 
 :root[data-theme="light"] .production-printing-artwork-file {

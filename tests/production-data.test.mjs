@@ -21,6 +21,7 @@ import {
   validateProductionOrderBooking,
   validateProductionJobFlagReason,
   validateProductionJobData,
+  validateProductionOriginationPrintDetails,
   validateProductionOperationRun,
   validateProductionOperationSchedule,
 } from "../src/lib/production-data.ts";
@@ -48,6 +49,30 @@ test("validates shared production job data and tracking rows", () => {
   );
   assert.equal(
     validateProductionJobData({ tracking: Array.from({ length: 9 }, () => ({})) }),
+    false,
+  );
+});
+
+test("limits Origination job updates to valid printing details", () => {
+  assert.equal(
+    validateProductionOriginationPrintDetails({
+      printMethod: "Flexo",
+      registrationTolerance: "+/- 1 mm",
+    }),
+    true,
+  );
+  assert.equal(validateProductionOriginationPrintDetails({}), false);
+  assert.equal(
+    validateProductionOriginationPrintDetails({
+      printColor: "Blue",
+      workflowStage: "Printing",
+    }),
+    false,
+  );
+  assert.equal(
+    validateProductionOriginationPrintDetails({
+      printInstructions: "x".repeat(301),
+    }),
     false,
   );
 });
