@@ -12,6 +12,7 @@ import {
   type FormEvent,
 } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import type { IconType } from "react-icons";
 import {
@@ -102,6 +103,18 @@ import {
   PRODUCTION_MAINTENANCE_TICKET_STATUSES,
 } from "@/lib/production-maintenance-data";
 import { notifyToast } from "@/app/toast-provider";
+
+const ProductionArtworkPdfPreview = dynamic(
+  () => import("./production-artwork-pdf-preview"),
+  {
+    ssr: false,
+    loading: () => (
+      <p className="production-chart-empty" role="status">
+        Loading PDF preview…
+      </p>
+    ),
+  },
+);
 import { PRODUCTION_LEAVE_TYPES } from "@/lib/production-hr-data";
 
 export type ProductionDashboardOrganization = {
@@ -6249,7 +6262,7 @@ function PrintingArtworkViewer({
   const [zoom, setZoom] = useState(100);
   const fileUrl = `/api/production/artwork/${encodeURIComponent(attachment.id)}`;
   const isPdf = attachment.contentType === "application/pdf";
-  const previewUrl = `${fileUrl}?preview=1#toolbar=1&navpanes=0&zoom=${zoom}`;
+  const previewUrl = `${fileUrl}?preview=1`;
 
   return (
     <article className="production-printing-artwork-file">
@@ -6280,15 +6293,13 @@ function PrintingArtworkViewer({
                 +
               </button>
               <button onClick={() => setZoom(100)} type="button">Reset zoom</button>
-              <a href={previewUrl} rel="noopener" target="_blank">Open in new tab</a>
               <a download={attachment.originalName} href={fileUrl}>Download</a>
             </div>
           </div>
-          <iframe
-            className="production-printing-artwork-pdf"
-            loading="lazy"
+          <ProductionArtworkPdfPreview
+            downloadUrl={fileUrl}
             src={previewUrl}
-            title={`PDF preview: ${attachment.originalName}`}
+            zoom={zoom}
           />
         </>
       ) : (
@@ -8945,12 +8956,18 @@ function ProductionJobSheetArtworkPreviews({
     <div className="production-job-sheet-artwork-previews">
       {attachments.map((attachment, index) => {
         const fileUrl = `/api/production/artwork/${encodeURIComponent(attachment.id)}`;
-        const canPreview = ["application/pdf", "image/jpeg", "image/png", "image/svg+xml"]
+        const isPdf = attachment.contentType === "application/pdf";
+        const canPreviewImage = ["image/jpeg", "image/png", "image/svg+xml"]
           .includes(attachment.contentType);
 
         return (
           <div className="production-job-sheet-artwork-preview" key={attachment.id}>
-            {canPreview ? (
+            {isPdf ? (
+              <ProductionArtworkPdfPreview
+                downloadUrl={fileUrl}
+                src={`${fileUrl}?preview=1`}
+              />
+            ) : canPreviewImage ? (
               <iframe
                 loading="eager"
                 referrerPolicy="no-referrer"
@@ -9903,7 +9920,6 @@ export default function ProductionDashboard({
                       <header className="production-job-sheet-template-header">
                         <div>
                           <h1>JOB SHEET</h1>
-                          <p>Production copy · internal · no prices</p>
                         </div>
                         <dl>
                           <div><dt>No.</dt><dd>{selectedJob?.jobNo || "—"}</dd></div>
@@ -9924,7 +9940,7 @@ export default function ProductionDashboard({
                     </section>
 
                     <section className="production-job-sheet-section">
-                      <h3>KEYLINE</h3>
+                      <h3>ARTWORK</h3>
                       <ProductionJobSheetArtworkPreviews attachments={jobSheetAttachments} />
                     </section>
 

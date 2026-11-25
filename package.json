@@ -21,6 +21,7 @@
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-icons": "^5.7.0",
+    "react-pdf": "^11.1.0",
     "web-push": "^4.0.0"
   },
   "devDependencies": {

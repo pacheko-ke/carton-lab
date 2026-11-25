@@ -6120,6 +6120,51 @@ input {
   text-decoration: underline;
 }
 
+.production-artwork-pdf-preview {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+}
+
+.production-artwork-pdf-canvas {
+  max-height: 360px;
+  overflow: auto;
+}
+
+.production-artwork-pdf-document {
+  display: grid;
+  justify-items: center;
+}
+
+.production-artwork-pdf-document .react-pdf__Page {
+  margin: 0 auto;
+  border: 1px solid #777;
+}
+
+.production-artwork-pdf-document .react-pdf__Page__canvas {
+  display: block;
+  height: auto !important;
+}
+
+.production-artwork-pdf-error {
+  margin: 0;
+  padding: 8px;
+  font-size: 8px;
+}
+
+.production-artwork-pdf-error a {
+  color: #111;
+  text-decoration: underline;
+}
+
+.production-artwork-pdf-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-size: 8px;
+}
+
 .production-job-sheet-instructions {
   min-height: 35px;
   padding: 6px;
@@ -6322,15 +6367,6 @@ input {
   color: #d7e5ef;
   font-size: 11px;
   text-align: center;
-}
-
-.production-printing-artwork-pdf {
-  display: block;
-  width: 100%;
-  height: min(72vh, 820px);
-  min-height: 360px;
-  border: 0;
-  background: #ffffff;
 }
 
 .production-artwork-attached {
@@ -6799,6 +6835,15 @@ input {
 
   body[data-print-target="job-sheet"] .production-job-sheet-artwork-preview iframe {
     height: 82mm;
+  }
+
+  body[data-print-target="job-sheet"] .production-artwork-pdf-canvas {
+    max-height: none;
+    overflow: visible;
+  }
+
+  body[data-print-target="job-sheet"] .production-artwork-pdf-controls {
+    display: none;
   }
 
   body[data-print-target="job-sheet"] .production-job-sheet * {
