@@ -1,4 +1,4 @@
-import { canEditProductionJobs, isRecord, validateProductionJobData } from "@/lib/production-data";
+import { isRecord } from "@/lib/production-data";
 import {
   getProductionOrganizationMembership,
   getVerifiedProductionUser,
@@ -74,34 +74,8 @@ export async function POST(request: Request, { params }: RouteContext) {
   if (!membership) {
     return NextResponse.json({ error: "Organization access denied" }, { status: 403 });
   }
-  if (!canEditProductionJobs(membership.role)) {
-    return NextResponse.json(
-      { error: "Production role required to create jobs" },
-      { status: 403 },
-    );
-  }
-
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-  }
-  if (!isRecord(body) || !validateProductionJobData(body.data)) {
-    return NextResponse.json(
-      { error: "Invalid production job details" },
-      { status: 400 },
-    );
-  }
-
-  const job = await prisma.productionJob.create({
-    data: {
-      organizationId,
-      createdByUserId: user.id,
-      data: body.data as Prisma.InputJsonObject,
-    },
-    select: { id: true, organizationId: true, data: true, createdAt: true, updatedAt: true },
-  });
-
-  return NextResponse.json({ job }, { status: 201 });
+  return NextResponse.json(
+    { error: "Job sheets can only be created by booking a customer order." },
+    { status: 405 },
+  );
 }

@@ -6,6 +6,7 @@ import {
   isProductionAdmin,
 } from "@/lib/production-access";
 import { randomUUID } from "node:crypto";
+import { isPrivateBlobStorageConfigured } from "@/lib/blob-storage";
 import { NextResponse } from "next/server";
 
 type RouteContext = { params: Promise<{ jobId: string }> };
@@ -31,9 +32,9 @@ export async function POST(request: Request, { params }: RouteContext) {
       { status: 403 },
     );
   }
-  if (!process.env.BLOB_STORE_ID) {
+  if (!isPrivateBlobStorageConfigured()) {
     return NextResponse.json(
-      { error: "Private Vercel Blob storage is not configured" },
+      { error: "Private Vercel Blob storage is not configured. Connect a private store or set BLOB_READ_WRITE_TOKEN." },
       { status: 503 },
     );
   }

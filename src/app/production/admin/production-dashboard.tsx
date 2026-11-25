@@ -721,7 +721,7 @@ const WORKSPACE_ITEMS: Array<{
 }> = [
   { id: "overview", label: "Overview", icon: FiGrid, group: "orders" },
   { id: "jobs", label: "All jobs", icon: FiBriefcase, group: "orders" },
-  { id: "origination", label: "Origination", icon: FiPenTool, group: "orders" },
+  { id: "origination", label: "Origination", icon: FiPenTool, group: "production" },
   { id: "quotes", label: "Costing & quotes", icon: FiDollarSign, group: "orders" },
   { id: "customers", label: "Customers", icon: FiUsers, group: "customers" },
   { id: "products", label: "Products", icon: FiPackage, group: "products" },
@@ -7800,12 +7800,6 @@ export default function ProductionDashboard({
         .finally(() => setJobSheetLoading(false));
     }
   };
-  const openNewJobSheet = () => {
-    setSelectedJob(null);
-    setJobSheetData(null);
-    setView("job-sheet");
-  };
-
   return (
     <div className="production-dashboard-shell">
       {isMobileMenuOpen && (
@@ -8026,6 +8020,12 @@ export default function ProductionDashboard({
                       ["Size", selectedJob?.size],
                       ["Order qty", selectedJob?.orderQty?.toLocaleString("en-KE")],
                       ["Workflow stage", typeof jobSheetData?.workflowStage === "string" ? jobSheetData.workflowStage : selectedJob?.workflowStage],
+                      ["Top liner", typeof jobSheetData?.topLiner === "string" ? jobSheetData.topLiner : ""],
+                      ["Medium", typeof jobSheetData?.medium === "string" ? jobSheetData.medium : ""],
+                      ["Bottom liner", typeof jobSheetData?.bottomLiner === "string" ? jobSheetData.bottomLiner : ""],
+                      ["Board length", typeof jobSheetData?.boardLength === "string" ? jobSheetData.boardLength : ""],
+                      ["Board width", typeof jobSheetData?.boardWidth === "string" ? jobSheetData.boardWidth : ""],
+                      ["Reel width", typeof jobSheetData?.reelWidth === "string" ? jobSheetData.reelWidth : ""],
                       ["Printing method", typeof jobSheetData?.printMethod === "string" ? jobSheetData.printMethod : ""],
                       ["Colour", typeof jobSheetData?.printColor === "string" ? jobSheetData.printColor : ""],
                       ["Ink type", typeof jobSheetData?.inkType === "string" ? jobSheetData.inkType : ""],
@@ -8148,15 +8148,6 @@ export default function ProductionDashboard({
                     type="button"
                   >
                     <FiPlus aria-hidden="true" /> Book order
-                  </button>
-                ) : canManageJobs &&
-                  view !== "overview" &&
-                  view !== "origination" &&
-                  view !== "planning" &&
-                  view !== "procurement" &&
-                  view !== "inventory" ? (
-                  <button className="production-primary-button" onClick={openNewJobSheet} type="button">
-                    <FiPlus aria-hidden="true" /> New job sheet
                   </button>
                 ) : null}
               </div>
@@ -8303,7 +8294,6 @@ export default function ProductionDashboard({
                     <JobTable
                       jobs={visibleJobs.slice(0, 5)}
                       onOpen={openJob}
-                      onCreate={canManageJobs ? openNewJobSheet : undefined}
                       canOpenJobSheet={canManageJobs}
                       canOpenJobSheetForJob={(job) => productionOrganizationIds.has(job.organizationId)}
                       canResolveJobFlag={(job) => productionOrganizationIds.has(job.organizationId)}
@@ -8642,7 +8632,6 @@ export default function ProductionDashboard({
                         ? printingJobs
                         : visibleJobs.filter((job) => job.workflowStage === view)}
                     onOpen={openJob}
-                    onCreate={canManageJobs ? openNewJobSheet : undefined}
                     actionLabel={view === "Printing" ? "Open printing job" : "Open job"}
                     canOpenJobSheet={canManageJobs}
                     canOpenJobSheetForJob={(job) => productionOrganizationIds.has(job.organizationId)}
