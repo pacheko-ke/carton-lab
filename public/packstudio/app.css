@@ -162,6 +162,10 @@
   .production-artwork-status{min-height:0;margin:0;color:#52657a;font-size:11px}
   .production-artwork-status:empty{display:none}
   .production-artwork-status[data-error=true]{color:#b91c1c}
+  .production-printing-summary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0}
+  .production-printing-summary-grid div{min-width:0;padding:9px 10px;border:1px solid #e2eaf2;border-radius:8px;background:#f8fbfe}
+  .production-printing-summary-grid dt{margin-bottom:4px;color:#64748b;font-size:9px;font-weight:750;text-transform:uppercase}
+  .production-printing-summary-grid dd{margin:0;color:#16324d;font-size:12px;font-weight:700;overflow-wrap:anywhere}
   .production-artwork-list{display:grid;gap:7px;margin:0;padding:0;list-style:none}
   .production-artwork-list:empty{display:none}
   .production-artwork-list li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 11px;border:1px solid #e2eaf2;border-radius:8px;background:#f8fbfe;font-size:11px}

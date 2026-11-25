@@ -7352,6 +7352,7 @@ export default function ProductionDashboard({
   const router = useRouter();
   const [view, setView] = useState<DashboardView>("overview");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [printingOnlyView, setPrintingOnlyView] = useState(false);
   const [expandedNavGroup, setExpandedNavGroup] = useState<WorkspaceNavGroup | null>("orders");
   const [workflowQueuesExpanded, setWorkflowQueuesExpanded] = useState(false);
   const [organizationFilter, setOrganizationFilter] = useState("all");
@@ -7462,8 +7463,26 @@ export default function ProductionDashboard({
       : organizationFilter);
   const stageCounts = PRODUCTION_WORKFLOW_STAGES.map((stage) => ({
     stage,
-    count: visibleJobs.filter((job) => job.workflowStage === stage).length,
+    count: stage === "Printing"
+      ? visibleJobs.filter((job) =>
+        job.workflowStage === stage ||
+        schedules.some((schedule) =>
+          schedule.jobId === job.id &&
+          schedule.operation === "Printing",
+        ),
+      ).length
+      : visibleJobs.filter((job) => job.workflowStage === stage).length,
   }));
+  const printingJobs = useMemo(
+    () => visibleJobs.filter((job) =>
+      job.workflowStage === "Printing" ||
+      schedules.some((schedule) =>
+        schedule.jobId === job.id &&
+        schedule.operation === "Printing",
+      ),
+    ),
+    [visibleJobs, schedules],
+  );
   const stageOrderUnits = PRODUCTION_WORKFLOW_STAGES.map((stage) => ({
     stage,
     units: visibleJobs
@@ -7540,10 +7559,12 @@ export default function ProductionDashboard({
 
   const openJob = (job: ProductionDashboardJob) => {
     setSelectedJob(job);
+    setPrintingOnlyView(view === "Printing");
     navigateTo("job-sheet");
   };
   const openNewJobSheet = () => {
     setSelectedJob(null);
+    setPrintingOnlyView(false);
     navigateTo("job-sheet");
   };
 
@@ -7742,6 +7763,7 @@ export default function ProductionDashboard({
                 profile={profile}
                 profileQrCode={profileQrCode}
                 workspace="production"
+                viewMode={printingOnlyView ? "printing" : undefined}
                 organizationId={sheetOrganizationId}
                 jobId={selectedJob?.id}
               />
@@ -8157,15 +8179,20 @@ export default function ProductionDashboard({
                     <span className="production-panel-total">
                       {view === "jobs"
                         ? visibleJobs.length
-                        : visibleJobs.filter((job) => job.workflowStage === view).length} jobs
+                        : view === "Printing"
+                          ? printingJobs.length
+                          : visibleJobs.filter((job) => job.workflowStage === view).length} jobs
                     </span>
                   </div>
                   <JobTable
                     jobs={view === "jobs"
                       ? visibleJobs
-                      : visibleJobs.filter((job) => job.workflowStage === view)}
+                      : view === "Printing"
+                        ? printingJobs
+                        : visibleJobs.filter((job) => job.workflowStage === view)}
                     onOpen={openJob}
                     onCreate={canManageJobs ? openNewJobSheet : undefined}
+                    actionLabel={view === "Printing" ? "Open printing job" : "Open job"}
                     canOpenJobSheet={canManageJobs}
                     canOpenJobSheetForJob={(job) => productionOrganizationIds.has(job.organizationId)}
                     canResolveJobFlag={(job) => productionOrganizationIds.has(job.organizationId)}

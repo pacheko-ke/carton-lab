@@ -567,6 +567,18 @@ function defaultJobSheetData(context = {}) {
 function initializeJobSheet(getContext) {
   const workspace = document.getElementById("jobSheetWorkspace");
   if (!workspace) return;
+  const printingOnly = new URLSearchParams(window.location.search).get("mode") === "printing";
+  if (printingOnly) {
+    workspace.querySelector(".job-sheet-heading").hidden = true;
+    workspace.querySelector(".production-shared-panel").hidden = true;
+    workspace.querySelector(".production-stage-control").hidden = true;
+    workspace.querySelector("#jobSheetStatus").hidden = true;
+    workspace.querySelector(".production-artwork-actions")?.setAttribute("hidden", "");
+    workspace.querySelector("#printingJobSummary").hidden = false;
+    workspace.querySelectorAll(".job-sheet-stage").forEach((stage) => {
+      if (!stage.querySelector("#jobSheetPrintingTitle")) stage.remove();
+    });
+  }
   const fields = Array.from(workspace.querySelectorAll("[data-job-field]"));
   const trackingRows = Array.from(workspace.querySelectorAll("[data-stage]"));
   const status = document.getElementById("jobSheetStatus");
@@ -758,7 +770,7 @@ function initializeJobSheet(getContext) {
   const selectedOrganization = () =>
     availableOrganizations.find((organization) => organization.id === organizationSelect.value) || null;
   const updateEditorPermissions = () => {
-    const readOnly = Boolean(activeSharedJobId) && activeProductionRole !== "PRODUCTION";
+    const readOnly = printingOnly || (Boolean(activeSharedJobId) && activeProductionRole !== "PRODUCTION");
     fields.forEach((field) => { field.disabled = readOnly; });
     trackingRows.forEach((row) => row.querySelectorAll("[data-track-field]").forEach((field) => {
       field.disabled = readOnly;
@@ -779,7 +791,9 @@ function initializeJobSheet(getContext) {
       jobSelect.value !== activeSharedJobId;
     saveSharedJobButton.disabled = !sharedJobDirty;
     artworkPanel.hidden = !activeSharedJobId;
-    const designerCanUpload = Boolean(activeSharedJobId) && activeProductionRole === "DESIGNER";
+    const designerCanUpload = !printingOnly &&
+      Boolean(activeSharedJobId) &&
+      activeProductionRole === "DESIGNER";
     artworkFileInput.disabled = !designerCanUpload;
     artworkUploadButton.disabled = !designerCanUpload;
   };
@@ -893,6 +907,24 @@ function initializeJobSheet(getContext) {
       };
       sharedJobDirty = false;
       writeData(savedSharedJobData);
+      if (printingOnly) {
+        const quantityValue = savedSharedJobData.productionQty || savedSharedJobData.orderQty;
+        const quantity = Number(quantityValue);
+        const size = [savedSharedJobData.length, savedSharedJobData.width, savedSharedJobData.height]
+          .filter(Boolean)
+          .join(" × ");
+        const unit = savedSharedJobData.unit === "in" ? "in" : "mm";
+        const spec = [savedSharedJobData.topLiner, savedSharedJobData.medium, savedSharedJobData.bottomLiner]
+          .filter(Boolean)
+          .join("/");
+        document.getElementById("printingSummaryJobNo").textContent = savedSharedJobData.jobNo || "—";
+        document.getElementById("printingSummaryJobName").textContent = savedSharedJobData.jobName || "—";
+        document.getElementById("printingSummaryCustomer").textContent = savedSharedJobData.customer || "—";
+        document.getElementById("printingSummarySize").textContent = size ? `${size} ${unit}` : "—";
+        document.getElementById("printingSummaryQty").textContent =
+          Number.isFinite(quantity) && quantity >= 0 ? quantity.toLocaleString() : "—";
+        document.getElementById("printingSummarySpec").textContent = spec || "—";
+      }
       lastSheetUnit = result.job.data?.unit === "in" ? "in" : "mm";
       updateEditorPermissions();
       artworkStatus.textContent = activeProductionRole === "DESIGNER"
