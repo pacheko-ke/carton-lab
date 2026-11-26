@@ -12,6 +12,7 @@ import { createKeylineCatalog } from "@/lib/keyline-catalog";
 import {
   isProductionOperation,
   isProductionOperationStatus,
+  productionOrderQuantity,
   isProductionQualityCheck,
   isProductionQualityInspectionResult,
   isProductionQualityInspectionType,
@@ -62,12 +63,7 @@ function textValue(data: unknown, key: string): string {
 }
 
 function quantityValue(data: unknown): number | null {
-  const value = textValue(data, "orderQty").trim();
-  if (!value) return null;
-  const quantity = Number(value);
-  return Number.isFinite(quantity) && quantity >= 0
-    ? Math.floor(quantity)
-    : null;
+  return productionOrderQuantity(data);
 }
 
 function cartonSpecValue(data: unknown): string {

@@ -78,6 +78,30 @@ export function isProductionOperationStatus(
   return PRODUCTION_OPERATION_STATUSES.some((status) => status === value);
 }
 
+export function productionOrderQuantity(data: unknown): number | null {
+  if (!isRecord(data) || typeof data.orderQty !== "string") return null;
+  const quantity = Number(data.orderQty);
+  return Number.isFinite(quantity) && quantity >= 0
+    ? Math.floor(quantity)
+    : null;
+}
+
+export function getProductionOperationBalance(
+  orderQty: number | null,
+  actualGoodQty: number,
+): number | null {
+  if (
+    orderQty === null ||
+    !Number.isSafeInteger(orderQty) ||
+    orderQty < 0 ||
+    !Number.isSafeInteger(actualGoodQty) ||
+    actualGoodQty < 0
+  ) {
+    return null;
+  }
+  return Math.max(orderQty - actualGoodQty, 0);
+}
+
 export type ProductionOrderBookingInput = {
   itemId: string;
   customerId: string;

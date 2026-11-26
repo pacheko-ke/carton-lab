@@ -49,6 +49,7 @@ import {
 } from "react-icons/fi";
 import BrandLogo from "@/app/brand-logo";
 import {
+  getProductionOperationBalance,
   MAX_ARTWORK_FILE_BYTES,
   MAX_PRODUCTION_JOB_FLAG_REASON_LENGTH,
   PRODUCTION_OPERATIONS,
@@ -1567,6 +1568,22 @@ function createProductionScheduleForm(jobId: string): ProductionScheduleForm {
   };
 }
 
+function getScheduleBalance(
+  job: ProductionDashboardJob,
+  schedule?: ProductionDashboardSchedule,
+): number | null {
+  return getProductionOperationBalance(job.orderQty, schedule?.actualGoodQty ?? 0);
+}
+
+function isCompletedWithoutBalance(
+  job: ProductionDashboardJob,
+  schedule: ProductionDashboardSchedule | undefined,
+): boolean {
+  if (schedule?.status !== "COMPLETED") return false;
+  const balance = getScheduleBalance(job, schedule);
+  return balance === null || balance === 0;
+}
+
 type BulkProductionScheduleEntry = {
   jobId: string;
   scheduledStartAt: string;
@@ -1630,11 +1647,15 @@ function BulkScheduleForm({
   const [isSaving, setIsSaving] = useState(false);
   const [status, setStatus] = useState("");
   const [hasError, setHasError] = useState(false);
-  const availableJobs = jobs.filter((job) =>
-    !schedules.some((schedule) =>
-      schedule.jobId === job.id && schedule.operation === operation,
-    ),
-  );
+  const availableJobs = jobs.filter((job) => {
+    const existingSchedule = schedules.find(
+      (schedule) => schedule.jobId === job.id && schedule.operation === operation,
+    );
+    if (!existingSchedule) return true;
+    if (existingSchedule.status !== "COMPLETED") return false;
+    const balance = getScheduleBalance(job, existingSchedule);
+    return balance !== null && balance > 0;
+  });
   const availableMachines = machines.filter(
     (machine) => machine.workspaceId === workspaceId && machine.status !== "RETIRED",
   );
@@ -1647,6 +1668,15 @@ function BulkScheduleForm({
       if (current.some((entry) => entry.jobId === job.id)) return current;
 
       const defaults = createProductionScheduleForm(job.id);
+      const completedSchedule = schedules.find(
+        (schedule) =>
+          schedule.jobId === job.id &&
+          schedule.operation === operation &&
+          schedule.status === "COMPLETED",
+      );
+      const balance = completedSchedule
+        ? getScheduleBalance(job, completedSchedule)
+        : null;
       const lastEnd = current.length
         ? new Date(current[current.length - 1].scheduledEndAt)
         : new Date(defaults.scheduledStartAt);
@@ -1660,7 +1690,11 @@ function BulkScheduleForm({
         jobId: job.id,
         scheduledStartAt: localDateTimeValue(start),
         scheduledEndAt: localDateTimeValue(end),
-        plannedQty: job.orderQty === null || job.orderQty < 1 ? "" : String(job.orderQty),
+        plannedQty: balance !== null && balance > 0
+          ? String(balance)
+          : job.orderQty === null || job.orderQty < 1
+            ? ""
+            : String(job.orderQty),
       }];
     });
   };
@@ -1775,7 +1809,14 @@ function BulkScheduleForm({
       <fieldset className="production-bulk-job-picker">
         <legend>Select jobs to schedule</legend>
         {availableJobs.length ? (
-          availableJobs.map((job) => (
+          availableJobs.map((job) => {
+            const existingSchedule = schedules.find(
+              (schedule) => schedule.jobId === job.id && schedule.operation === operation,
+            );
+            const balance = existingSchedule?.status === "COMPLETED"
+              ? getScheduleBalance(job, existingSchedule)
+              : null;
+            return (
             <label
               className={`production-bulk-job-option${job.flag ? " is-disabled" : ""}`}
               key={job.id}
@@ -1789,14 +1830,18 @@ function BulkScheduleForm({
               <span>
                 <strong>{job.jobNo || "Unnumbered"}</strong>
                 <small>{job.jobName || job.customer || "Untitled job"}</small>
+                {balance !== null && balance > 0 && (
+                  <small>Reschedule balance: {balance.toLocaleString("en-KE")}</small>
+                )}
                 {job.flag && <small>Flagged — clear the flag before scheduling</small>}
               </span>
               <span>{job.orderQty?.toLocaleString("en-KE") ?? "Quantity required"}</span>
             </label>
-          ))
+            );
+          })
         ) : (
           <p className="production-chart-empty">
-            No unscheduled jobs are available for this operation.
+            No schedulable jobs are available for this operation.
           </p>
         )}
       </fieldset>
@@ -1805,9 +1850,23 @@ function BulkScheduleForm({
           <strong>Schedule details</strong>
           {entries.map((entry) => {
             const job = jobs.find((candidate) => candidate.id === entry.jobId);
+            const existingCompletedSchedule = job && schedules.find(
+              (candidate) =>
+                candidate.jobId === job.id &&
+                candidate.operation === operation &&
+                candidate.status === "COMPLETED",
+            );
+            const balance = job && existingCompletedSchedule
+              ? getScheduleBalance(job, existingCompletedSchedule)
+              : null;
             return (
               <fieldset className="production-bulk-schedule-entry" key={entry.jobId}>
                 <legend>{job?.jobNo || job?.jobName || "Selected job"}</legend>
+                {balance !== null && balance > 0 && (
+                  <p className="production-chart-empty">
+                    Remaining order balance: {balance.toLocaleString("en-KE")}
+                  </p>
+                )}
                 <div className="production-bulk-schedule-fields">
                   <label className="production-order-booking-field">
                     Start
@@ -1830,6 +1889,7 @@ function BulkScheduleForm({
                   <label className="production-order-booking-field">
                     Planned quantity
                     <input
+                      max={balance !== null && balance > 0 ? balance : undefined}
                       min="1"
                       onChange={(event) => updateEntry(entry.jobId, "plannedQty", event.target.value)}
                       required
@@ -2320,27 +2380,85 @@ function PlanningBoard({
   const workspaceMaintenanceTickets = maintenanceTickets.filter(
     (ticket) => ticket.workspaceId === workspaceId,
   );
-  const [form, setForm] = useState(() =>
-    createProductionScheduleForm(workspaceJobs[0]?.id ?? ""),
-  );
+  const workspaceSchedules = schedules
+    .filter((schedule) => schedule.workspaceId === workspaceId)
+    .sort((left, right) => left.scheduledStartAt.localeCompare(right.scheduledStartAt));
+  const scheduleFor = (jobId: string, operation: ProductionOperation) =>
+    workspaceSchedules.find(
+      (schedule) => schedule.jobId === jobId && schedule.operation === operation,
+    );
+  const schedulableJobFor = (operation: ProductionOperation, preferredJobId?: string) => {
+    const preferredJob = workspaceJobs.find((job) => job.id === preferredJobId);
+    if (
+      preferredJob &&
+      !isCompletedWithoutBalance(preferredJob, scheduleFor(preferredJob.id, operation))
+    ) {
+      return preferredJob;
+    }
+    return workspaceJobs.find((job) =>
+      !isCompletedWithoutBalance(job, scheduleFor(job.id, operation)),
+    );
+  };
+  const initialJob = schedulableJobFor(PRODUCTION_OPERATIONS[0]);
+  const initialSchedule = initialJob
+    ? scheduleFor(initialJob.id, PRODUCTION_OPERATIONS[0])
+    : undefined;
+  const initialBalance = initialJob && initialSchedule?.status === "COMPLETED"
+    ? getScheduleBalance(initialJob, initialSchedule)
+    : null;
+  const [form, setForm] = useState(() => ({
+    ...createProductionScheduleForm(initialJob?.id ?? ""),
+    plannedQty: initialBalance !== null && initialBalance > 0
+      ? String(initialBalance)
+      : "",
+  }));
   const [editingScheduleId, setEditingScheduleId] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [status, setStatus] = useState("");
   const [hasError, setHasError] = useState(false);
-  const workspaceSchedules = schedules
-    .filter((schedule) => schedule.workspaceId === workspaceId)
-    .sort((left, right) => left.scheduledStartAt.localeCompare(right.scheduledStartAt));
+  const selectedJob = workspaceJobs.find((job) => job.id === form.jobId);
+  const selectedSchedule = selectedJob
+    ? scheduleFor(selectedJob.id, form.operation)
+    : undefined;
+  const selectedBalance = selectedJob
+    ? getScheduleBalance(selectedJob, selectedSchedule)
+    : null;
 
   const updateWorkspace = (nextWorkspaceId: string) => {
+    const nextJobs = jobs.filter((job) => job.workspaceId === nextWorkspaceId);
+    const nextSchedules = schedules.filter(
+      (schedule) => schedule.workspaceId === nextWorkspaceId,
+    );
+    const nextJob = nextJobs.find((job) => {
+      const schedule = nextSchedules.find(
+        (entry) => entry.jobId === job.id && entry.operation === PRODUCTION_OPERATIONS[0],
+      );
+      return !isCompletedWithoutBalance(job, schedule);
+    });
+    const nextSchedule = nextJob && nextSchedules.find(
+      (schedule) =>
+        schedule.jobId === nextJob.id &&
+        schedule.operation === PRODUCTION_OPERATIONS[0],
+    );
+    const nextBalance = nextJob && nextSchedule?.status === "COMPLETED"
+      ? getScheduleBalance(nextJob, nextSchedule)
+      : null;
     setWorkspaceId(nextWorkspaceId);
-    setForm(createProductionScheduleForm(
-      jobs.find((job) => job.workspaceId === nextWorkspaceId)?.id ?? "",
-    ));
+    setForm({
+      ...createProductionScheduleForm(nextJob?.id ?? ""),
+      plannedQty: nextBalance !== null && nextBalance > 0
+        ? String(nextBalance)
+        : "",
+    });
     setEditingScheduleId("");
     setStatus("");
   };
 
   const editSchedule = (schedule: ProductionDashboardSchedule) => {
+    const job = jobs.find((candidate) => candidate.id === schedule.jobId);
+    const balance = job ? getScheduleBalance(job, schedule) : null;
+    const isReschedulingBalance =
+      schedule.status === "COMPLETED" && balance !== null && balance > 0;
     setWorkspaceId(schedule.workspaceId);
     setForm({
       jobId: schedule.jobId,
@@ -2348,8 +2466,8 @@ function PlanningBoard({
       machineId: schedule.machineId ?? "",
       scheduledStartAt: localDateTimeValue(new Date(schedule.scheduledStartAt)),
       scheduledEndAt: localDateTimeValue(new Date(schedule.scheduledEndAt)),
-      plannedQty: String(schedule.plannedQty),
-      status: schedule.status,
+      plannedQty: isReschedulingBalance ? String(balance) : String(schedule.plannedQty),
+      status: isReschedulingBalance ? "PLANNED" : schedule.status,
       notes: schedule.notes,
     });
     setEditingScheduleId(schedule.id);
@@ -2377,7 +2495,9 @@ function PlanningBoard({
         throw new Error("The server returned an invalid operation schedule.");
       }
       notifyToast("Production schedule saved.");
-      setForm(createProductionScheduleForm(workspaceJobs[0]?.id ?? ""));
+      setForm(createProductionScheduleForm(
+        schedulableJobFor(form.operation)?.id ?? "",
+      ));
       setEditingScheduleId("");
       onSaved();
     } catch (error) {
@@ -2448,16 +2568,42 @@ function PlanningBoard({
               Job sheet
               <select
                 disabled={Boolean(editingScheduleId)}
-                onChange={(event) => setForm((current) => ({ ...current, jobId: event.target.value }))}
+                onChange={(event) => {
+                  const jobId = event.target.value;
+                  const job = workspaceJobs.find((candidate) => candidate.id === jobId);
+                  const schedule = job ? scheduleFor(job.id, form.operation) : undefined;
+                  const balance = job && schedule?.status === "COMPLETED"
+                    ? getScheduleBalance(job, schedule)
+                    : null;
+                  setForm((current) => ({
+                    ...current,
+                    jobId,
+                    plannedQty: balance !== null && balance > 0
+                      ? String(balance)
+                      : current.plannedQty,
+                  }));
+                }}
                 required
                 value={form.jobId}
               >
                 <option value="">Select a job</option>
-                {workspaceJobs.map((job) => (
-                  <option key={job.id} value={job.id}>
-                    {job.jobNo || "Unnumbered"} — {job.jobName || job.customer || "Untitled job"}
-                  </option>
-                ))}
+                {workspaceJobs.map((job) => {
+                  const schedule = scheduleFor(job.id, form.operation);
+                  const balance = schedule?.status === "COMPLETED"
+                    ? getScheduleBalance(job, schedule)
+                    : null;
+                  const completedWithoutBalance = isCompletedWithoutBalance(job, schedule);
+                  return (
+                    <option disabled={completedWithoutBalance} key={job.id} value={job.id}>
+                      {job.jobNo || "Unnumbered"} — {job.jobName || job.customer || "Untitled job"}
+                      {schedule?.status === "COMPLETED"
+                        ? balance !== null && balance > 0
+                          ? ` — Balance ${balance.toLocaleString("en-KE")}`
+                          : " — Complete"
+                        : ""}
+                    </option>
+                  );
+                })}
               </select>
             </label>
             <label className="production-order-booking-field">
@@ -2467,7 +2613,19 @@ function PlanningBoard({
                 onChange={(event) => {
                   const operation = event.currentTarget.value;
                   if (isProductionOperation(operation)) {
-                    setForm((current) => ({ ...current, operation }));
+                    const job = schedulableJobFor(operation, form.jobId);
+                    const schedule = job ? scheduleFor(job.id, operation) : undefined;
+                    const balance = job && schedule?.status === "COMPLETED"
+                      ? getScheduleBalance(job, schedule)
+                      : null;
+                    setForm((current) => ({
+                      ...current,
+                      operation,
+                      jobId: job?.id ?? "",
+                      plannedQty: balance !== null && balance > 0
+                        ? String(balance)
+                        : current.plannedQty,
+                    }));
                   }
                 }}
                 value={form.operation}
@@ -2499,7 +2657,13 @@ function PlanningBoard({
             </label>
             <label className="production-order-booking-field">
               Planned quantity
+              {selectedBalance !== null && selectedBalance > 0 && (
+                <small>Remaining order balance: {selectedBalance.toLocaleString("en-KE")}</small>
+              )}
               <input
+                max={selectedBalance !== null && selectedBalance > 0
+                  ? selectedBalance
+                  : undefined}
                 min="1"
                 onChange={(event) => setForm((current) => ({ ...current, plannedQty: event.target.value }))}
                 required
@@ -2588,7 +2752,9 @@ function PlanningBoard({
               <button
                 className="production-text-action"
                 onClick={() => {
-                  setForm(createProductionScheduleForm(workspaceJobs[0]?.id ?? ""));
+                  setForm(createProductionScheduleForm(
+                    schedulableJobFor(form.operation)?.id ?? "",
+                  ));
                   setEditingScheduleId("");
                   setStatus("");
                 }}
@@ -2628,7 +2794,12 @@ function PlanningBoard({
                 </tr>
               </thead>
               <tbody>
-                {workspaceSchedules.map((schedule) => (
+                {workspaceSchedules.map((schedule) => {
+                  const job = jobs.find((candidate) => candidate.id === schedule.jobId);
+                  const balance = job ? getScheduleBalance(job, schedule) : null;
+                  const completedWithoutBalance = !job ||
+                    isCompletedWithoutBalance(job, schedule);
+                  return (
                   <tr key={schedule.id}>
                     <td>
                       <strong>{schedule.jobNo || "—"}</strong>
@@ -2645,14 +2816,20 @@ function PlanningBoard({
                     <td>
                       <button
                         className="production-table-action"
+                        disabled={completedWithoutBalance}
                         onClick={() => editSchedule(schedule)}
                         type="button"
                       >
-                        Edit
+                        {schedule.status === "COMPLETED"
+                          ? completedWithoutBalance
+                            ? "Complete"
+                            : `Reschedule balance (${balance?.toLocaleString("en-KE")})`
+                          : "Edit"}
                       </button>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -2685,6 +2862,14 @@ function CorrugatorScheduleForm({
   onSaved: () => void;
   onCancel: () => void;
 }) {
+  const remainingBalance = getProductionOperationBalance(
+    job.orderQty,
+    existingSchedule?.actualGoodQty ?? 0,
+  );
+  const isReschedulingBalance =
+    existingSchedule?.status === "COMPLETED" &&
+    remainingBalance !== null &&
+    remainingBalance > 0;
   const [form, setForm] = useState<ProductionScheduleForm>(() => {
     if (existingSchedule) {
       return {
@@ -2693,8 +2878,10 @@ function CorrugatorScheduleForm({
         machineId: existingSchedule.machineId ?? "",
         scheduledStartAt: localDateTimeValue(new Date(existingSchedule.scheduledStartAt)),
         scheduledEndAt: localDateTimeValue(new Date(existingSchedule.scheduledEndAt)),
-        plannedQty: String(existingSchedule.plannedQty),
-        status: existingSchedule.status,
+        plannedQty: isReschedulingBalance
+          ? String(remainingBalance)
+          : String(existingSchedule.plannedQty),
+        status: isReschedulingBalance ? "PLANNED" : existingSchedule.status,
         notes: existingSchedule.notes,
       };
     }
@@ -2751,7 +2938,13 @@ function CorrugatorScheduleForm({
     <form className="production-planning-form" onSubmit={submitSchedule}>
       <div>
         <span className="production-panel-kicker">CORRUGATING</span>
-        <h3>{existingSchedule ? "Update corrugator schedule" : "Schedule to Corrugator"}</h3>
+        <h3>
+          {isReschedulingBalance
+            ? "Reschedule corrugator balance"
+            : existingSchedule
+              ? "Update corrugator schedule"
+              : "Schedule to Corrugator"}
+        </h3>
       </div>
       <div className="production-order-booking-row">
         <label className="production-order-booking-field">
@@ -2774,7 +2967,13 @@ function CorrugatorScheduleForm({
         </label>
         <label className="production-order-booking-field">
           Planned quantity
+          {remainingBalance !== null && remainingBalance > 0 && (
+            <small>Remaining order balance: {remainingBalance.toLocaleString("en-KE")}</small>
+          )}
           <input
+            max={remainingBalance !== null && remainingBalance > 0
+              ? remainingBalance
+              : undefined}
             min="1"
             onChange={(event) => setForm((current) => ({ ...current, plannedQty: event.target.value }))}
             required
@@ -9442,6 +9641,16 @@ export default function ProductionDashboard({
       schedule.jobId === selectedJob.id && schedule.operation === "Corrugating",
     ) ?? null
     : null;
+  const selectedCorrugatorBalance = selectedJob
+    ? getProductionOperationBalance(
+      selectedJob.orderQty,
+      selectedCorrugatorSchedule?.actualGoodQty ?? 0,
+    )
+    : null;
+  const canRescheduleCorrugator =
+    selectedCorrugatorSchedule?.status === "COMPLETED" &&
+    selectedCorrugatorBalance !== null &&
+    selectedCorrugatorBalance > 0;
   const jobSheetSchedules = selectedJob
     ? schedules
       .filter((schedule) => schedule.jobId === selectedJob.id)
@@ -10040,12 +10249,17 @@ export default function ProductionDashboard({
                     {selectedJob && (isAdmin || productionWorkspaceIds.has(selectedJob.workspaceId)) && (
                       <button
                         className="production-primary-button"
-                        disabled={selectedCorrugatorSchedule?.status === "COMPLETED"}
+                        disabled={
+                          selectedCorrugatorSchedule?.status === "COMPLETED" &&
+                          !canRescheduleCorrugator
+                        }
                         onClick={() => setIsSchedulingCorrugator((open) => !open)}
                         type="button"
                       >
                         {selectedCorrugatorSchedule?.status === "COMPLETED"
-                          ? "Corrugating completed"
+                          ? canRescheduleCorrugator
+                            ? `Reschedule balance (${selectedCorrugatorBalance.toLocaleString("en-KE")})`
+                            : "Corrugating completed"
                           : selectedCorrugatorSchedule
                             ? "Update corrugator schedule"
                             : "Schedule to Corrugator"}

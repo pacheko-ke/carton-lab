@@ -6,8 +6,10 @@ import {
 } from "@/lib/production-access";
 import {
   canEditProductionJobs,
+  getProductionOperationBalance,
   isProductionWorkflowStage,
   isProductionOperationStatus,
+  productionOrderQuantity,
   PRODUCTION_WORKFLOW_STAGES,
   validateProductionOperationRun,
 } from "@/lib/production-data";
@@ -72,6 +74,20 @@ export async function POST(request: Request, { params }: RouteContext) {
         return {
           error: "Clear the active job flag before recording production output.",
           status: 409 as const,
+        };
+      }
+      const previousGoodQty = await transaction.productionOperationRun.aggregate({
+        where: { scheduleId: schedule.id },
+        _sum: { goodQty: true },
+      });
+      const balance = getProductionOperationBalance(
+        productionOrderQuantity(schedule.job.data),
+        previousGoodQty._sum.goodQty ?? 0,
+      );
+      if (balance !== null && Number(body.goodQty) > balance) {
+        return {
+          error: `Good quantity cannot exceed the remaining order balance of ${balance}.`,
+          status: 400 as const,
         };
       }
 
