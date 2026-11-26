@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { hasPremiumAccess } from "@/lib/billing";
+import { hasAccessPermission } from "@/lib/access-control";
 import { createKeylineCatalog } from "@/lib/keyline-catalog";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
@@ -51,6 +52,9 @@ export async function GET() {
   if (!user) {
     return NextResponse.json({ error: "Verified account required" }, { status: 401 });
   }
+  if (!(await hasAccessPermission(user.id, "keylines.use"))) {
+    return NextResponse.json({ error: "Keyline access is not assigned to this account" }, { status: 403 });
+  }
 
   const bookmarks = await prisma.keylineBookmark.findMany({
     where: { userId: user.id },
@@ -74,6 +78,9 @@ export async function POST(request: Request) {
   const user = await getVerifiedUser();
   if (!user) {
     return NextResponse.json({ error: "Verified account required" }, { status: 401 });
+  }
+  if (!(await hasAccessPermission(user.id, "keylines.use"))) {
+    return NextResponse.json({ error: "Keyline access is not assigned to this account" }, { status: 403 });
   }
 
   let body: unknown;

@@ -1,4 +1,5 @@
 import { auth } from "@/auth";
+import { hasAccessPermission } from "@/lib/access-control";
 import { Workbook, type CellValue } from "exceljs";
 import { NextResponse } from "next/server";
 
@@ -24,6 +25,9 @@ export async function POST(request: Request) {
   const session = await auth();
   if (!session?.user.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!(await hasAccessPermission(session.user.id, "keylines.use"))) {
+    return NextResponse.json({ error: "Keyline access is not assigned to this account" }, { status: 403 });
   }
 
   const contentLength = Number(request.headers.get("content-length"));

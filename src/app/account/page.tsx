@@ -11,7 +11,7 @@ import {
   MPESA_PROVIDER_PLAN_ID,
 } from "@/lib/billing";
 import BrandLogo from "../brand-logo";
-import { isAdminEmail } from "@/lib/admin";
+import { isSuperAdminUser } from "@/lib/access-control";
 import { updateEmailPreferences } from "../email-actions";
 
 type AccountPageProps = {
@@ -54,6 +54,7 @@ async function AccountContent({ searchParams }: AccountPageProps) {
     requireVerifiedUser(),
     searchParams,
   ]);
+  const isSuperAdmin = await isSuperAdminUser(user.id);
   const now = new Date();
   const premium = hasPremiumAccess(
     user.subscriptions,
@@ -99,7 +100,7 @@ async function AccountContent({ searchParams }: AccountPageProps) {
           <BrandLogo className="brand-wordmark" />
         </Link>
         <nav className="account-header-links" aria-label="Account navigation">
-          {isAdminEmail(user.email) && (
+          {isSuperAdmin && (
             <Link href="/admin" className="account-back-link">
               Dashboard
             </Link>

@@ -1,5 +1,11 @@
 import { issueSignedToken, presignUrl } from "@vercel/blob";
-import { getArtworkContentType, MAX_ARTWORK_FILE_BYTES, sanitizeArtworkFileName, canAttachProductionArtwork } from "@/lib/production-data";
+import {
+  canAttachProductionArtwork,
+  getArtworkContentType,
+  MAX_ARTWORK_FILE_BYTES,
+  productionJobItemId,
+  sanitizeArtworkFileName,
+} from "@/lib/production-data";
 import {
   getAuthorizedProductionJob,
   getVerifiedProductionUser,
@@ -33,13 +39,26 @@ export async function POST(request: Request, { params }: RouteContext) {
       { status: 403 },
     );
   }
+  const itemId = productionJobItemId(access.job.data);
   const existingArtwork = await prisma.productionAttachment.findFirst({
     where: { jobId },
     select: { id: true },
   });
-  if (existingArtwork) {
+  const item = itemId
+    ? await prisma.productionItem.findFirst({
+        where: { id: itemId, organizationId: access.job.organizationId },
+        select: { id: true },
+      })
+    : null;
+  const existingProductArtwork = !existingArtwork && item
+    ? await prisma.productionAttachment.findUnique({
+        where: { itemId: item.id },
+        select: { id: true },
+      })
+    : null;
+  if (existingArtwork || existingProductArtwork) {
     return NextResponse.json(
-      { error: "Only one artwork file can be attached to a job." },
+      { error: "Artwork is already attached to this job or product. Delete it first to replace it." },
       { status: 409 },
     );
   }

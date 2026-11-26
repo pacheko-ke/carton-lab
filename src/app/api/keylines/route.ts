@@ -3,6 +3,7 @@ import {
   hasPremiumAccess,
   hasPremiumSubscriptionAccess,
 } from "@/lib/billing";
+import { hasAccessPermission } from "@/lib/access-control";
 import { createKeylineCatalog } from "@/lib/keyline-catalog";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
@@ -25,6 +26,9 @@ export async function GET() {
 
   if (!user?.emailVerified) {
     return NextResponse.json({ error: "Verified account required" }, { status: 403 });
+  }
+  if (!(await hasAccessPermission(session.user.id, "keylines.use"))) {
+    return NextResponse.json({ error: "Keyline access is not assigned to this account" }, { status: 403 });
   }
 
   const now = new Date();

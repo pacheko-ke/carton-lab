@@ -1,11 +1,14 @@
 import { Suspense } from "react";
 import { connection } from "next/server";
+import { redirect } from "next/navigation";
 import QRCode from "qrcode";
-import { isAdminEmail } from "@/lib/admin";
 import { requireVerifiedUser } from "@/lib/account";
+import {
+  getProductionRoleCapabilities,
+  isSuperAdminUser,
+} from "@/lib/access-control";
 import { hasPremiumAccess } from "@/lib/billing";
 import { createKeylineCatalog } from "@/lib/keyline-catalog";
-import { isProductionAdmin } from "@/lib/production-access";
 import {
   isProductionOperation,
   isProductionOperationStatus,
@@ -17,6 +20,8 @@ import {
   isProductionNonconformanceStatus,
   isProductionOriginationQueueStage,
   isProductionWorkflowStage,
+  hasProductionRole,
+  productionJobItemId,
   PRODUCTION_WORKFLOW_STAGES,
   isRecord,
 } from "@/lib/production-data";
@@ -118,36 +123,22 @@ export default function ProductionAdminPage() {
 async function AuthenticatedProductionAdminPage() {
   await connection();
   const user = await requireVerifiedUser();
-  const isAdmin = isProductionAdmin(user);
-  const membershipOrganizations: ProductionDashboardOrganization[] = isAdmin
-    ? (await prisma.productionOrganization.findMany({
+  const [isAdmin, productionRoles] = await Promise.all([
+    isSuperAdminUser(user.id),
+    getProductionRoleCapabilities(user.id),
+  ]);
+  if (!isAdmin && !productionRoles.length) redirect("/app");
+  const role = productionRoles.join("|");
+  const membershipOrganizations: ProductionDashboardOrganization[] =
+    (await prisma.productionOrganization.findMany({
         orderBy: { name: "asc" },
         select: { id: true, name: true },
-      })).map((organization) => ({ ...organization, role: "PRODUCTION" }))
-    : (await prisma.productionOrganizationMembership.findMany({
-        where: { userId: user.id },
-        select: {
-          role: true,
-          organization: { select: { id: true, name: true } },
-        },
-      })).map(({ role, organization }) => ({
-        ...organization,
-        role: role === "DESIGNER"
-          ? "DESIGNER"
-          : role === "ORDER_BOOKER"
-            ? "ORDER_BOOKER"
-            : "PRODUCTION",
-      }));
+      }))
+      .map((organization) => ({ ...organization, role }));
   const hasDesignerRole = !isAdmin &&
-    membershipOrganizations.some((organization) => organization.role === "DESIGNER");
-  const organizations = hasDesignerRole
-    ? membershipOrganizations.filter((organization) => organization.role === "DESIGNER")
-    : membershipOrganizations;
-  const organizationNamesForOrigination = hasDesignerRole
-    ? await prisma.productionOrganization.findMany({
-        select: { id: true, name: true },
-      })
-    : organizations;
+    productionRoles.includes("DESIGNER");
+  const organizations = membershipOrganizations;
+  const organizationNamesForOrigination = organizations;
   const organizationNames = new Map(
     organizationNamesForOrigination.map((organization) => [organization.id, organization.name]),
   );
@@ -160,23 +151,31 @@ async function AuthenticatedProductionAdminPage() {
         select: dashboardJobSelection,
       })
     : [];
-  const crossOrganizationJobRows = hasDesignerRole
-    ? await prisma.productionJob.findMany({
-        where: {
-          organizationId: {
-            notIn: organizations.map((organization) => organization.id),
-          },
-        },
-        orderBy: { updatedAt: "desc" },
-        select: dashboardJobSelection,
-      })
-    : [];
+  const crossOrganizationJobRows: typeof jobs = [];
+  const artworkItemIds = [...new Set(
+    [...jobs, ...crossOrganizationJobRows]
+      .map((job) => productionJobItemId(job.data))
+      .filter((itemId): itemId is string => itemId !== null),
+  )];
+  const productArtworkItemIds = new Set(
+    artworkItemIds.length
+      ? (await prisma.productionAttachment.findMany({
+          where: { itemId: { in: artworkItemIds } },
+          select: { itemId: true },
+        }))
+          .map((attachment) => attachment.itemId)
+          .filter((itemId): itemId is string => itemId !== null)
+      : [],
+  );
   const toDashboardJob = (job: (typeof jobs)[number]): ProductionDashboardJob => {
     const rawStage = textValue(job.data, "workflowStage");
+    const itemId = productionJobItemId(job.data);
     return {
       id: job.id,
       organizationId: job.organizationId,
       organizationName: organizationNames.get(job.organizationId) ?? "Production organization",
+      itemId,
+      productArtwork: itemId !== null && productArtworkItemIds.has(itemId),
       jobNo: textValue(job.data, "jobNo"),
       jobName: textValue(job.data, "jobName"),
       customer: textValue(job.data, "customer"),
@@ -189,13 +188,14 @@ async function AuthenticatedProductionAdminPage() {
       workflowStage: isProductionWorkflowStage(rawStage)
         ? rawStage
         : "Origination",
-      artworkCount: job._count.attachments,
+      artworkCount: job._count.attachments ||
+        (itemId !== null && productArtworkItemIds.has(itemId) ? 1 : 0),
       updatedAt: job.updatedAt.toISOString(),
     };
   };
   const dashboardJobs: ProductionDashboardJob[] = jobs.map(toDashboardJob);
   const productionOrganizationIds = organizations
-    .filter((organization) => organization.role === "PRODUCTION")
+    .filter((organization) => hasProductionRole(organization.role, "PRODUCTION"))
     .map((organization) => organization.id);
   const operationSchedules = productionOrganizationIds.length
     ? await prisma.productionOperationSchedule.findMany({
@@ -1134,7 +1134,8 @@ async function AuthenticatedProductionAdminPage() {
   });
   const quoteOrganizationIds = organizations
     .filter((organization) =>
-      organization.role === "ORDER_BOOKER" || organization.role === "PRODUCTION",
+      hasProductionRole(organization.role, "ORDER_BOOKER") ||
+      hasProductionRole(organization.role, "PRODUCTION"),
     )
     .map((organization) => organization.id);
   const quoteRows = quoteOrganizationIds.length
@@ -1282,7 +1283,7 @@ async function AuthenticatedProductionAdminPage() {
       safetyTrainings={dashboardSafetyTrainings}
       quotes={dashboardQuotes}
       isAdmin={isAdmin}
-      canManageOrganizations={isAdminEmail(user.email)}
+      canManageOrganizations={isAdmin}
     />
   );
 }

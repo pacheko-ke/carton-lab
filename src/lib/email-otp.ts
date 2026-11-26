@@ -2,6 +2,7 @@ import { createHmac, randomInt, timingSafeEqual } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { PREMIUM_TRIAL_DAYS } from "@/lib/billing";
 import { getTrialEmailJobs } from "@/lib/email-jobs";
+import { assignDefaultAccessRole } from "@/lib/access-control";
 import { notifyNewAccount } from "@/lib/new-account-notifications";
 import { prisma } from "@/lib/prisma";
 import { sendResendEmail } from "@/lib/resend-email";
@@ -309,11 +310,17 @@ async function findUserByEmail(email: string) {
 export async function getOrCreateVerifiedEmailUser(email: string) {
   const existing = await findUserByEmail(email);
   if (existing) {
-    if (existing.emailVerified) return existing;
-    return prisma.user.update({
-      where: { id: existing.id },
-      data: { emailVerified: new Date() },
+    const user = await prisma.$transaction(async (transaction) => {
+      const verifiedUser = existing.emailVerified
+        ? existing
+        : await transaction.user.update({
+            where: { id: existing.id },
+            data: { emailVerified: new Date() },
+          });
+      await assignDefaultAccessRole(transaction, verifiedUser.id);
+      return verifiedUser;
     });
+    return user;
   }
 
   const createdAt = new Date();
@@ -331,6 +338,7 @@ export async function getOrCreateVerifiedEmailUser(email: string) {
           marketingEmailsEnabled: true,
         },
       });
+      await assignDefaultAccessRole(transaction, newUser.id);
       await transaction.emailJob.createMany({
         data: getTrialEmailJobs(newUser.id, trialEndsAt),
         skipDuplicates: true,
@@ -344,12 +352,16 @@ export async function getOrCreateVerifiedEmailUser(email: string) {
     ) {
       const racedUser = await findUserByEmail(email);
       if (racedUser) {
-        return racedUser.emailVerified
-          ? racedUser
-          : prisma.user.update({
-              where: { id: racedUser.id },
-              data: { emailVerified: new Date() },
-            });
+        return prisma.$transaction(async (transaction) => {
+          const verifiedUser = racedUser.emailVerified
+            ? racedUser
+            : await transaction.user.update({
+                where: { id: racedUser.id },
+                data: { emailVerified: new Date() },
+              });
+          await assignDefaultAccessRole(transaction, verifiedUser.id);
+          return verifiedUser;
+        });
       }
     }
     throw error;

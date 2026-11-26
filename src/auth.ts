@@ -12,6 +12,7 @@ import {
 } from "@/lib/email-otp";
 import { notifyNewAccount } from "@/lib/new-account-notifications";
 import { AUTH_SESSION_MAX_AGE_SECONDS } from "@/lib/auth-session";
+import { assignDefaultAccessRole } from "@/lib/access-control";
 import { isEmailOtpConfigured } from "@/auth-config";
 import authConfig from "@/auth.config";
 
@@ -105,6 +106,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             marketingEmailsEnabled: true,
           },
         });
+        await assignDefaultAccessRole(transaction, userId);
         await transaction.emailJob.createMany({
           data: getTrialEmailJobs(userId, trialEndsAt),
           skipDuplicates: true,

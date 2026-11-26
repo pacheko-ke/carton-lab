@@ -1,5 +1,6 @@
 import {
   canEditProductionJobs,
+  hasProductionRole,
   getProductionOriginationPrintDetails,
   isProductionWorkflowStage,
   isRecord,
@@ -62,7 +63,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   if (!access) {
     return NextResponse.json({ error: "Production job not found" }, { status: 404 });
   }
-  const isOriginationDesigner = access.membership.role === "DESIGNER";
+  const isOriginationDesigner = hasProductionRole(access.membership.role, "DESIGNER");
   if (!isAdmin && !canEditProductionJobs(access.membership.role) && !isOriginationDesigner) {
     return NextResponse.json(
       { error: "Production role required to update jobs" },

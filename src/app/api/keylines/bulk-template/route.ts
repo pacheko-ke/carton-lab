@@ -1,10 +1,14 @@
 import { auth } from "@/auth";
+import { hasAccessPermission } from "@/lib/access-control";
 import { Workbook } from "exceljs";
 
 export async function GET(request: Request) {
   const session = await auth();
   if (!session?.user.id) {
     return new Response("Unauthorized", { status: 401 });
+  }
+  if (!(await hasAccessPermission(session.user.id, "keylines.use"))) {
+    return new Response("Keyline access is not assigned to this account", { status: 403 });
   }
 
   const unit = new URL(request.url).searchParams.get("unit") === "in" ? "in" : "mm";

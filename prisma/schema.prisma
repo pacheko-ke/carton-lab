@@ -8,12 +8,6 @@ datasource db {
   directUrl = env("POSTGRES_URL_NON_POOLING")
 }
 
-enum ProductionRole {
-  PRODUCTION
-  DESIGNER
-  ORDER_BOOKER
-}
-
 model User {
   id                                  String                             @id @default(cuid())
   name                                String?
@@ -35,7 +29,8 @@ model User {
   billingPayments                     BillingPayment[]
   keylineBookmarks                    KeylineBookmark[]
   emailJobs                           EmailJob[]
-  organizationMemberships             ProductionOrganizationMembership[]
+  accessRoles                         UserAccessRole[]                    @relation("AccessRoleUser")
+  assignedAccessRoles                 UserAccessRole[]                    @relation("AccessRoleAssignedBy")
   productionNotifications              ProductionNotification[]
   productionPushSubscriptions          ProductionPushSubscription[]
   createdProductionJobs               ProductionJob[]                    @relation("ProductionJobCreator")
@@ -78,6 +73,35 @@ model User {
   reviewedProductionLeaveRequests   ProductionLeaveRequest[]                @relation("ProductionLeaveRequestReviewer")
   createdProductionSafetyTrainings  ProductionSafetyTraining[]              @relation("ProductionSafetyTrainingCreator")
   uploadedProductionFiles             ProductionAttachment[]             @relation("ProductionAttachmentUploader")
+}
+
+model AccessRole {
+  id           String           @id @default(cuid())
+  key          String           @unique
+  name         String
+  description  String           @default("")
+  permissions  String[]         @default([])
+  isSuperAdmin Boolean          @default(false)
+  isSystem     Boolean          @default(false)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  assignments  UserAccessRole[]
+
+  @@index([name])
+}
+
+model UserAccessRole {
+  userId            String
+  roleId            String
+  assignedByUserId  String?
+  assignedAt        DateTime   @default(now())
+  user              User       @relation("AccessRoleUser", fields: [userId], references: [id], onDelete: Cascade)
+  role              AccessRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  assignedBy        User?      @relation("AccessRoleAssignedBy", fields: [assignedByUserId], references: [id], onDelete: SetNull)
+
+  @@id([userId, roleId])
+  @@index([roleId])
+  @@index([assignedByUserId])
 }
 
 model EmailCampaign {
@@ -247,7 +271,6 @@ model ProductionOrganization {
   name               String
   createdAt          DateTime                           @default(now())
   updatedAt          DateTime                           @updatedAt
-  memberships        ProductionOrganizationMembership[]
   jobs               ProductionJob[]
   items              ProductionItem[]
   operationSchedules ProductionOperationSchedule[]
@@ -276,19 +299,6 @@ model ProductionOrganization {
   safetyTrainings    ProductionSafetyTraining[]
 
   @@index([name])
-}
-
-model ProductionOrganizationMembership {
-  organizationId String
-  userId         String
-  role           ProductionRole         @default(PRODUCTION)
-  createdAt      DateTime               @default(now())
-  updatedAt      DateTime               @updatedAt
-  organization   ProductionOrganization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  user           User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@id([organizationId, userId])
-  @@index([userId])
 }
 
 model ProductionNotification {
@@ -1019,6 +1029,7 @@ model ProductionItem {
   createdBy       User?                  @relation("ProductionItemCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
   customer        ProductionCustomer?    @relation(fields: [customerId], references: [id], onDelete: SetNull)
   quoteLines      ProductionQuoteLine[]
+  artwork         ProductionAttachment?
 
   @@unique([organizationId, itemCode])
   @@index([organizationId, name])
@@ -1133,6 +1144,7 @@ model ProductionJobFlag {
 model ProductionAttachment {
   id               String        @id @default(cuid())
   jobId            String
+  itemId           String?       @unique
   uploadedByUserId String?
   pathname         String        @unique
   originalName     String
@@ -1140,6 +1152,7 @@ model ProductionAttachment {
   size             Int
   createdAt        DateTime      @default(now())
   job              ProductionJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  item             ProductionItem? @relation(fields: [itemId], references: [id], onDelete: SetNull)
   uploadedBy       User?         @relation("ProductionAttachmentUploader", fields: [uploadedByUserId], references: [id], onDelete: SetNull)
 
   @@index([jobId, createdAt])

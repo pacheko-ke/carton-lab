@@ -6,6 +6,7 @@ import {
   canEditProductionJobs,
   canFlagProductionJobs,
   canResolveProductionJobFlags,
+  hasProductionRole,
   getProductionOriginationPrintDetails,
   isProductionOriginationQueueStage,
   getArtworkContentType,
@@ -13,6 +14,7 @@ import {
   MAX_PRODUCTION_JOB_FLAG_REASON_LENGTH,
   PRODUCTION_OPERATIONS,
   PRODUCTION_WORKFLOW_STAGES,
+  productionJobItemId,
   sanitizeArtworkFileName,
   validateProductionItem,
   validateProductionCustomer,
@@ -52,6 +54,13 @@ test("validates shared production job data and tracking rows", () => {
     validateProductionJobData({ tracking: Array.from({ length: 9 }, () => ({})) }),
     false,
   );
+});
+
+test("reads a valid product ID from a production job sheet", () => {
+  assert.equal(productionJobItemId({ itemId: "item-123" }), "item-123");
+  assert.equal(productionJobItemId({ itemId: "" }), null);
+  assert.equal(productionJobItemId({ itemId: 123 }), null);
+  assert.equal(productionJobItemId(null), null);
 });
 
 test("limits Origination job updates to valid printing details", () => {
@@ -164,6 +173,16 @@ test("validates a non-empty job flag reason within the allowed length", () => {
 
 test("allows order booking only for Order Bookers", () => {
   assert.equal(canBookProductionOrders("ORDER_BOOKER"), true);
+});
+
+test("supports additive global production role grants", () => {
+  const role = "VIEWER|PRODUCTION|DESIGNER";
+  assert.equal(hasProductionRole(role, "PRODUCTION"), true);
+  assert.equal(hasProductionRole(role, "DESIGNER"), true);
+  assert.equal(hasProductionRole(role, "ORDER_BOOKER"), false);
+  assert.equal(canEditProductionJobs(role), true);
+  assert.equal(canAttachProductionArtwork(role), true);
+  assert.equal(canBookProductionOrders(role), false);
   assert.equal(canBookProductionOrders("PRODUCTION"), false);
   assert.equal(canBookProductionOrders("DESIGNER"), false);
 });

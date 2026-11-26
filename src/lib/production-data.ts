@@ -572,6 +572,13 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+export function productionJobItemId(data: unknown): string | null {
+  if (!isRecord(data) || typeof data.itemId !== "string" || !data.itemId) {
+    return null;
+  }
+  return data.itemId;
+}
+
 export function getProductionOriginationPrintDetails(
   value: unknown,
 ): Record<string, string> {
@@ -651,24 +658,28 @@ export function validateProductionOriginationPrintDetails(
   );
 }
 
+export function hasProductionRole(role: string, expected: string): boolean {
+  return role.split("|").includes(expected);
+}
+
 export function canEditProductionJobs(role: string): boolean {
-  return role === "PRODUCTION";
+  return hasProductionRole(role, "PRODUCTION");
 }
 
 export function canAttachProductionArtwork(role: string): boolean {
-  return role === "DESIGNER";
+  return hasProductionRole(role, "DESIGNER");
 }
 
 export function canFlagProductionJobs(role: string): boolean {
-  return role === "DESIGNER";
+  return hasProductionRole(role, "DESIGNER");
 }
 
 export function canResolveProductionJobFlags(role: string): boolean {
-  return role === "PRODUCTION";
+  return hasProductionRole(role, "PRODUCTION");
 }
 
 export function canBookProductionOrders(role: string): boolean {
-  return role === "ORDER_BOOKER";
+  return hasProductionRole(role, "ORDER_BOOKER");
 }
 
 export function validateProductionJobFlagReason(value: unknown): value is string {

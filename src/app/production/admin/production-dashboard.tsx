@@ -60,6 +60,7 @@ import {
   PRODUCTION_NONCONFORMANCE_STATUSES,
   PRODUCTION_ORIGINATION_PRINT_FIELDS,
   PRODUCTION_WORKFLOW_STAGES,
+  hasProductionRole,
   isProductionOriginationQueueStage,
   isProductionOperation,
   isProductionOperationStatus,
@@ -122,7 +123,7 @@ import { PRODUCTION_LEAVE_TYPES } from "@/lib/production-hr-data";
 export type ProductionDashboardOrganization = {
   id: string;
   name: string;
-  role: "PRODUCTION" | "DESIGNER" | "ORDER_BOOKER";
+  role: string;
 };
 
 type ProductionDashboardCustomerSummary = Pick<ProductionDashboardCustomer, "id" | "name">;
@@ -131,6 +132,8 @@ export type ProductionDashboardJob = {
   id: string;
   organizationId: string;
   organizationName: string;
+  itemId: string | null;
+  productArtwork: boolean;
   jobNo: string;
   jobName: string;
   customer: string;
@@ -2303,7 +2306,7 @@ function PlanningBoard({
   onSaved: () => void;
 }) {
   const productionOrganizations = organizations.filter(
-    (organization) => organization.role === "PRODUCTION",
+    (organization) => hasProductionRole(organization.role, "PRODUCTION"),
   );
   const [organizationId, setOrganizationId] = useState(preferredOrganizationId);
   const [schedulingMode, setSchedulingMode] = useState<"single" | "bulk">("single");
@@ -2851,7 +2854,7 @@ function ShopFloorExecutionBoard({
   onSaved: () => void;
 }) {
   const productionOrganizations = organizations.filter(
-    (organization) => organization.role === "PRODUCTION",
+    (organization) => hasProductionRole(organization.role, "PRODUCTION"),
   );
   const [organizationId, setOrganizationId] = useState(preferredOrganizationId);
   const [selectedScheduleId, setSelectedScheduleId] = useState("");
@@ -3159,7 +3162,7 @@ function QualityManagementBoard({
   onSaved: () => void;
 }) {
   const productionOrganizations = organizations.filter(
-    (organization) => organization.role === "PRODUCTION",
+    (organization) => hasProductionRole(organization.role, "PRODUCTION"),
   );
   const [organizationId, setOrganizationId] = useState(preferredOrganizationId);
   const organizationJobs = jobs.filter((job) => job.organizationId === organizationId);
@@ -6349,7 +6352,9 @@ function ArtworkUploadButton({
         method: "POST",
         body: JSON.stringify({ pathname: upload.pathname, fileName: file.name }),
       });
-      notifyToast("Artwork attached.");
+      notifyToast(job.itemId
+        ? "Artwork saved to the product for future orders."
+        : "Artwork attached.");
       onUploaded?.();
     } catch (error) {
       console.error("Could not attach artwork to the production job:", error);
@@ -6387,7 +6392,7 @@ function ArtworkUploadButton({
       <div className="production-artwork-upload">
         <span className="production-artwork-attached">
           <FiCheckCircle aria-hidden="true" />
-          Artwork attached
+          {job.productArtwork ? "Product artwork saved" : "Artwork attached"}
         </span>
         <button
           aria-label={`Delete artwork for ${job.jobNo || "job"}`}
@@ -8883,8 +8888,10 @@ function ProductionQuotesBoard({
           <div className="production-quote-list">
             {quotes.map((quote) => {
               const role = organizations.find((organization) => organization.id === quote.organizationId)?.role;
-              const canApprove = isAdmin || role === "PRODUCTION";
-              const canSubmit = isAdmin || role === "ORDER_BOOKER" || role === "PRODUCTION";
+              const canApprove = isAdmin || hasProductionRole(role ?? "", "PRODUCTION");
+              const canSubmit = isAdmin ||
+                hasProductionRole(role ?? "", "ORDER_BOOKER") ||
+                hasProductionRole(role ?? "", "PRODUCTION");
               const expired = quote.validUntil.slice(0, 10) < todayKey;
               const isExpired = expired && (quote.status === "SUBMITTED" || quote.status === "APPROVED");
               const displayStatus = isExpired ? "EXPIRED" : quote.status;
@@ -9202,7 +9209,11 @@ export default function ProductionDashboard({
   canManageOrganizations,
 }: Props) {
   const hasDesignerRole = !isAdmin &&
-    organizations.some((organization) => organization.role === "DESIGNER");
+    organizations.some((organization) => hasProductionRole(organization.role, "DESIGNER")) &&
+    !organizations.some((organization) =>
+      hasProductionRole(organization.role, "PRODUCTION") ||
+      hasProductionRole(organization.role, "ORDER_BOOKER"),
+    );
   const router = useRouter();
   const [view, setView] = useState<DashboardView>(
     hasDesignerRole ? "origination" : "overview",
@@ -9251,28 +9262,29 @@ export default function ProductionDashboard({
   const designerOrganizationIds = useMemo(
     () => new Set(isAdmin
       ? organizations.map((organization) => organization.id)
-      : organizations.filter((organization) => organization.role === "DESIGNER")
+      : organizations.filter((organization) => hasProductionRole(organization.role, "DESIGNER"))
         .map((organization) => organization.id)),
     [isAdmin, organizations],
   );
   const productionOrganizationIds = useMemo(
     () => new Set(isAdmin
       ? organizations.map((organization) => organization.id)
-      : organizations.filter((organization) => organization.role === "PRODUCTION")
+      : organizations.filter((organization) => hasProductionRole(organization.role, "PRODUCTION"))
         .map((organization) => organization.id)),
     [isAdmin, organizations],
   );
   const orderBookingOrganizations = useMemo(
-    () => isAdmin
-      ? organizations.map((organization) => ({ ...organization, role: "ORDER_BOOKER" as const }))
-      : organizations.filter((organization) => organization.role === "ORDER_BOOKER"),
-    [isAdmin, organizations],
+    () => organizations.filter((organization) =>
+      hasProductionRole(organization.role, "ORDER_BOOKER"),
+    ),
+    [organizations],
   );
   const quoteOrganizations = useMemo(
     () => isAdmin
       ? organizations
       : organizations.filter((organization) =>
-        organization.role === "ORDER_BOOKER" || organization.role === "PRODUCTION",
+        hasProductionRole(organization.role, "ORDER_BOOKER") ||
+        hasProductionRole(organization.role, "PRODUCTION"),
       ),
     [isAdmin, organizations],
   );
@@ -9345,7 +9357,7 @@ export default function ProductionDashboard({
     organizationFilter !== "all",
   );
   const canManageJobs = isAdmin || organizations.some(
-    (organization) => organization.role === "PRODUCTION" &&
+    (organization) => hasProductionRole(organization.role, "PRODUCTION") &&
       (organizationFilter === "all" || organization.id === organizationFilter),
   );
   const visibleWorkspaceItems = WORKSPACE_ITEMS.filter((item) => {
@@ -9364,10 +9376,12 @@ export default function ProductionDashboard({
   });
   const planningOrganizationId =
     organizations.find((organization) =>
-      organization.role === "PRODUCTION" &&
+      hasProductionRole(organization.role, "PRODUCTION") &&
       (organizationFilter === "all" || organization.id === organizationFilter),
     )?.id ??
-    organizations.find((organization) => organization.role === "PRODUCTION")?.id ??
+    organizations.find((organization) =>
+      hasProductionRole(organization.role, "PRODUCTION"),
+    )?.id ??
     "";
   const jobsForWorkflowStage = (stage: ProductionWorkflowStage) => {
     if (stage === "Board Production") {

@@ -1,6 +1,12 @@
 import { Prisma } from "@prisma/client";
 import { del, get } from "@vercel/blob";
-import { canAttachProductionArtwork, getArtworkContentType, MAX_ARTWORK_FILE_BYTES, sanitizeArtworkFileName } from "@/lib/production-data";
+import {
+  canAttachProductionArtwork,
+  getArtworkContentType,
+  MAX_ARTWORK_FILE_BYTES,
+  productionJobItemId,
+  sanitizeArtworkFileName,
+} from "@/lib/production-data";
 import {
   getAuthorizedProductionJob,
   getVerifiedProductionUser,
@@ -28,7 +34,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
     return NextResponse.json({ error: "Production job not found" }, { status: 404 });
   }
 
-  const attachments = await prisma.productionAttachment.findMany({
+  const jobAttachments = await prisma.productionAttachment.findMany({
     where: { jobId },
     orderBy: { createdAt: "desc" },
     select: {
@@ -39,6 +45,24 @@ export async function GET(_request: Request, { params }: RouteContext) {
       createdAt: true,
     },
   });
+  const itemId = productionJobItemId(access.job.data);
+  const productArtwork = !jobAttachments.length && itemId
+    ? await prisma.productionAttachment.findUnique({
+        where: { itemId },
+        select: {
+          id: true,
+          originalName: true,
+          contentType: true,
+          size: true,
+          createdAt: true,
+        },
+      })
+    : null;
+  const attachments = jobAttachments.length
+    ? jobAttachments
+    : productArtwork
+      ? [productArtwork]
+      : [];
 
   return NextResponse.json(
     { attachments },
@@ -67,20 +91,42 @@ export async function DELETE(_request: Request, { params }: RouteContext) {
       { status: 403 },
     );
   }
+  const jobAttachment = await prisma.productionAttachment.findFirst({
+    where: { jobId },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, pathname: true },
+  });
+  const itemId = productionJobItemId(access.job.data);
+  const productArtwork = !jobAttachment && itemId
+    ? await prisma.productionAttachment.findUnique({
+        where: { itemId },
+        select: { id: true, pathname: true },
+      })
+    : null;
+  const attachment = jobAttachment ?? productArtwork;
+  if (!attachment) {
+    return NextResponse.json({ error: "Artwork not found" }, { status: 404 });
+  }
+
+  if (productArtwork) {
+    const result = await prisma.productionAttachment.updateMany({
+      where: { id: productArtwork.id, itemId },
+      data: { itemId: null },
+    });
+    if (!result.count) {
+      return NextResponse.json({ error: "Artwork not found" }, { status: 404 });
+    }
+    return NextResponse.json(
+      { deleted: true },
+      { headers: { "Cache-Control": "private, no-store" } },
+    );
+  }
+
   if (!isPrivateBlobStorageConfigured()) {
     return NextResponse.json(
       { error: "Private Vercel Blob storage is not configured." },
       { status: 503 },
     );
-  }
-
-  const attachment = await prisma.productionAttachment.findFirst({
-    where: { jobId },
-    orderBy: { createdAt: "desc" },
-    select: { id: true, pathname: true },
-  });
-  if (!attachment) {
-    return NextResponse.json({ error: "Artwork not found" }, { status: 404 });
   }
 
   try {
@@ -222,9 +268,28 @@ export async function POST(request: Request, { params }: RouteContext) {
       });
       if (existingJobArtwork) return { conflict: true as const };
 
+      const requestedItemId = productionJobItemId(access.job.data);
+      const item = requestedItemId
+        ? await transaction.productionItem.findFirst({
+            where: {
+              id: requestedItemId,
+              organizationId: access.job.organizationId,
+            },
+            select: { id: true },
+          })
+        : null;
+      if (item) {
+        const existingProductArtwork = await transaction.productionAttachment.findUnique({
+          where: { itemId: item.id },
+          select: { id: true },
+        });
+        if (existingProductArtwork) return { conflict: true as const };
+      }
+
       const attachment = await transaction.productionAttachment.create({
         data: {
           jobId,
+          itemId: item?.id ?? null,
           uploadedByUserId: user.id,
           pathname,
           originalName: fileName,
@@ -248,7 +313,7 @@ export async function POST(request: Request, { params }: RouteContext) {
       (error.code === "P2034" || error.code === "P2002")
     ) {
       return NextResponse.json(
-        { error: "Only one artwork file can be attached to a job." },
+        { error: "Artwork is already attached to this job or product. Delete it first to replace it." },
         { status: 409 },
       );
     }
@@ -257,7 +322,7 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   if ("conflict" in result) {
     return NextResponse.json(
-      { error: "Only one artwork file can be attached to a job." },
+      { error: "Artwork is already attached to this job or product. Delete it first to replace it." },
       { status: 409 },
     );
   }

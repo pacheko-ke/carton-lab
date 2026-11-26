@@ -1,26 +1,16 @@
 import { auth } from "@/auth";
-import { prisma } from "@/lib/prisma";
+import { getUserAccessSnapshot } from "@/lib/access-control";
 import { redirect } from "next/navigation";
 
-export function isAdminEmail(email: string | null | undefined) {
-  if (!email) return false;
-  const adminEmails = (process.env.ADMIN_EMAILS ?? "")
-    .split(",")
-    .map((value) => value.trim().toLowerCase())
-    .filter(Boolean);
-  return adminEmails.includes(email.toLowerCase());
-}
+export { isAdminEmail } from "@/lib/admin-email";
 
 export async function requireAdminUser() {
   const session = await auth();
   if (!session?.user.id) redirect("/login");
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { id: true, email: true, emailVerified: true },
-  });
-  if (!user?.emailVerified) redirect("/login?error=UnverifiedEmail");
-  if (!isAdminEmail(user.email)) redirect("/app");
+  const access = await getUserAccessSnapshot(session.user.id);
+  if (!access?.user.emailVerified) redirect("/login?error=UnverifiedEmail");
+  if (!access.isSuperAdmin) redirect("/app");
 
-  return user;
+  return { id: access.user.id, email: access.user.email };
 }

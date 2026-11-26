@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { requireVerifiedUser } from "@/lib/account";
-import { isAdminEmail } from "@/lib/admin";
+import { isSuperAdminUser } from "@/lib/access-control";
 import BrandLogo from "../../brand-logo";
 import { updateAccountProfile } from "../../auth-actions";
 
@@ -30,6 +30,7 @@ async function ProfileContent({ searchParams }: ProfilePageProps) {
     requireVerifiedUser(),
     searchParams,
   ]);
+  const isSuperAdmin = await isSuperAdminUser(user.id);
   const profileUpdated =
     params.profile === "updated" ||
     (Array.isArray(params.profile) && params.profile.includes("updated"));
@@ -41,7 +42,7 @@ async function ProfileContent({ searchParams }: ProfilePageProps) {
           <BrandLogo className="brand-wordmark" />
         </Link>
         <nav className="account-header-links" aria-label="Profile navigation">
-          {isAdminEmail(user.email) && (
+          {isSuperAdmin && (
             <Link href="/admin" className="account-back-link">
               Metrics
             </Link>

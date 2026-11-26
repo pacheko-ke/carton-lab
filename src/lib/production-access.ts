@@ -1,21 +1,30 @@
 import { auth } from "@/auth";
-import { isAdminEmail } from "@/lib/admin";
+import {
+  getProductionRoleCapabilities,
+  getUserAccessSnapshot,
+} from "@/lib/access-control";
+import { isAdminEmail } from "@/lib/admin-email";
 import { prisma } from "@/lib/prisma";
 
-export function isProductionAdmin(user: { email?: string | null }) {
-  return isAdminEmail(user.email);
+export function isProductionAdmin(user: {
+  email?: string | null;
+  isSuperAdmin?: boolean;
+}) {
+  return user.isSuperAdmin === true || isAdminEmail(user.email);
 }
 
 export async function getVerifiedProductionUser() {
   const session = await auth();
   if (!session?.user.id) return null;
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { id: true, email: true, emailVerified: true },
-  });
-
-  return user?.emailVerified ? user : null;
+  const access = await getUserAccessSnapshot(session.user.id);
+  if (!access?.user.emailVerified) return null;
+  return {
+    id: access.user.id,
+    email: access.user.email,
+    emailVerified: access.user.emailVerified,
+    isSuperAdmin: access.isSuperAdmin,
+  };
 }
 
 export async function getProductionOrganizationMembership(
@@ -23,24 +32,16 @@ export async function getProductionOrganizationMembership(
   organizationId: string,
   isAdmin = false,
 ) {
-  if (isAdmin) {
-    const organization = await prisma.productionOrganization.findUnique({
-      where: { id: organizationId },
-      select: { id: true },
-    });
-    return organization
-      ? { organizationId: organization.id, role: "PRODUCTION" }
-      : null;
-  }
-
-  const membership = await prisma.productionOrganizationMembership.findUnique({
-    where: { organizationId_userId: { organizationId, userId } },
-    select: { organizationId: true, role: true },
+  const organization = await prisma.productionOrganization.findUnique({
+    where: { id: organizationId },
+    select: { id: true },
   });
-  if (!membership || membership.role === "DESIGNER") return null;
-  if (await isProductionDesigner(userId)) return null;
-
-  return membership;
+  if (!organization) return null;
+  const roles = isAdmin
+    ? ["VIEWER", "PRODUCTION", "DESIGNER", "ORDER_BOOKER"]
+    : await getProductionRoleCapabilities(userId);
+  if (!roles.length) return null;
+  return { organizationId: organization.id, role: roles.join("|") };
 }
 
 export async function getAuthorizedProductionJob(
@@ -59,24 +60,9 @@ export async function getAuthorizedProductionJob(
     job.organizationId,
     isAdmin,
   );
-  if (membership) return { job, membership };
-
-  const designerMembership = await prisma.productionOrganizationMembership.findFirst({
-    where: { userId, role: "DESIGNER" },
-    select: { userId: true },
-  });
-  if (!designerMembership) return null;
-
-  return {
-    job,
-    membership: { organizationId: job.organizationId, role: "DESIGNER" },
-  };
+  return membership ? { job, membership } : null;
 }
 
 export async function isProductionDesigner(userId: string): Promise<boolean> {
-  const membership = await prisma.productionOrganizationMembership.findFirst({
-    where: { userId, role: "DESIGNER" },
-    select: { userId: true },
-  });
-  return Boolean(membership);
+  return (await getProductionRoleCapabilities(userId)).includes("DESIGNER");
 }

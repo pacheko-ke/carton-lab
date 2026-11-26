@@ -1,4 +1,5 @@
 import { isRecord } from "@/lib/production-data";
+import { getProductionDesignUserIds } from "@/lib/access-control";
 import { prisma } from "@/lib/prisma";
 import { sendNotification, setVapidDetails } from "web-push";
 
@@ -9,14 +10,11 @@ type NewProductionJob = {
 };
 
 export async function notifyOriginationOfNewJob(job: NewProductionJob) {
-  const designers = await prisma.productionOrganizationMembership.findMany({
-    where: { organizationId: job.organizationId, role: "DESIGNER" },
-    select: { userId: true },
-  }).catch((error: unknown) => {
+  const designerIds = await getProductionDesignUserIds().catch((error: unknown) => {
     console.error("Could not find Origination notification recipients.", error);
     return null;
   });
-  if (!designers?.length) return;
+  if (!designerIds?.length) return;
 
   const data = isRecord(job.data) ? job.data : {};
   const jobNo = typeof data.jobNo === "string" ? data.jobNo : job.id;
@@ -24,7 +22,7 @@ export async function notifyOriginationOfNewJob(job: NewProductionJob) {
   const message = `${jobName} (${jobNo}) is ready for Origination.`;
   const href = `/production/admin?jobId=${encodeURIComponent(job.id)}`;
 
-  const notificationRows = designers.map(({ userId }) => ({
+  const notificationRows = designerIds.map((userId) => ({
     userId,
     organizationId: job.organizationId,
     jobId: job.id,
@@ -55,7 +53,7 @@ export async function notifyOriginationOfNewJob(job: NewProductionJob) {
   }
 
   const subscriptions = await prisma.productionPushSubscription.findMany({
-    where: { userId: { in: designers.map(({ userId }) => userId) } },
+    where: { userId: { in: designerIds } },
     select: { id: true, userId: true, endpoint: true, p256dh: true, auth: true },
   }).catch((error: unknown) => {
     console.error("Could not load Origination push subscriptions.", error);

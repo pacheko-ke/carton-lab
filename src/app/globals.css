@@ -1002,6 +1002,60 @@ input {
   font: inherit;
 }
 
+.admin-access-permission-group {
+  display: grid;
+  flex: 1 1 100%;
+  gap: 9px;
+  margin: 4px 0;
+  padding: 14px;
+  border: 1px solid rgba(178, 204, 225, 0.18);
+  border-radius: 9px;
+}
+
+.admin-access-permission-group legend {
+  padding: 0 6px;
+  color: #d3e2ee;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.admin-access-permission {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #b6c9d9;
+  font-size: 11px;
+}
+
+.admin-access-permission input {
+  accent-color: #47d6b3;
+}
+
+.admin-access-role-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 2px 6px 2px 0;
+  padding: 3px 6px 3px 9px;
+  border: 1px solid rgba(178, 204, 225, 0.2);
+  border-radius: 999px;
+  color: #d3e2ee;
+  font-size: 10px;
+}
+
+.admin-access-role-chip form {
+  display: inline-flex;
+}
+
+.admin-access-role-chip button {
+  padding: 0 3px;
+  border: 0;
+  background: transparent;
+  color: #ffb0b0;
+  cursor: pointer;
+  font: inherit;
+}
+
 .admin-production-inline-form {
   display: flex;
   align-items: center;

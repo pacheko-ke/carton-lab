@@ -1,4 +1,5 @@
-import { getVerifiedProductionUser, isProductionAdmin } from "@/lib/production-access";
+import { getProductionRoleTag } from "@/lib/access-control";
+import { getVerifiedProductionUser } from "@/lib/production-access";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
@@ -11,24 +12,13 @@ export async function GET() {
     );
   }
 
-  const organizations = isProductionAdmin(user)
+  const role = await getProductionRoleTag(user.id);
+  const organizations = role
     ? (await prisma.productionOrganization.findMany({
         orderBy: { name: "asc" },
         select: { id: true, name: true },
-      })).map((organization) => ({ ...organization, role: "PRODUCTION" }))
-    : await prisma.productionOrganizationMembership.findMany({
-        where: { userId: user.id },
-        select: {
-          role: true,
-          organization: { select: { id: true, name: true } },
-        },
-      }).then((memberships) => {
-        const hasDesignerRole = memberships.some(({ role }) => role === "DESIGNER");
-        return memberships
-          .filter(({ role }) => !hasDesignerRole || role === "DESIGNER")
-          .map(({ role, organization }) => ({ ...organization, role }))
-          .sort((left, right) => left.name.localeCompare(right.name));
-      });
+      })).map((organization) => ({ ...organization, role }))
+    : [];
 
   return NextResponse.json(
     { organizations },
