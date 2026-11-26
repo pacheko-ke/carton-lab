@@ -3,6 +3,7 @@ import Link from "next/link";
 import { requireVerifiedUser } from "@/lib/account";
 import { isSuperAdminUser } from "@/lib/access-control";
 import BrandLogo from "../../brand-logo";
+import SignOutButton from "@/app/sign-out-button";
 import { updateAccountProfile } from "../../auth-actions";
 
 type ProfilePageProps = {
@@ -50,6 +51,7 @@ async function ProfileContent({ searchParams }: ProfilePageProps) {
           <Link href="/account" className="account-back-link">
             Back to account
           </Link>
+          <SignOutButton />
         </nav>
       </header>
 
@@ -100,7 +102,7 @@ async function ProfileContent({ searchParams }: ProfilePageProps) {
                   id="profile-company"
                   name="companyName"
                   type="text"
-                  autoComplete="organization"
+                  autoComplete="workspace"
                   maxLength={100}
                 />
               </label>
@@ -111,7 +113,7 @@ async function ProfileContent({ searchParams }: ProfilePageProps) {
                 id="profile-role"
                 name="role"
                 type="text"
-                autoComplete="organization-title"
+                autoComplete="workspace-title"
                 maxLength={100}
                 defaultValue={user.role ?? ""}
               />

@@ -6,6 +6,7 @@ import { getEmailCampaignAudienceCounts } from "@/lib/email-campaigns";
 import { prisma } from "@/lib/prisma";
 import EmailCampaignComposer from "./email-campaign-composer";
 import BrandLogo from "../brand-logo";
+import SignOutButton from "@/app/sign-out-button";
 
 const dateFormatter = new Intl.DateTimeFormat("en-KE", {
   dateStyle: "medium",
@@ -223,15 +224,13 @@ async function AdminDashboard({ searchParams }: AdminPageProps) {
           <Link href="/account" className="account-back-link">
             Account
           </Link>
-          <Link href="/admin/production" className="account-back-link">
-            Production organizations
-          </Link>
           <Link href="/admin/access-control" className="account-back-link">
             Access control
           </Link>
           <Link href="/app" className="account-back-link">
             Studio
           </Link>
+          <SignOutButton />
         </nav>
       </header>
 

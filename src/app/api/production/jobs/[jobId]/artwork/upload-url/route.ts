@@ -46,7 +46,7 @@ export async function POST(request: Request, { params }: RouteContext) {
   });
   const item = itemId
     ? await prisma.productionItem.findFirst({
-        where: { id: itemId, organizationId: access.job.organizationId },
+        where: { id: itemId, workspaceId: access.job.workspaceId },
         select: { id: true },
       })
     : null;
@@ -98,7 +98,7 @@ export async function POST(request: Request, { params }: RouteContext) {
       { status: 400 },
     );
   }
-  const pathname = `production/${access.job.organizationId}/${jobId}/${randomUUID()}.${extension}`;
+  const pathname = `production/${access.job.workspaceId}/${jobId}/${randomUUID()}.${extension}`;
   const validUntil = Date.now() + 5 * 60 * 1000;
   const token = await issueSignedToken({
     pathname,

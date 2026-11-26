@@ -13,6 +13,7 @@ import {
 import BrandLogo from "../brand-logo";
 import { isSuperAdminUser } from "@/lib/access-control";
 import { updateEmailPreferences } from "../email-actions";
+import SignOutButton from "@/app/sign-out-button";
 
 type AccountPageProps = {
   searchParams: Promise<{
@@ -108,6 +109,7 @@ async function AccountContent({ searchParams }: AccountPageProps) {
           <Link href="/app" className="account-back-link">
             Back to Studio
           </Link>
+          <SignOutButton />
         </nav>
       </header>
 

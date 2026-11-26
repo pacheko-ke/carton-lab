@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { loadEnvConfig } from "@next/env";
-import { ProductionRole, PrismaClient } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 
 loadEnvConfig(process.cwd());
 
@@ -28,28 +28,17 @@ try {
   });
   if (!user) throw new Error("The demo designer must be a registered, verified account.");
 
-  const suffix = createHash("sha256").update(user.id).digest("hex").slice(0, 12);
-  const organizationId = `demo-org-${suffix}`;
-  const organization = await prisma.productionOrganization.upsert({
-    where: { id: organizationId },
-    create: { id: organizationId, name: "PackStudio Local Demo" },
+  const workspaceId = "global-production";
+  await prisma.userAccessRole.upsert({
+    where: { userId_roleId: { userId: user.id, roleId: "access-role-designer" } },
+    create: { userId: user.id, roleId: "access-role-designer" },
     update: {},
-    select: { id: true, name: true },
   });
-  const membership = await prisma.productionOrganizationMembership.findUnique({
-    where: { organizationId_userId: { organizationId, userId: user.id } },
-    select: { role: true },
-  });
-  if (membership && membership.role !== ProductionRole.DESIGNER) {
-    throw new Error("The local demo organization already has a non-Designer membership for this account.");
-  }
-  if (!membership) {
-    await prisma.productionOrganizationMembership.create({
-      data: { organizationId, userId: user.id, role: ProductionRole.DESIGNER },
-    });
-  }
 
-  const jobSuffix = createHash("sha256").update(organizationId).digest("hex").slice(0, 12);
+  const jobSuffix = createHash("sha256")
+    .update(`${workspaceId}:${user.id}`)
+    .digest("hex")
+    .slice(0, 12);
   const samples = [
     {
       id: `demo-orig-${jobSuffix}-01`,
@@ -100,14 +89,14 @@ try {
       where: { id: sample.id },
       create: {
         id: sample.id,
-        organizationId,
+        workspaceId,
         data: sample.data,
       },
       update: {},
     });
   }
 
-  console.log(`Seeded ${samples.length} demo job sheets in "${organization.name}".`);
+  console.log(`Seeded ${samples.length} demo job sheets in the global production workspace.`);
 } finally {
   await prisma.$disconnect();
 }

@@ -6,6 +6,8 @@ import {
 import { isAdminEmail } from "@/lib/admin-email";
 import { prisma } from "@/lib/prisma";
 
+export const GLOBAL_PRODUCTION_WORKSPACE_ID = "global-production";
+
 export function isProductionAdmin(user: {
   email?: string | null;
   isSuperAdmin?: boolean;
@@ -27,21 +29,17 @@ export async function getVerifiedProductionUser() {
   };
 }
 
-export async function getProductionOrganizationMembership(
+export async function getProductionWorkspaceMembership(
   userId: string,
-  organizationId: string,
+  workspaceId: string,
   isAdmin = false,
 ) {
-  const organization = await prisma.productionOrganization.findUnique({
-    where: { id: organizationId },
-    select: { id: true },
-  });
-  if (!organization) return null;
+  if (workspaceId !== GLOBAL_PRODUCTION_WORKSPACE_ID) return null;
   const roles = isAdmin
     ? ["VIEWER", "PRODUCTION", "DESIGNER", "ORDER_BOOKER"]
     : await getProductionRoleCapabilities(userId);
   if (!roles.length) return null;
-  return { organizationId: organization.id, role: roles.join("|") };
+  return { workspaceId: GLOBAL_PRODUCTION_WORKSPACE_ID, role: roles.join("|") };
 }
 
 export async function getAuthorizedProductionJob(
@@ -51,13 +49,13 @@ export async function getAuthorizedProductionJob(
 ) {
   const job = await prisma.productionJob.findUnique({
     where: { id: jobId },
-    select: { id: true, organizationId: true, data: true },
+    select: { id: true, workspaceId: true, data: true },
   });
   if (!job) return null;
 
-  const membership = await getProductionOrganizationMembership(
+  const membership = await getProductionWorkspaceMembership(
     userId,
-    job.organizationId,
+    job.workspaceId,
     isAdmin,
   );
   return membership ? { job, membership } : null;

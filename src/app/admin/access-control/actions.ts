@@ -40,7 +40,6 @@ function readPermissions(formData: FormData) {
 function revalidateAccessPages() {
   revalidatePath("/admin");
   revalidatePath("/admin/access-control");
-  revalidatePath("/admin/production");
   revalidatePath("/production/admin");
   revalidatePath("/app");
 }

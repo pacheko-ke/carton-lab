@@ -26,9 +26,10 @@ import {
   isRecord,
 } from "@/lib/production-data";
 import { prisma } from "@/lib/prisma";
+import { GLOBAL_PRODUCTION_WORKSPACE_ID } from "@/lib/production-access";
 import ProductionDashboard, {
   type ProductionDashboardJob,
-  type ProductionDashboardOrganization,
+  type ProductionDashboardWorkspace,
   type ProductionDashboardMaterial,
   type ProductionDashboardNonconformance,
   type ProductionDashboardPaperReel,
@@ -85,7 +86,7 @@ function sizeValue(data: unknown): string {
 
 const dashboardJobSelection = {
   id: true,
-  organizationId: true,
+  workspaceId: true,
   data: true,
   updatedAt: true,
   flag: {
@@ -129,31 +130,30 @@ async function AuthenticatedProductionAdminPage() {
   ]);
   if (!isAdmin && !productionRoles.length) redirect("/app");
   const role = productionRoles.join("|");
-  const membershipOrganizations: ProductionDashboardOrganization[] =
-    (await prisma.productionOrganization.findMany({
-        orderBy: { name: "asc" },
-        select: { id: true, name: true },
-      }))
-      .map((organization) => ({ ...organization, role }));
+  const workspaces: ProductionDashboardWorkspace[] = role
+    ? [{
+        id: GLOBAL_PRODUCTION_WORKSPACE_ID,
+        name: "Production workspace",
+        role,
+      }]
+    : [];
   const hasDesignerRole = !isAdmin &&
     productionRoles.includes("DESIGNER");
-  const organizations = membershipOrganizations;
-  const organizationNamesForOrigination = organizations;
-  const organizationNames = new Map(
-    organizationNamesForOrigination.map((organization) => [organization.id, organization.name]),
+  const workspaceNames = new Map(
+    workspaces.map((workspace) => [workspace.id, workspace.name]),
   );
-  const jobs = organizations.length
+  const jobs = workspaces.length
     ? await prisma.productionJob.findMany({
         where: {
-          organizationId: { in: organizations.map((organization) => organization.id) },
+          workspaceId: { in: workspaces.map((workspace) => workspace.id) },
         },
         orderBy: { updatedAt: "desc" },
         select: dashboardJobSelection,
       })
     : [];
-  const crossOrganizationJobRows: typeof jobs = [];
+  const crossWorkspaceJobRows: typeof jobs = [];
   const artworkItemIds = [...new Set(
-    [...jobs, ...crossOrganizationJobRows]
+    [...jobs, ...crossWorkspaceJobRows]
       .map((job) => productionJobItemId(job.data))
       .filter((itemId): itemId is string => itemId !== null),
   )];
@@ -172,8 +172,8 @@ async function AuthenticatedProductionAdminPage() {
     const itemId = productionJobItemId(job.data);
     return {
       id: job.id,
-      organizationId: job.organizationId,
-      organizationName: organizationNames.get(job.organizationId) ?? "Production organization",
+      workspaceId: job.workspaceId,
+      workspaceName: workspaceNames.get(job.workspaceId) ?? "Production workspace",
       itemId,
       productArtwork: itemId !== null && productArtworkItemIds.has(itemId),
       jobNo: textValue(job.data, "jobNo"),
@@ -194,16 +194,16 @@ async function AuthenticatedProductionAdminPage() {
     };
   };
   const dashboardJobs: ProductionDashboardJob[] = jobs.map(toDashboardJob);
-  const productionOrganizationIds = organizations
-    .filter((organization) => hasProductionRole(organization.role, "PRODUCTION"))
-    .map((organization) => organization.id);
-  const operationSchedules = productionOrganizationIds.length
+  const productionWorkspaceIds = workspaces
+    .filter((workspace) => hasProductionRole(workspace.role, "PRODUCTION"))
+    .map((workspace) => workspace.id);
+  const operationSchedules = productionWorkspaceIds.length
     ? await prisma.productionOperationSchedule.findMany({
-        where: { organizationId: { in: productionOrganizationIds } },
+        where: { workspaceId: { in: productionWorkspaceIds } },
         orderBy: { scheduledStartAt: "asc" },
         select: {
           id: true,
-          organizationId: true,
+          workspaceId: true,
           jobId: true,
           operation: true,
           machineId: true,
@@ -217,21 +217,21 @@ async function AuthenticatedProductionAdminPage() {
         },
       })
     : [];
-  const [operationRunTotals, operationRunRows] = productionOrganizationIds.length
+  const [operationRunTotals, operationRunRows] = productionWorkspaceIds.length
     ? await Promise.all([
         prisma.productionOperationRun.groupBy({
           by: ["scheduleId"],
-          where: { organizationId: { in: productionOrganizationIds } },
+          where: { workspaceId: { in: productionWorkspaceIds } },
           _sum: { goodQty: true, rejectedQty: true },
           _count: { _all: true },
         }),
         prisma.productionOperationRun.findMany({
-          where: { organizationId: { in: productionOrganizationIds } },
+          where: { workspaceId: { in: productionWorkspaceIds } },
           orderBy: { recordedAt: "desc" },
           take: 100,
           select: {
             id: true,
-            organizationId: true,
+            workspaceId: true,
             scheduleId: true,
             goodQty: true,
             rejectedQty: true,
@@ -264,7 +264,7 @@ async function AuthenticatedProductionAdminPage() {
     }
     return {
       ...schedule,
-      organizationName: organizationNames.get(schedule.organizationId) ?? "Production organization",
+      workspaceName: workspaceNames.get(schedule.workspaceId) ?? "Production workspace",
       jobNo: job.jobNo,
       jobName: job.jobName,
       customer: job.customer,
@@ -306,7 +306,7 @@ async function AuthenticatedProductionAdminPage() {
     ...dashboardJobsWithScheduledStages.filter((job) =>
       hasDesignerRole || isProductionOriginationQueueStage(job.workflowStage),
     ),
-    ...crossOrganizationJobRows
+    ...crossWorkspaceJobRows
       .map(toDashboardJob)
       .filter((job) =>
         hasDesignerRole || isProductionOriginationQueueStage(job.workflowStage),
@@ -318,7 +318,7 @@ async function AuthenticatedProductionAdminPage() {
     }
     return {
       id: run.id,
-      organizationId: run.organizationId,
+      workspaceId: run.workspaceId,
       scheduleId: run.scheduleId,
       operation: run.schedule.operation,
       jobNo: textValue(run.schedule.job.data, "jobNo"),
@@ -337,15 +337,15 @@ async function AuthenticatedProductionAdminPage() {
     nonconformanceRows,
     qualityInspectionStats,
     nonconformanceStats,
-  ] = productionOrganizationIds.length
+  ] = productionWorkspaceIds.length
     ? await Promise.all([
         prisma.productionQualityInspection.findMany({
-          where: { organizationId: { in: productionOrganizationIds } },
+          where: { workspaceId: { in: productionWorkspaceIds } },
           orderBy: { inspectedAt: "desc" },
           take: 200,
           select: {
             id: true,
-            organizationId: true,
+            workspaceId: true,
             inspectionNo: true,
             jobId: true,
             scheduleId: true,
@@ -362,12 +362,12 @@ async function AuthenticatedProductionAdminPage() {
           },
         }),
         prisma.productionNonconformance.findMany({
-          where: { organizationId: { in: productionOrganizationIds } },
+          where: { workspaceId: { in: productionWorkspaceIds } },
           orderBy: [{ status: "desc" }, { createdAt: "desc" }],
           take: 200,
           select: {
             id: true,
-            organizationId: true,
+            workspaceId: true,
             ncrNo: true,
             job: { select: { data: true } },
             inspection: { select: { inspectionNo: true } },
@@ -388,14 +388,14 @@ async function AuthenticatedProductionAdminPage() {
           },
         }),
         prisma.productionQualityInspection.groupBy({
-          by: ["organizationId", "result"],
-          where: { organizationId: { in: productionOrganizationIds } },
+          by: ["workspaceId", "result"],
+          where: { workspaceId: { in: productionWorkspaceIds } },
           _count: { _all: true },
           _sum: { sampleQty: true, rejectedQty: true },
         }),
         prisma.productionNonconformance.groupBy({
-          by: ["organizationId", "status"],
-          where: { organizationId: { in: productionOrganizationIds } },
+          by: ["workspaceId", "status"],
+          where: { workspaceId: { in: productionWorkspaceIds } },
           _count: { _all: true },
         }),
       ])
@@ -420,7 +420,7 @@ async function AuthenticatedProductionAdminPage() {
       }
       return {
         id: inspection.id,
-        organizationId: inspection.organizationId,
+        workspaceId: inspection.workspaceId,
         inspectionNo: inspection.inspectionNo,
         jobId: inspection.jobId,
         jobNo: job.jobNo,
@@ -450,7 +450,7 @@ async function AuthenticatedProductionAdminPage() {
       const jobName = textValue(nonconformance.job.data, "jobName");
       return {
         id: nonconformance.id,
-        organizationId: nonconformance.organizationId,
+        workspaceId: nonconformance.workspaceId,
         ncrNo: nonconformance.ncrNo,
         jobNo,
         jobName,
@@ -472,15 +472,15 @@ async function AuthenticatedProductionAdminPage() {
       };
     });
   const dashboardQualityMetrics: ProductionDashboardQualityMetrics[] =
-    productionOrganizationIds.map((organizationId) => {
+    productionWorkspaceIds.map((workspaceId) => {
       const inspections = qualityInspectionStats.filter(
-        (stat) => stat.organizationId === organizationId,
+        (stat) => stat.workspaceId === workspaceId,
       );
       const ncrs = nonconformanceStats.filter(
-        (stat) => stat.organizationId === organizationId,
+        (stat) => stat.workspaceId === workspaceId,
       );
       return {
-        organizationId,
+        workspaceId,
         inspections: inspections.reduce((total, stat) => total + stat._count._all, 0),
         passed: inspections.find((stat) => stat.result === "PASS")?._count._all ?? 0,
         failed: inspections.find((stat) => stat.result === "FAIL")?._count._all ?? 0,
@@ -495,11 +495,11 @@ async function AuthenticatedProductionAdminPage() {
   const [materialRows, supplierRows, purchaseOrderRows, stockMovementRows, stockBalances] =
     await Promise.all([
       prisma.productionMaterial.findMany({
-        where: { organizationId: { in: productionOrganizationIds } },
+        where: { workspaceId: { in: productionWorkspaceIds } },
         orderBy: [{ active: "desc" }, { name: "asc" }],
         select: {
           id: true,
-          organizationId: true,
+          workspaceId: true,
           code: true,
           name: true,
           category: true,
@@ -509,11 +509,11 @@ async function AuthenticatedProductionAdminPage() {
         },
       }),
       prisma.productionSupplier.findMany({
-        where: { organizationId: { in: productionOrganizationIds } },
+        where: { workspaceId: { in: productionWorkspaceIds } },
         orderBy: [{ active: "desc" }, { name: "asc" }],
         select: {
           id: true,
-          organizationId: true,
+          workspaceId: true,
           code: true,
           name: true,
           contactPerson: true,
@@ -524,12 +524,12 @@ async function AuthenticatedProductionAdminPage() {
         },
       }),
       prisma.productionPurchaseOrder.findMany({
-        where: { organizationId: { in: productionOrganizationIds } },
+        where: { workspaceId: { in: productionWorkspaceIds } },
         orderBy: { createdAt: "desc" },
         take: 200,
         select: {
           id: true,
-          organizationId: true,
+          workspaceId: true,
           orderNo: true,
           status: true,
           expectedAt: true,
@@ -548,12 +548,12 @@ async function AuthenticatedProductionAdminPage() {
         },
       }),
       prisma.productionStockMovement.findMany({
-        where: { organizationId: { in: productionOrganizationIds } },
+        where: { workspaceId: { in: productionWorkspaceIds } },
         orderBy: { createdAt: "desc" },
         take: 250,
         select: {
           id: true,
-          organizationId: true,
+          workspaceId: true,
           type: true,
           quantity: true,
           reference: true,
@@ -565,21 +565,21 @@ async function AuthenticatedProductionAdminPage() {
         },
       }),
       prisma.productionStockMovement.groupBy({
-        by: ["organizationId", "materialId"],
-        where: { organizationId: { in: productionOrganizationIds } },
+        by: ["workspaceId", "materialId"],
+        where: { workspaceId: { in: productionWorkspaceIds } },
         _sum: { quantity: true },
       }),
     ]);
   const balanceByMaterial = new Map(
     stockBalances.map((balance) => [
-      `${balance.organizationId}:${balance.materialId}`,
+      `${balance.workspaceId}:${balance.materialId}`,
       balance._sum.quantity?.toString() ?? "0",
     ]),
   );
   const dashboardMaterials: ProductionDashboardMaterial[] = materialRows.map((material) => ({
     ...material,
     reorderPoint: material.reorderPoint.toString(),
-    onHand: balanceByMaterial.get(`${material.organizationId}:${material.id}`) ?? "0",
+    onHand: balanceByMaterial.get(`${material.workspaceId}:${material.id}`) ?? "0",
   }));
   const dashboardSuppliers: ProductionDashboardSupplier[] = supplierRows;
   const dashboardPurchaseOrders: ProductionDashboardPurchaseOrder[] = purchaseOrderRows.map((order) => ({
@@ -598,15 +598,15 @@ async function AuthenticatedProductionAdminPage() {
     createdAt: movement.createdAt.toISOString(),
     jobNo: movement.job ? textValue(movement.job.data, "jobNo") : "",
   }));
-  const [paperReelRows, reelMovementRows] = productionOrganizationIds.length
+  const [paperReelRows, reelMovementRows] = productionWorkspaceIds.length
     ? await Promise.all([
         prisma.productionPaperReel.findMany({
-          where: { organizationId: { in: productionOrganizationIds } },
+          where: { workspaceId: { in: productionWorkspaceIds } },
           orderBy: [{ status: "asc" }, { receivedAt: "desc" }],
           take: 500,
           select: {
             id: true,
-            organizationId: true,
+            workspaceId: true,
             materialId: true,
             supplierId: true,
             purchaseOrderLineId: true,
@@ -631,12 +631,12 @@ async function AuthenticatedProductionAdminPage() {
           },
         }),
         prisma.productionReelMovement.findMany({
-          where: { organizationId: { in: productionOrganizationIds } },
+          where: { workspaceId: { in: productionWorkspaceIds } },
           orderBy: { createdAt: "desc" },
           take: 300,
           select: {
             id: true,
-            organizationId: true,
+            workspaceId: true,
             reelId: true,
             relatedReelId: true,
             jobId: true,
@@ -671,15 +671,15 @@ async function AuthenticatedProductionAdminPage() {
     createdAt: movement.createdAt.toISOString(),
     createdByName: movement.createdBy?.name || "Production user",
   }));
-  const [toolingRows, customerRows] = productionOrganizationIds.length
+  const [toolingRows, customerRows] = productionWorkspaceIds.length
     ? await Promise.all([
         prisma.productionTooling.findMany({
-          where: { organizationId: { in: productionOrganizationIds } },
+          where: { workspaceId: { in: productionWorkspaceIds } },
           orderBy: [{ status: "asc" }, { toolNo: "asc" }],
           take: 500,
           select: {
             id: true,
-            organizationId: true,
+            workspaceId: true,
             toolNo: true,
             name: true,
             category: true,
@@ -738,15 +738,15 @@ async function AuthenticatedProductionAdminPage() {
   }));
   const dashboardCustomers: ProductionDashboardCustomer[] = customerRows;
   const [machineRows, maintenancePlanRows, maintenanceTicketRows] =
-    productionOrganizationIds.length
+    productionWorkspaceIds.length
       ? await Promise.all([
           prisma.productionMachine.findMany({
-            where: { organizationId: { in: productionOrganizationIds } },
+            where: { workspaceId: { in: productionWorkspaceIds } },
             orderBy: [{ status: "asc" }, { machineNo: "asc" }],
             take: 300,
             select: {
               id: true,
-              organizationId: true,
+              workspaceId: true,
               machineNo: true,
               name: true,
               machineType: true,
@@ -756,12 +756,12 @@ async function AuthenticatedProductionAdminPage() {
             },
           }),
           prisma.productionMaintenancePlan.findMany({
-            where: { organizationId: { in: productionOrganizationIds } },
+            where: { workspaceId: { in: productionWorkspaceIds } },
             orderBy: [{ active: "desc" }, { nextDueAt: "asc" }],
             take: 500,
             select: {
               id: true,
-              organizationId: true,
+              workspaceId: true,
               machineId: true,
               taskName: true,
               intervalDays: true,
@@ -773,12 +773,12 @@ async function AuthenticatedProductionAdminPage() {
             },
           }),
           prisma.productionMaintenanceTicket.findMany({
-            where: { organizationId: { in: productionOrganizationIds } },
+            where: { workspaceId: { in: productionWorkspaceIds } },
             orderBy: [{ status: "asc" }, { openedAt: "desc" }],
             take: 500,
             select: {
               id: true,
-              organizationId: true,
+              workspaceId: true,
               machineId: true,
               planId: true,
               jobId: true,
@@ -824,7 +824,7 @@ async function AuthenticatedProductionAdminPage() {
   const dashboardMaintenanceTickets: ProductionDashboardMaintenanceTicket[] =
     maintenanceTicketRows.map((ticket) => ({
       id: ticket.id,
-      organizationId: ticket.organizationId,
+      workspaceId: ticket.workspaceId,
       machineId: ticket.machineId,
       planId: ticket.planId,
       jobId: ticket.jobId,
@@ -854,15 +854,15 @@ async function AuthenticatedProductionAdminPage() {
       })),
     }));
   const [employeeRows, rosterShiftRows, leaveRequestRows, safetyTrainingRows] =
-    productionOrganizationIds.length
+    productionWorkspaceIds.length
       ? await Promise.all([
           prisma.productionEmployee.findMany({
-            where: { organizationId: { in: productionOrganizationIds } },
+            where: { workspaceId: { in: productionWorkspaceIds } },
             orderBy: [{ status: "asc" }, { name: "asc" }],
             take: 1000,
             select: {
               id: true,
-              organizationId: true,
+              workspaceId: true,
               employeeNo: true,
               name: true,
               department: true,
@@ -872,12 +872,12 @@ async function AuthenticatedProductionAdminPage() {
             },
           }),
           prisma.productionRosterShift.findMany({
-            where: { organizationId: { in: productionOrganizationIds } },
+            where: { workspaceId: { in: productionWorkspaceIds } },
             orderBy: { startsAt: "desc" },
             take: 1000,
             select: {
               id: true,
-              organizationId: true,
+              workspaceId: true,
               employeeId: true,
               shiftName: true,
               workCenter: true,
@@ -898,12 +898,12 @@ async function AuthenticatedProductionAdminPage() {
             },
           }),
           prisma.productionLeaveRequest.findMany({
-            where: { organizationId: { in: productionOrganizationIds } },
+            where: { workspaceId: { in: productionWorkspaceIds } },
             orderBy: [{ status: "asc" }, { startsAt: "asc" }],
             take: 1000,
             select: {
               id: true,
-              organizationId: true,
+              workspaceId: true,
               employeeId: true,
               leaveType: true,
               startsAt: true,
@@ -918,12 +918,12 @@ async function AuthenticatedProductionAdminPage() {
             },
           }),
           prisma.productionSafetyTraining.findMany({
-            where: { organizationId: { in: productionOrganizationIds } },
+            where: { workspaceId: { in: productionWorkspaceIds } },
             orderBy: [{ expiresAt: "asc" }, { completedAt: "desc" }],
             take: 1000,
             select: {
               id: true,
-              organizationId: true,
+              workspaceId: true,
               employeeId: true,
               trainingName: true,
               provider: true,
@@ -963,15 +963,15 @@ async function AuthenticatedProductionAdminPage() {
     completedAt: training.completedAt.toISOString(),
     expiresAt: training.expiresAt?.toISOString() ?? null,
   }));
-  const [warehousePalletRows, dispatchRows] = productionOrganizationIds.length
+  const [warehousePalletRows, dispatchRows] = productionWorkspaceIds.length
     ? await Promise.all([
         prisma.productionWarehousePallet.findMany({
-          where: { organizationId: { in: productionOrganizationIds } },
+          where: { workspaceId: { in: productionWorkspaceIds } },
           orderBy: { receivedAt: "desc" },
           take: 500,
           select: {
             id: true,
-            organizationId: true,
+            workspaceId: true,
             jobId: true,
             palletNo: true,
             quantityReceived: true,
@@ -983,12 +983,12 @@ async function AuthenticatedProductionAdminPage() {
           },
         }),
         prisma.productionDispatch.findMany({
-          where: { organizationId: { in: productionOrganizationIds } },
+          where: { workspaceId: { in: productionWorkspaceIds } },
           orderBy: { dispatchedAt: "desc" },
           take: 300,
           select: {
             id: true,
-            organizationId: true,
+            workspaceId: true,
             jobId: true,
             dispatchNo: true,
             deliveryNoteNo: true,
@@ -1055,14 +1055,14 @@ async function AuthenticatedProductionAdminPage() {
       })),
     };
   });
-  const invoiceRows = productionOrganizationIds.length
+  const invoiceRows = productionWorkspaceIds.length
     ? await prisma.productionInvoice.findMany({
-        where: { organizationId: { in: productionOrganizationIds } },
+        where: { workspaceId: { in: productionWorkspaceIds } },
         orderBy: { issuedAt: "desc" },
         take: 500,
         select: {
           id: true,
-          organizationId: true,
+          workspaceId: true,
           jobId: true,
           dispatchId: true,
           invoiceNo: true,
@@ -1132,20 +1132,20 @@ async function AuthenticatedProductionAdminPage() {
       })),
     };
   });
-  const quoteOrganizationIds = organizations
-    .filter((organization) =>
-      hasProductionRole(organization.role, "ORDER_BOOKER") ||
-      hasProductionRole(organization.role, "PRODUCTION"),
+  const quoteWorkspaceIds = workspaces
+    .filter((workspace) =>
+      hasProductionRole(workspace.role, "ORDER_BOOKER") ||
+      hasProductionRole(workspace.role, "PRODUCTION"),
     )
-    .map((organization) => organization.id);
-  const quoteRows = quoteOrganizationIds.length
+    .map((workspace) => workspace.id);
+  const quoteRows = quoteWorkspaceIds.length
     ? await prisma.productionQuote.findMany({
-        where: { organizationId: { in: quoteOrganizationIds } },
+        where: { workspaceId: { in: quoteWorkspaceIds } },
         orderBy: [{ createdAt: "desc" }, { version: "desc" }],
         take: 200,
         select: {
           id: true,
-          organizationId: true,
+          workspaceId: true,
           quoteNo: true,
           version: true,
           status: true,
@@ -1199,7 +1199,7 @@ async function AuthenticatedProductionAdminPage() {
     : [];
   const dashboardQuotes: ProductionDashboardQuote[] = quoteRows.map((quote) => ({
     ...quote,
-    organizationName: organizationNames.get(quote.organizationId) ?? "Production organization",
+    workspaceName: workspaceNames.get(quote.workspaceId) ?? "Production workspace",
     validUntil: quote.validUntil.toISOString(),
     totalCost: quote.totalCost.toString(),
     totalPrice: quote.totalPrice.toString(),
@@ -1255,7 +1255,7 @@ async function AuthenticatedProductionAdminPage() {
       profile={profile}
       profileQrCode={profileQrCode}
       cartonTypes={cartonTypes}
-      organizations={organizations}
+      workspaces={workspaces}
       jobs={dashboardJobsWithScheduledStages}
       originationJobs={originationQueueJobs}
       schedules={dashboardSchedules}
@@ -1283,7 +1283,7 @@ async function AuthenticatedProductionAdminPage() {
       safetyTrainings={dashboardSafetyTrainings}
       quotes={dashboardQuotes}
       isAdmin={isAdmin}
-      canManageOrganizations={isAdmin}
+      canManageAccess={isAdmin}
     />
   );
 }

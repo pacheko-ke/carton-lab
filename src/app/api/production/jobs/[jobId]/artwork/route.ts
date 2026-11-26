@@ -210,7 +210,7 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   const fileName = sanitizeArtworkFileName(body.fileName);
   const contentType = fileName ? getArtworkContentType(fileName) : null;
-  const expectedPrefix = `production/${access.job.organizationId}/${jobId}/`;
+  const expectedPrefix = `production/${access.job.workspaceId}/${jobId}/`;
   if (
     !fileName ||
     !contentType ||
@@ -273,7 +273,7 @@ export async function POST(request: Request, { params }: RouteContext) {
         ? await transaction.productionItem.findFirst({
             where: {
               id: requestedItemId,
-              organizationId: access.job.organizationId,
+              workspaceId: access.job.workspaceId,
             },
             select: { id: true },
           })

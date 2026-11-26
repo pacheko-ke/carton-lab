@@ -7,6 +7,7 @@ import {
 import { isAdminEmail } from "@/lib/admin-email";
 import { prisma } from "@/lib/prisma";
 import BrandLogo from "../../brand-logo";
+import SignOutButton from "@/app/sign-out-button";
 import {
   assignAccessRole,
   createAccessRole,
@@ -58,25 +59,47 @@ async function AccessControlDashboard() {
         <Link href="/" className="brand-lockup" aria-label="PackStudio home">
           <BrandLogo className="brand-wordmark" />
         </Link>
-        <nav className="account-header-links" aria-label="Admin navigation">
-          <Link href="/admin" className="account-back-link">Dashboard</Link>
-          <Link href="/admin/production" className="account-back-link">Production organizations</Link>
-          <Link href="/app" className="account-back-link">Studio</Link>
+        <nav className="account-header-links" aria-label="Account navigation">
+          <SignOutButton />
         </nav>
       </header>
 
-      <section className="admin-content">
-        <div className="account-intro">
-          <span className="eyebrow"><span /> GLOBAL ACCESS</span>
-          <h1>Roles and permissions</h1>
-          <p>
-            Roles apply across the entire application, not per organization.
-            Permissions are additive when a user has multiple roles. Super admins
-            have unrestricted access and can assign any role, including super admin.
-          </p>
-        </div>
+      <section className="admin-content access-control-layout">
+        <aside className="access-control-sidebar">
+          <nav aria-label="Access control navigation">
+            <div className="access-control-nav-group">
+              <span>Administration</span>
+              <Link href="/admin">Dashboard</Link>
+              <Link href="/admin/access-control" aria-current="page">
+                Access control
+              </Link>
+            </div>
+            <div className="access-control-nav-group">
+              <span>On this page</span>
+              <a href="#create-role">Create a role</a>
+              <a href="#role-catalog">Role catalog</a>
+              <a href="#user-access">User access</a>
+            </div>
+            <div className="access-control-nav-group">
+              <span>Workspace</span>
+              <Link href="/app">Studio</Link>
+              <Link href="/production/admin">Production ERP</Link>
+            </div>
+          </nav>
+        </aside>
 
-        <section className="admin-panel" aria-labelledby="create-role-heading">
+        <div className="access-control-main">
+          <div className="account-intro">
+            <span className="eyebrow"><span /> GLOBAL ACCESS</span>
+            <h1>Roles and permissions</h1>
+            <p>
+              Roles apply across the entire application, not per workspace.
+              Permissions are additive when a user has multiple roles. Super admins
+              have unrestricted access and can assign any role, including super admin.
+            </p>
+          </div>
+
+        <section id="create-role" className="admin-panel" aria-labelledby="create-role-heading">
           <div className="admin-panel-heading">
             <div>
               <span className="account-plan-kicker">ROLE CATALOG</span>
@@ -111,7 +134,12 @@ async function AccessControlDashboard() {
           </form>
         </section>
 
-        {roles.map((role) => (
+        <div id="role-catalog" className="access-control-role-list">
+          <div className="access-control-section-heading">
+            <span className="account-plan-kicker">GLOBAL ACCESS</span>
+            <h2>Role catalog</h2>
+          </div>
+          {roles.map((role) => (
           <section className="admin-panel" aria-labelledby={`role-${role.id}`} key={role.id}>
             <div className="admin-panel-heading">
               <div>
@@ -172,9 +200,10 @@ async function AccessControlDashboard() {
               </form>
             )}
           </section>
-        ))}
+          ))}
+        </div>
 
-        <section className="admin-panel" aria-labelledby="assign-role-heading">
+        <section id="user-access" className="admin-panel" aria-labelledby="assign-role-heading">
           <div className="admin-panel-heading">
             <div>
               <span className="account-plan-kicker">USER ACCESS</span>
@@ -252,6 +281,7 @@ async function AccessControlDashboard() {
             </table>
           </div>
         </section>
+        </div>
       </section>
     </main>
   );

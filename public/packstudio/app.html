@@ -276,7 +276,7 @@
       <div>
         <p class="batch-eyebrow">PRODUCTION WORKFLOW</p>
         <h2 id="jobSheetTitle">Production job sheet</h2>
-        <p>Work with organization-shared production jobs, attach artwork, and prepare print-ready production copies.</p>
+        <p>Work with workspace-shared production jobs, attach artwork, and prepare print-ready production copies.</p>
       </div>
       <div class="job-sheet-actions">
         <button id="jobSheetNew" type="button" class="btn btn-secondary">New local draft</button>
@@ -289,21 +289,21 @@
     <section class="card job-sheet-card production-shared-panel" aria-labelledby="productionSharedTitle">
       <div class="production-shared-heading">
         <div>
-          <h3 id="productionSharedTitle" class="card-title">Organization production jobs</h3>
-          <p>Shared jobs are visible to verified members of their assigned organization.</p>
+          <h3 id="productionSharedTitle" class="card-title">Workspace production jobs</h3>
+          <p>Shared jobs are visible to verified members of their assigned workspace.</p>
         </div>
-        <span id="productionOrganizationRole" class="production-role-badge"></span>
+        <span id="productionWorkspaceRole" class="production-role-badge"></span>
       </div>
       <div class="job-sheet-fields">
-        <label class="field">Production organization<select id="productionOrganizationSelect" class="input"><option>Loading organizations…</option></select></label>
-        <label class="field">Shared job<select id="productionJobSelect" class="input" disabled><option>Select an organization first</option></select></label>
+        <label class="field">Production workspace<select id="productionWorkspaceSelect" class="input"><option>Loading workspaces…</option></select></label>
+        <label class="field">Shared job<select id="productionJobSelect" class="input" disabled><option>Select an workspace first</option></select></label>
       </div>
       <div class="production-shared-actions">
         <button id="productionLoadJob" type="button" class="btn btn-secondary" disabled>Open shared job</button>
         <button id="productionCreateJob" type="button" class="btn btn-secondary" disabled>Create shared job from this sheet</button>
         <button id="productionSaveJob" type="button" class="btn btn-primary" hidden disabled>Save shared changes</button>
       </div>
-      <p class="production-shared-note">Local drafts remain on this device. Saving a shared job updates the organization copy.</p>
+      <p class="production-shared-note">Local drafts remain on this device. Saving a shared job updates the workspace copy.</p>
     </section>
 
     <section class="card job-sheet-card production-stage-control" aria-labelledby="productionStageLabel">
@@ -487,7 +487,7 @@
       <section id="jobSheetArtworkPanel" class="card job-sheet-card production-artwork-panel" aria-labelledby="productionArtworkTitle" hidden>
         <div>
           <h3 id="productionArtworkTitle" class="card-title">Artwork attachments</h3>
-          <p>Designers can attach artwork files up to 5 MB. Files are stored privately and downloaded only by organization members.</p>
+          <p>Designers can attach artwork files up to 5 MB. Files are stored privately and downloaded only by workspace members.</p>
         </div>
         <div class="production-artwork-actions">
           <label class="field">Artwork file<input id="productionArtworkFile" class="input" type="file" accept=".ai,.cdr,.eps,.indd,.jpeg,.jpg,.pdf,.png,.ps,.psd,.svg,.tif,.tiff" /></label>

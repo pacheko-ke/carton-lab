@@ -899,6 +899,19 @@ input {
   color: #72d9ed;
 }
 
+.account-signout-form {
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+.account-signout-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+}
+
 .account-content {
   width: min(100% - 40px, 560px);
   margin: 0 auto;
@@ -919,6 +932,86 @@ input {
   width: min(1200px, calc(100% - 40px));
   margin: 0 auto;
   padding: 58px 0 96px;
+}
+
+.access-control-layout {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  align-items: start;
+  gap: 28px;
+}
+
+.access-control-sidebar {
+  position: sticky;
+  top: 24px;
+  margin-top: 58px;
+  padding: 15px;
+  border: 1px solid rgba(163, 194, 220, 0.16);
+  border-radius: 12px;
+  background: rgba(16, 34, 54, 0.9);
+}
+
+.access-control-sidebar nav,
+.access-control-nav-group {
+  display: grid;
+  gap: 5px;
+}
+
+.access-control-sidebar nav {
+  gap: 19px;
+}
+
+.access-control-nav-group > span {
+  margin: 0 8px 4px;
+  color: #8199ae;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.access-control-nav-group a {
+  padding: 9px 8px;
+  border-radius: 7px;
+  color: #b6c9d9;
+  font-size: 11px;
+  line-height: 1.4;
+  text-decoration: none;
+}
+
+.access-control-nav-group a:hover,
+.access-control-nav-group a[aria-current="page"] {
+  background: rgba(70, 214, 179, 0.1);
+  color: #74e0c3;
+}
+
+.access-control-main {
+  min-width: 0;
+}
+
+.access-control-main > .account-intro {
+  margin-bottom: 26px;
+}
+
+.access-control-role-list {
+  scroll-margin-top: 24px;
+}
+
+.access-control-section-heading {
+  margin: 34px 0 2px;
+  scroll-margin-top: 24px;
+}
+
+.access-control-section-heading h2 {
+  margin: 7px 0 0;
+  color: #eff6fc;
+  font-size: 22px;
+  letter-spacing: -0.04em;
+}
+
+#create-role,
+#user-access {
+  scroll-margin-top: 24px;
 }
 
 .admin-content .account-intro {
@@ -2369,6 +2462,25 @@ input {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
+  .access-control-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+
+  .access-control-sidebar {
+    position: static;
+    margin-top: 0;
+  }
+
+  .access-control-sidebar nav {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .access-control-nav-group a {
+    padding: 7px 6px;
+  }
+
   .admin-email-layout {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -3221,7 +3333,7 @@ input {
   font-size: 9px;
 }
 
-.production-organization-filter {
+.production-workspace-filter {
   display: flex;
   min-height: 38px;
   align-items: center;
@@ -3234,7 +3346,7 @@ input {
   font-size: 11px;
 }
 
-.production-organization-filter select {
+.production-workspace-filter select {
   max-width: 190px;
   border: 0;
   outline: 0;
@@ -3244,7 +3356,7 @@ input {
   font-weight: 600;
 }
 
-.production-organization-filter option {
+.production-workspace-filter option {
   background: #102238;
   color: #e8f0f8;
 }
@@ -3657,7 +3769,7 @@ input {
   min-width: 820px;
 }
 
-.production-execution-organization {
+.production-execution-workspace {
   width: min(360px, 100%);
   margin-bottom: 14px;
 }
@@ -3872,7 +3984,7 @@ input {
   gap: 10px;
 }
 
-.production-quote-organization {
+.production-quote-workspace {
   max-width: 360px;
   margin: 14px 0;
 }
@@ -4439,7 +4551,7 @@ input {
   max-width: 1280px;
 }
 
-.production-hr-organization {
+.production-hr-workspace {
   display: grid;
   min-width: min(260px, 100%);
   gap: 5px;
@@ -4448,7 +4560,7 @@ input {
   font-weight: 650;
 }
 
-.production-hr-organization select {
+.production-hr-workspace select {
   min-height: 36px;
   padding: 8px 10px;
   border: 1px solid rgba(165, 190, 214, 0.16);
@@ -5329,7 +5441,7 @@ input {
   gap: 12px;
 }
 
-.production-quality-organization {
+.production-quality-workspace {
   width: min(320px, 100%);
 }
 
@@ -5916,11 +6028,11 @@ input {
   margin: 0;
 }
 
-.production-job-filters .production-organization-filter {
+.production-job-filters .production-workspace-filter {
   justify-content: space-between;
 }
 
-.production-job-filters .production-organization-filter select {
+.production-job-filters .production-workspace-filter select {
   flex: 1;
 }
 
@@ -6388,6 +6500,12 @@ input {
     padding: 16px;
   }
 
+  @media (max-width: 560px) {
+    .access-control-sidebar nav {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
   .production-job-sheet-fields {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -6763,17 +6881,17 @@ input {
     gap: 6px;
   }
 
-  .production-organization-filter {
+  .production-workspace-filter {
     min-height: 34px;
     gap: 5px;
     padding: 0 7px;
   }
 
-  .production-organization-filter > span {
+  .production-workspace-filter > span {
     display: none;
   }
 
-  .production-organization-filter select {
+  .production-workspace-filter select {
     max-width: 120px;
     font-size: 10px;
   }
@@ -6846,11 +6964,11 @@ input {
     justify-content: space-between;
   }
 
-  .production-organization-filter {
+  .production-workspace-filter {
     flex: 1;
   }
 
-  .production-organization-filter select {
+  .production-workspace-filter select {
     max-width: none;
     width: 100%;
   }
@@ -7301,8 +7419,8 @@ input {
   color: #176b9f;
 }
 
-:root[data-theme="light"] .production-organization-filter,
-:root[data-theme="light"] .production-hr-organization select,
+:root[data-theme="light"] .production-workspace-filter,
+:root[data-theme="light"] .production-hr-workspace select,
 :root[data-theme="light"] .production-reel-form > label,
 :root[data-theme="light"] .production-reel-movement-form > label,
 :root[data-theme="light"] .production-hr-review label {
@@ -7366,8 +7484,8 @@ input {
   color: #60758a;
 }
 
-:root[data-theme="light"] .production-organization-filter select,
-:root[data-theme="light"] .production-organization-filter option {
+:root[data-theme="light"] .production-workspace-filter select,
+:root[data-theme="light"] .production-workspace-filter option {
   background: #ffffff;
   color: #203449;
 }

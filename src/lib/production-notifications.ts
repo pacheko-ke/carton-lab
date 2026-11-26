@@ -5,7 +5,7 @@ import { sendNotification, setVapidDetails } from "web-push";
 
 type NewProductionJob = {
   id: string;
-  organizationId: string;
+  workspaceId: string;
   data: unknown;
 };
 
@@ -24,7 +24,7 @@ export async function notifyOriginationOfNewJob(job: NewProductionJob) {
 
   const notificationRows = designerIds.map((userId) => ({
     userId,
-    organizationId: job.organizationId,
+    workspaceId: job.workspaceId,
     jobId: job.id,
     jobNo,
     title: "New job sheet for Origination",

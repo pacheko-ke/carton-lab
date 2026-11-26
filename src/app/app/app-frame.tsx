@@ -7,7 +7,7 @@ import { signOutOfPackStudio } from "../auth-actions";
 type AppFrameProps = {
   accountId: string;
   workspace?: "studio" | "production";
-  organizationId?: string;
+  workspaceId?: string;
   jobId?: string;
   profile: {
     createdBy: string;
@@ -22,7 +22,7 @@ type AppFrameProps = {
 export default function AppFrame({
   accountId,
   workspace = "studio",
-  organizationId,
+  workspaceId,
   jobId,
   profile,
   profileQrCode,
@@ -31,7 +31,7 @@ export default function AppFrame({
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const signOutFormRef = useRef<HTMLFormElement>(null);
   const productionUrl = new URLSearchParams({ workspace: "production" });
-  if (organizationId) productionUrl.set("organization", organizationId);
+  if (workspaceId) productionUrl.set("workspace", workspaceId);
   if (jobId) productionUrl.set("job", jobId);
   const iframeSrc = workspace === "production"
     ? `/packstudio/app.html?${productionUrl.toString()}`

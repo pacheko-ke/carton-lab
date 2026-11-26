@@ -36,7 +36,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
 
   const job = await prisma.productionJob.findUnique({
     where: { id: jobId },
-    select: { id: true, organizationId: true, data: true, createdAt: true, updatedAt: true },
+    select: { id: true, workspaceId: true, data: true, createdAt: true, updatedAt: true },
   });
   if (!job) {
     return NextResponse.json({ error: "Production job not found" }, { status: 404 });
@@ -125,7 +125,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     return transaction.productionJob.update({
       where: { id: jobId },
       data: { data: updatedData as Prisma.InputJsonObject },
-      select: { id: true, organizationId: true, data: true, createdAt: true, updatedAt: true },
+      select: { id: true, workspaceId: true, data: true, createdAt: true, updatedAt: true },
     });
   });
   if (result === null) {
