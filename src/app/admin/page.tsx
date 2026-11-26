@@ -244,7 +244,11 @@ async function AdminDashboard({ searchParams }: AdminPageProps) {
           </p>
         </div>
 
-        <section className="admin-metrics" aria-label="Account metrics">
+        <section
+          id="system-metrics"
+          className="admin-metrics"
+          aria-label="Account metrics"
+        >
           <Metric label="Accounts" value={totalAccounts} />
           <Metric label="Verified accounts" value={verifiedAccounts} />
           <Metric label="Premium access" value={premiumAccounts} />

@@ -73,6 +73,7 @@ async function AccessControlDashboard() {
               <Link href="/admin/access-control" aria-current="page">
                 Access control
               </Link>
+              <Link href="/admin#system-metrics">Metrics dashboard</Link>
             </div>
             <div className="access-control-nav-group">
               <span>On this page</span>

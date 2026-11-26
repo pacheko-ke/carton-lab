@@ -9935,6 +9935,12 @@ export default function ProductionDashboard({
               Access control
             </Link>
           )}
+          {canManageAccess && (
+            <Link className="production-footer-link" href="/admin#system-metrics">
+              <span className="production-nav-icon" aria-hidden="true"><FiActivity /></span>
+              Metrics dashboard
+            </Link>
+          )}
           <Link className="production-footer-link" href="/app">
             <span className="production-nav-icon" aria-hidden="true"><FiArrowLeft /></span>
             Back to Studio
