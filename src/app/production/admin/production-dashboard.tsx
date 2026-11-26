@@ -703,6 +703,7 @@ type Props = {
   quotes: ProductionDashboardQuote[];
   isAdmin: boolean;
   canManageAccess: boolean;
+  canManagePayroll: boolean;
 };
 
 type DashboardView =
@@ -9406,6 +9407,7 @@ export default function ProductionDashboard({
   quotes,
   isAdmin,
   canManageAccess,
+  canManagePayroll,
 }: Props) {
   const hasDesignerRole = !isAdmin &&
     workspaces.some((workspace) => hasProductionRole(workspace.role, "DESIGNER")) &&
@@ -11348,6 +11350,7 @@ export default function ProductionDashboard({
                 />
               ) : view === "hr" ? (
                 <ProductionHrBoard
+                  canManagePayroll={canManagePayroll}
                   employees={employees}
                   leaveRequests={leaveRequests}
                   onSaved={() => router.refresh()}
@@ -11481,7 +11484,394 @@ export default function ProductionDashboard({
   );
 }
 
+type ProductionPayrollEmployee = {
+  id: string;
+  employeeNo: string;
+  name: string;
+  department: string;
+  status: string;
+  payrollConfigured: boolean;
+  monthlyBasicSalary: number;
+  monthlyTaxableAllowances: number;
+};
+
+type ProductionPayrollLine = {
+  id: string;
+  employeeNo: string;
+  employeeName: string;
+  department: string;
+  basicSalary: number;
+  taxableAllowances: number;
+  grossPay: number;
+  nssfEmployee: number;
+  nssfEmployer: number;
+  shif: number;
+  housingLevyEmployee: number;
+  housingLevyEmployer: number;
+  taxablePay: number;
+  paye: number;
+  netPay: number;
+};
+
+type ProductionPayrollRun = {
+  id: string;
+  period: string;
+  rulesVersion: string;
+  createdAt: string;
+  lines: ProductionPayrollLine[];
+};
+
+type ProductionPayrollData = {
+  employees: ProductionPayrollEmployee[];
+  runs: ProductionPayrollRun[];
+};
+
+function isProductionPayrollEmployee(value: unknown): value is ProductionPayrollEmployee {
+  return isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.employeeNo === "string" &&
+    typeof value.name === "string" &&
+    typeof value.department === "string" &&
+    typeof value.status === "string" &&
+    typeof value.payrollConfigured === "boolean" &&
+    typeof value.monthlyBasicSalary === "number" &&
+    typeof value.monthlyTaxableAllowances === "number";
+}
+
+function isProductionPayrollLine(value: unknown): value is ProductionPayrollLine {
+  return isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.employeeNo === "string" &&
+    typeof value.employeeName === "string" &&
+    typeof value.department === "string" &&
+    typeof value.basicSalary === "number" &&
+    typeof value.taxableAllowances === "number" &&
+    typeof value.grossPay === "number" &&
+    typeof value.nssfEmployee === "number" &&
+    typeof value.nssfEmployer === "number" &&
+    typeof value.shif === "number" &&
+    typeof value.housingLevyEmployee === "number" &&
+    typeof value.housingLevyEmployer === "number" &&
+    typeof value.taxablePay === "number" &&
+    typeof value.paye === "number" &&
+    typeof value.netPay === "number";
+}
+
+function isProductionPayrollRun(value: unknown): value is ProductionPayrollRun {
+  return isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.period === "string" &&
+    typeof value.rulesVersion === "string" &&
+    typeof value.createdAt === "string" &&
+    Array.isArray(value.lines) &&
+    value.lines.every(isProductionPayrollLine);
+}
+
+function parseProductionPayrollData(value: Record<string, unknown>): ProductionPayrollData {
+  if (
+    !Array.isArray(value.employees) ||
+    !value.employees.every(isProductionPayrollEmployee) ||
+    !Array.isArray(value.runs) ||
+    !value.runs.every(isProductionPayrollRun)
+  ) {
+    throw new Error("The server returned invalid payroll data.");
+  }
+  return { employees: value.employees, runs: value.runs };
+}
+
+function productionMoney(value: number): string {
+  return new Intl.NumberFormat("en-KE", {
+    style: "currency",
+    currency: "KES",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+function ProductionPayrollPanel({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const [data, setData] = useState<ProductionPayrollData | null>(null);
+  const [period, setPeriod] = useState(() => dateKey(new Date()).slice(0, 7));
+  const [selectedRunId, setSelectedRunId] = useState("");
+  const [message, setMessage] = useState("");
+  const [hasError, setHasError] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const fetchPayrollData = useCallback(async () => {
+    const response = await requestProductionJson(
+      `/api/production/workspaces/${encodeURIComponent(workspaceId)}/hr/payroll`,
+      { method: "GET" },
+    );
+    return parseProductionPayrollData(response);
+  }, [workspaceId]);
+
+  useEffect(() => {
+    let active = true;
+    void fetchPayrollData()
+      .then((result) => {
+        if (active) setData(result);
+      })
+      .catch((error: unknown) => {
+        if (active) {
+          setMessage(error instanceof Error ? error.message : String(error));
+          setHasError(true);
+        }
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [fetchPayrollData]);
+
+  const saveCompensation = async (
+    event: FormEvent<HTMLFormElement>,
+    employeeId: string,
+  ) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const values = new FormData(form);
+    const monthlyBasicSalary = Number(values.get("monthlyBasicSalary"));
+    const monthlyTaxableAllowances = Number(values.get("monthlyTaxableAllowances"));
+    setIsSaving(true);
+    setMessage("");
+    setHasError(false);
+    try {
+      await requestProductionJson(
+        `/api/production/workspaces/${encodeURIComponent(workspaceId)}/hr/employees/${encodeURIComponent(employeeId)}/compensation`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ monthlyBasicSalary, monthlyTaxableAllowances }),
+        },
+      );
+      setData(await fetchPayrollData());
+      setMessage("Compensation saved.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : String(error));
+      setHasError(true);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const createPayrollRun = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsSaving(true);
+    setMessage("");
+    setHasError(false);
+    try {
+      const response = await requestProductionJson(
+        `/api/production/workspaces/${encodeURIComponent(workspaceId)}/hr/payroll`,
+        {
+          method: "POST",
+          body: JSON.stringify({ period }),
+        },
+      );
+      if (!isRecord(response.payrollRun) || typeof response.payrollRun.id !== "string") {
+        throw new Error("The server returned an invalid payroll run.");
+      }
+      const runId = response.payrollRun.id;
+      setData(await fetchPayrollData());
+      setSelectedRunId(runId);
+      setMessage(`Payroll run saved for ${period}. Saved runs cannot be recalculated.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : String(error));
+      setHasError(true);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const selectedRun = data?.runs.find((run) => run.id === selectedRunId) ??
+    data?.runs[0] ??
+    null;
+  const totalGrossPay = selectedRun?.lines.reduce((total, line) => total + line.grossPay, 0) ?? 0;
+  const totalNetPay = selectedRun?.lines.reduce((total, line) => total + line.netPay, 0) ?? 0;
+  const totalEmployerContributions = selectedRun?.lines.reduce(
+    (total, line) => total + line.nssfEmployer + line.housingLevyEmployer,
+    0,
+  ) ?? 0;
+
+  return (
+    <section className="production-panel">
+      <div className="production-panel-heading">
+        <div>
+          <span className="production-panel-kicker">PAYROLL &amp; STATUTORY DEDUCTIONS</span>
+          <h2>Kenya monthly payroll</h2>
+        </div>
+        <span className="production-panel-total">{data?.runs.length ?? 0} saved runs</span>
+      </div>
+      <p className="production-reel-explainer">
+        Set basic salary and taxable cash allowances; every active employee must have compensation saved before a run can be generated. Runs snapshot the inputs and rules used; they are immutable and one run is allowed per month.
+        Calculations assume resident employees and do not include non-cash benefits, individual insurance relief, additional pension or mortgage deductions, or attendance-based proration. Verify totals before filing or remitting.
+      </p>
+      <p className="production-reel-explainer">
+        Defaults: progressive PAYE bands with KES 2,400 resident relief; NSSF at 6% up to KES 108,000 pensionable pay; SHIF at 2.75% (KES 300 minimum); and employee/employer housing levy at 1.5% of gross pay. See{" "}
+        <a href="https://www.kra.go.ke/individual/filing-paying/types-of-taxes/paye" rel="noreferrer" target="_blank">
+          KRA PAYE guidance
+        </a>
+        . Update the versioned defaults in the payroll rules module when legislation changes.
+      </p>
+      {message && (
+        <p
+          className={hasError ? "production-order-booking-error" : "production-order-booking-status"}
+          role={hasError ? "alert" : "status"}
+        >
+          {message}
+        </p>
+      )}
+      {isLoading ? (
+        <p className="production-chart-empty">Loading payroll data…</p>
+      ) : (
+        <>
+          <div className="production-panel-heading">
+            <h3>Employee compensation</h3>
+            <span className="production-panel-total">{data?.employees.length ?? 0} employees</span>
+          </div>
+          {data?.employees.length ? (
+            <div className="production-hr-shifts">
+              {data.employees.map((employee) => (
+                <article className="production-hr-shift" key={`${employee.id}:${employee.monthlyBasicSalary}:${employee.monthlyTaxableAllowances}`}>
+                  <div className="production-panel-heading">
+                    <div>
+                      <h3>{employee.name} <span>· {employee.employeeNo}</span></h3>
+                      <p>
+                        {employee.department} · {employee.status} · {employee.payrollConfigured ? "Compensation configured" : "Compensation required"}
+                      </p>
+                    </div>
+                    <span className="production-panel-total">
+                      Gross {productionMoney(employee.monthlyBasicSalary + employee.monthlyTaxableAllowances)}
+                    </span>
+                  </div>
+                  <form
+                    className="production-reel-form production-hr-form"
+                    onSubmit={(event) => saveCompensation(event, employee.id)}
+                  >
+                    <label>
+                      <span>Monthly basic salary (KES)</span>
+                      <input
+                        name="monthlyBasicSalary"
+                        type="number"
+                        min="0"
+                        max="1000000000"
+                        step="1"
+                        defaultValue={employee.monthlyBasicSalary}
+                        required
+                      />
+                    </label>
+                    <label>
+                      <span>Taxable allowances (KES)</span>
+                      <input
+                        name="monthlyTaxableAllowances"
+                        type="number"
+                        min="0"
+                        max="1000000000"
+                        step="1"
+                        defaultValue={employee.monthlyTaxableAllowances}
+                        required
+                      />
+                    </label>
+                    <button className="production-primary-button" disabled={isSaving} type="submit">
+                      Save compensation
+                    </button>
+                  </form>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <p className="production-chart-empty">Add employees before setting compensation.</p>
+          )}
+
+          <form className="production-reel-form production-hr-form production-payroll-run-form" onSubmit={createPayrollRun}>
+            <label>
+              <span>Payroll month</span>
+              <input
+                type="month"
+                value={period}
+                onChange={(event) => setPeriod(event.target.value)}
+                required
+              />
+            </label>
+            <button
+              className="production-primary-button"
+              disabled={
+                isSaving ||
+                !data?.employees.some((employee) => employee.status === "ACTIVE") ||
+                Boolean(data?.employees.some((employee) =>
+                  employee.status === "ACTIVE" && !employee.payrollConfigured,
+                ))
+              }
+              type="submit"
+            >
+              Generate saved payroll run
+            </button>
+          </form>
+
+          {selectedRun && (
+            <>
+              <div className="production-hr-metrics">
+                <div><strong>{productionMoney(totalGrossPay)}</strong><span>Gross pay · {selectedRun.period}</span></div>
+                <div><strong>{productionMoney(totalNetPay)}</strong><span>Employee net pay</span></div>
+                <div><strong>{productionMoney(totalEmployerContributions)}</strong><span>Employer NSSF + housing levy</span></div>
+              </div>
+              <div className="production-panel-heading">
+                <div>
+                  <h3>Saved payroll details</h3>
+                  <p>Generated {new Date(selectedRun.createdAt).toLocaleString()} · rules {selectedRun.rulesVersion}</p>
+                </div>
+                {data && data.runs.length > 1 && (
+                  <label className="production-hr-workspace">
+                    <span>Saved month</span>
+                    <select
+                      value={selectedRun.id}
+                      onChange={(event) => setSelectedRunId(event.target.value)}
+                    >
+                      {data.runs.map((run) => (
+                        <option key={run.id} value={run.id}>{run.period}</option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+              </div>
+              <div className="production-table-scroll">
+                <table className="production-data-table">
+                  <thead>
+                    <tr>
+                      <th>Employee</th><th>Gross</th><th>NSSF</th><th>SHIF</th>
+                      <th>Housing levy</th><th>PAYE</th><th>Net pay</th>
+                      <th>Employer NSSF + levy</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedRun.lines.map((line) => (
+                      <tr key={line.id}>
+                        <td><strong>{line.employeeNo}</strong><small>{line.employeeName} · {line.department}</small></td>
+                        <td>{productionMoney(line.grossPay)}</td>
+                        <td>{productionMoney(line.nssfEmployee)}</td>
+                        <td>{productionMoney(line.shif)}</td>
+                        <td>{productionMoney(line.housingLevyEmployee)}</td>
+                        <td>{productionMoney(line.paye)}</td>
+                        <td><strong>{productionMoney(line.netPay)}</strong></td>
+                        <td>{productionMoney(line.nssfEmployer + line.housingLevyEmployer)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
 function ProductionHrBoard({
+  canManagePayroll,
   workspaces,
   preferredWorkspaceId,
   employees,
@@ -11490,6 +11880,7 @@ function ProductionHrBoard({
   safetyTrainings,
   onSaved,
 }: {
+  canManagePayroll: boolean;
   workspaces: ProductionDashboardWorkspace[];
   preferredWorkspaceId: string;
   employees: ProductionDashboardEmployee[];
@@ -11714,7 +12105,7 @@ function ProductionHrBoard({
           </label>
         </div>
         <p className="production-reel-explainer">
-          Record employees, rosters, actual attendance and manually confirmed overtime. Payroll calculations and statutory deductions are not configured.
+          Record employees, rosters, actual attendance and manually confirmed overtime.
         </p>
         {message && (
           <p className={hasError ? "production-order-booking-error" : "production-order-booking-status"} role={hasError ? "alert" : "status"}>
@@ -11762,6 +12153,10 @@ function ProductionHrBoard({
           </div>
         ) : <p className="production-chart-empty">No employees in this workspace yet.</p>}
       </section>
+
+      {canManagePayroll && workspaceId && (
+        <ProductionPayrollPanel key={workspaceId} workspaceId={workspaceId} />
+      )}
 
       <section className="production-panel">
         <div className="production-panel-heading">

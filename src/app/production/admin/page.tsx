@@ -5,6 +5,7 @@ import QRCode from "qrcode";
 import { requireVerifiedUser } from "@/lib/account";
 import {
   getProductionRoleCapabilities,
+  hasAccessPermission,
   isSuperAdminUser,
 } from "@/lib/access-control";
 import { hasPremiumAccess } from "@/lib/billing";
@@ -120,9 +121,10 @@ export default function ProductionAdminPage() {
 async function AuthenticatedProductionAdminPage() {
   await connection();
   const user = await requireVerifiedUser();
-  const [isAdmin, productionRoles] = await Promise.all([
+  const [isAdmin, productionRoles, canManagePayroll] = await Promise.all([
     isSuperAdminUser(user.id),
     getProductionRoleCapabilities(user.id),
+    hasAccessPermission(user.id, "production.payroll.manage"),
   ]);
   if (!isAdmin && !productionRoles.length) redirect("/app");
   const role = productionRoles.join("|");
@@ -1280,6 +1282,7 @@ async function AuthenticatedProductionAdminPage() {
       quotes={dashboardQuotes}
       isAdmin={isAdmin}
       canManageAccess={isAdmin}
+      canManagePayroll={canManagePayroll}
     />
   );
 }

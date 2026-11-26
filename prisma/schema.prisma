@@ -72,6 +72,8 @@ model User {
   createdProductionLeaveRequests      ProductionLeaveRequest[]      @relation("ProductionLeaveRequestCreator")
   reviewedProductionLeaveRequests     ProductionLeaveRequest[]      @relation("ProductionLeaveRequestReviewer")
   createdProductionSafetyTrainings    ProductionSafetyTraining[]    @relation("ProductionSafetyTrainingCreator")
+  createdProductionPayrollRuns        ProductionPayrollRun[]        @relation("ProductionPayrollRunCreator")
+  finalizedProductionPayrollRuns      ProductionPayrollRun[]        @relation("ProductionPayrollRunFinalizer")
   uploadedProductionFiles             ProductionAttachment[]        @relation("ProductionAttachmentUploader")
 }
 
@@ -298,24 +300,73 @@ model ProductionPushSubscription {
 }
 
 model ProductionEmployee {
-  id              String                     @id @default(cuid())
-  workspaceId     String                     @default("global-production")
-  createdByUserId String?
-  employeeNo      String
-  name            String
-  department      String
-  jobTitle        String
-  status          String                     @default("ACTIVE")
-  hiredAt         DateTime
-  createdAt       DateTime                   @default(now())
-  updatedAt       DateTime                   @updatedAt
-  createdBy       User?                      @relation("ProductionEmployeeCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
-  shifts          ProductionRosterShift[]
-  leaveRequests   ProductionLeaveRequest[]
-  safetyTrainings ProductionSafetyTraining[]
+  id                       String                     @id @default(cuid())
+  workspaceId              String                     @default("global-production")
+  createdByUserId          String?
+  employeeNo               String
+  name                     String
+  department               String
+  jobTitle                 String
+  monthlyBasicSalary       Int                        @default(0)
+  monthlyTaxableAllowances Int                        @default(0)
+  payrollConfiguredAt      DateTime?
+  status                   String                     @default("ACTIVE")
+  hiredAt                  DateTime
+  createdAt                DateTime                   @default(now())
+  updatedAt                DateTime                   @updatedAt
+  createdBy                User?                      @relation("ProductionEmployeeCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  shifts                   ProductionRosterShift[]
+  leaveRequests            ProductionLeaveRequest[]
+  safetyTrainings          ProductionSafetyTraining[]
+  payrollLines             ProductionPayrollLine[]
 
   @@unique([workspaceId, employeeNo])
   @@index([workspaceId, status, name])
+}
+
+model ProductionPayrollRun {
+  id              String                  @id @default(cuid())
+  workspaceId     String                  @default("global-production")
+  period          String
+  createdByUserId String?
+  finalizedByUserId String?
+  rulesVersion    String
+  statutoryRules  Json
+  status          String                  @default("DRAFT")
+  createdAt       DateTime                @default(now())
+  finalizedAt     DateTime?
+  createdBy       User?                   @relation("ProductionPayrollRunCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  finalizedBy     User?                   @relation("ProductionPayrollRunFinalizer", fields: [finalizedByUserId], references: [id], onDelete: SetNull)
+  lines           ProductionPayrollLine[]
+
+  @@unique([workspaceId, period])
+  @@index([workspaceId, createdAt])
+}
+
+model ProductionPayrollLine {
+  id                  String               @id @default(cuid())
+  payrollRunId        String
+  employeeId          String?
+  employeeNo          String
+  employeeName        String
+  department          String
+  basicSalary         Int
+  taxableAllowances   Int
+  grossPay            Int
+  nssfEmployee        Int
+  nssfEmployer        Int
+  shif                Int
+  housingLevyEmployee Int
+  housingLevyEmployer Int
+  taxablePay          Int
+  paye                Int
+  netPay              Int
+  createdAt           DateTime             @default(now())
+  payrollRun          ProductionPayrollRun @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
+  employee            ProductionEmployee?  @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+
+  @@unique([payrollRunId, employeeId])
+  @@index([employeeId])
 }
 
 model ProductionRosterShift {

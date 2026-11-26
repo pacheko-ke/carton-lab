@@ -22,6 +22,7 @@ export const ACCESS_PERMISSION_GROUPS = [
       { key: "production.design", label: "Manage Origination, artwork, and job flags" },
       { key: "production.orders.book", label: "Book customer orders" },
       { key: "production.catalog.manage", label: "Manage products and customer catalogs" },
+      { key: "production.payroll.manage", label: "Manage employee pay and payroll runs" },
     ],
   },
 ] as const satisfies readonly AccessPermissionGroup[];

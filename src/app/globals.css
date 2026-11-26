@@ -4600,6 +4600,10 @@ input {
   align-items: end;
 }
 
+.production-payroll-run-form {
+  margin: 18px 0;
+}
+
 .production-hr-wide {
   grid-column: 1 / -1;
 }
