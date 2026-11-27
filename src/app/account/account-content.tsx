@@ -212,7 +212,7 @@ async function AccountContentView({ searchParams, embedded }: AccountPageProps) 
               {user.companyMembership?.company.name || user.companyName
                 ? ` · ${user.companyMembership?.company.name ?? user.companyName}`
                 : ""}
-              . Update the details included in your keyline drawing.
+              . Update the profile details.
             </p>
           </div>
           <form action={updateAccountProfile} className="account-profile-form">
