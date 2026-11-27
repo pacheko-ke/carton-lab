@@ -50,15 +50,9 @@ export async function POST(request: Request, { params }: RouteContext) {
         select: { id: true },
       })
     : null;
-  const existingProductArtwork = !existingArtwork && item
-    ? await prisma.productionAttachment.findUnique({
-        where: { itemId: item.id },
-        select: { id: true },
-      })
-    : null;
-  if (existingArtwork || existingProductArtwork) {
+  if (!item && existingArtwork) {
     return NextResponse.json(
-      { error: "Artwork is already attached to this job or product. Delete it first to replace it." },
+      { error: "Artwork is already attached to this job. Delete it first to replace it." },
       { status: 409 },
     );
   }

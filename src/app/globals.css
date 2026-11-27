@@ -6616,6 +6616,244 @@ input {
   font-weight: 600;
 }
 
+.production-artwork-product-history {
+  display: grid;
+  gap: 7px;
+}
+
+.production-artwork-version-list {
+  display: grid;
+  gap: 6px;
+  max-height: 220px;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.production-artwork-version-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+}
+
+.production-artwork-version-list li > span {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.production-artwork-version-list strong,
+.production-artwork-version-list small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.production-artwork-version-list li > span > strong {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.production-artwork-version-list strong {
+  font-size: 11px;
+}
+
+.production-artwork-version-list small {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.production-artwork-version-list .production-artwork-revision-comment {
+  overflow: visible;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.production-artwork-version-list a {
+  flex: none;
+  color: var(--cyan);
+  font-size: 11px;
+}
+
+.production-artwork-history-dialog {
+  position: fixed;
+  inset: 0 0 0 auto;
+  width: 50vw;
+  min-width: 380px;
+  max-width: 100vw;
+  height: 100dvh;
+  max-height: 100dvh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid rgba(165, 190, 214, 0.2);
+  border-radius: 12px 0 0 12px;
+  background: #111b26;
+  color: #e7f0f8;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
+}
+
+.production-artwork-history-dialog::backdrop {
+  background: rgba(3, 8, 14, 0.72);
+  backdrop-filter: blur(3px);
+}
+
+.production-artwork-history-dialog > div {
+  display: grid;
+  height: 100%;
+  gap: 16px;
+  padding: 20px;
+  overflow: auto;
+}
+
+.production-artwork-history-dialog .production-artwork-version-list {
+  max-height: none;
+}
+
+.production-artwork-history-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.production-artwork-history-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+}
+
+.production-artwork-current-version {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid rgba(102, 211, 232, 0.3);
+  border-radius: 10px;
+  background: rgba(15, 42, 59, 0.6);
+}
+
+.production-artwork-current-version h3,
+.production-artwork-previous-versions h3 {
+  margin: 0;
+  color: #e7f0f8;
+  font-size: 14px;
+}
+
+.production-artwork-version-details {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.production-artwork-version-details > div {
+  display: grid;
+  grid-template-columns: minmax(110px, 150px) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.production-artwork-version-details dt {
+  color: #9eb0c1;
+  font-size: 12px;
+}
+
+.production-artwork-version-details dd {
+  min-width: 0;
+  margin: 0;
+  color: #e7f0f8;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.production-artwork-current-version-link {
+  justify-self: start;
+  color: var(--cyan);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.production-artwork-previous-versions {
+  display: grid;
+  gap: 10px;
+}
+
+.production-artwork-history-heading h2 {
+  margin: 4px 0 0;
+  color: #e7f0f8;
+  font-size: 18px;
+}
+
+.production-artwork-history-heading p {
+  margin: 4px 0 0;
+  color: #9eb0c1;
+  font-size: 12px;
+}
+
+.production-artwork-upload-dialog {
+  width: min(460px, calc(100vw - 32px));
+  max-width: 100%;
+  padding: 0;
+  border: 1px solid rgba(165, 190, 214, 0.2);
+  border-radius: 12px;
+  background: #111b26;
+  color: #e7f0f8;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
+}
+
+.production-artwork-upload-dialog::backdrop {
+  background: rgba(3, 8, 14, 0.72);
+  backdrop-filter: blur(3px);
+}
+
+.production-artwork-upload-dialog form {
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+}
+
+.production-artwork-upload-dialog h2 {
+  margin: 4px 0 0;
+  color: #e7f0f8;
+  font-size: 18px;
+}
+
+.production-artwork-upload-dialog textarea {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px 12px;
+  border: 1px solid rgba(165, 190, 214, 0.2);
+  border-radius: 7px;
+  background: #0c141d;
+  color: #e7f0f8;
+  font: inherit;
+  resize: vertical;
+}
+
+.production-artwork-upload-dialog textarea:focus-visible {
+  outline: 2px solid #66d3e8;
+  outline-offset: 2px;
+}
+
+.production-artwork-upload-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+@media (max-width: 760px) {
+  .production-artwork-history-dialog {
+    width: 100vw;
+    min-width: 0;
+  }
+}
+
 .production-artwork-delete-button {
   display: inline-flex;
   align-items: center;

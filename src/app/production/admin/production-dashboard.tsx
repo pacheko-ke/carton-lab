@@ -51,6 +51,7 @@ import BrandLogo from "@/app/brand-logo";
 import {
   getProductionOperationBalance,
   MAX_ARTWORK_FILE_BYTES,
+  MAX_ARTWORK_REVISION_COMMENT_LENGTH,
   MAX_PRODUCTION_JOB_FLAG_REASON_LENGTH,
   PRODUCTION_OPERATIONS,
   PRODUCTION_OPERATION_STATUSES,
@@ -176,7 +177,34 @@ type ProductionDashboardAttachment = {
   originalName: string;
   contentType: string;
   size: number;
+  version: number;
+  revisionComment: string;
+  createdAt: string;
 };
+
+function isProductionDashboardAttachment(
+  value: unknown,
+): value is ProductionDashboardAttachment {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return false;
+  }
+  return (
+    "id" in value &&
+    typeof value.id === "string" &&
+    "originalName" in value &&
+    typeof value.originalName === "string" &&
+    "contentType" in value &&
+    typeof value.contentType === "string" &&
+    "size" in value &&
+    typeof value.size === "number" &&
+    "version" in value &&
+    typeof value.version === "number" &&
+    "revisionComment" in value &&
+    typeof value.revisionComment === "string" &&
+    "createdAt" in value &&
+    typeof value.createdAt === "string"
+  );
+}
 
 export type ProductionDashboardRun = {
   id: string;
@@ -837,11 +865,13 @@ function JobTable({
   showWorkspace = true,
   canOpenJobSheet = true,
   canOpenJobSheetForJob,
-  jobNameOpensJobSheet = false,
+  jobNameOpensArtworkHistory = false,
   canFlagJobs = false,
   canResolveJobFlag,
   onFlagChanged,
   onEditPrintDetails,
+  onArtworkHistory,
+  onRegisterArtworkUploadTrigger,
 }: {
   jobs: ProductionDashboardJob[];
   onOpen: (job: ProductionDashboardJob) => void;
@@ -855,11 +885,16 @@ function JobTable({
   showArtwork?: boolean;
   showWorkspace?: boolean;
   onArtworkUploaded?: () => void;
+  onArtworkHistory?: (job: ProductionDashboardJob) => void;
+  onRegisterArtworkUploadTrigger?: (
+    jobId: string,
+    trigger: (() => void) | null,
+  ) => void;
   canFlagJobs?: boolean;
   canResolveJobFlag?: (job: ProductionDashboardJob) => boolean;
   onFlagChanged?: () => void;
   onEditPrintDetails?: (job: ProductionDashboardJob) => void;
-  jobNameOpensJobSheet?: boolean;
+  jobNameOpensArtworkHistory?: boolean;
 }) {
   if (!jobs.length) {
     return (
@@ -911,7 +946,7 @@ function JobTable({
             <tr key={job.id}>
               <td>
                 <strong>
-                  {jobNameOpensJobSheet && canOpenThisJob ? (
+                  {jobNameOpensArtworkHistory && canOpenThisJob ? (
                     <button
                       className="production-table-action"
                       onClick={() => onOpen(job)}
@@ -923,10 +958,10 @@ function JobTable({
                 </strong>
               </td>
               <td>
-                {jobNameOpensJobSheet && canOpenThisJob ? (
+                {jobNameOpensArtworkHistory && onArtworkHistory ? (
                   <button
                     className="production-table-action"
-                    onClick={() => onOpen(job)}
+                    onClick={() => onArtworkHistory?.(job)}
                     type="button"
                   >
                     {job.jobName || "—"}
@@ -957,7 +992,7 @@ function JobTable({
                 <td>
                   {showArtwork ? (
                     <div className="production-job-row-actions">
-                      {!jobNameOpensJobSheet && canOpenThisJob && (
+                      {canOpenThisJob && (
                         <button
                           className="production-table-action"
                           onClick={() => onOpen(job)}
@@ -977,7 +1012,11 @@ function JobTable({
                           <FiEdit2 aria-hidden="true" />
                         </button>
                       )}
-                      <ArtworkUploadButton job={job} onUploaded={onArtworkUploaded} />
+                      <ArtworkUploadButton
+                        job={job}
+                        onRegisterUploadTrigger={onRegisterArtworkUploadTrigger}
+                        onUploaded={onArtworkUploaded}
+                      />
                     </div>
                   ) : canOpenJobSheet && (canOpenJobSheetForJob?.(job) ?? true) ? (
                     <button
@@ -1459,6 +1498,7 @@ function ProductionProductCatalog({
                 <th>Carton</th>
                 <th>Board spec</th>
                 <th>Size</th>
+                <th>Artwork versions</th>
                 {canEdit && <th>Actions</th>}
               </tr>
             </thead>
@@ -1471,6 +1511,12 @@ function ProductionProductCatalog({
                   <td>{item.boxType}</td>
                   <td>{[item.topLiner, item.medium, item.bottomLiner].filter(Boolean).join("/") || "—"}</td>
                   <td>{item.length} × {item.width} × {item.height} {item.unit}</td>
+                  <td>
+                    <ProductArtworkHistory
+                      itemId={item.id}
+                      workspaceId={workspaceId}
+                    />
+                  </td>
                   {canEdit && (
                     <td>
                       <button
@@ -5442,6 +5488,287 @@ function JobFlagControl({
   );
 }
 
+function ProductArtworkHistory({
+  workspaceId,
+  itemId,
+}: {
+  workspaceId: string;
+  itemId: string;
+}) {
+  const [versions, setVersions] = useState<ProductionDashboardAttachment[] | null>(null);
+  const [showVersions, setShowVersions] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const toggleVersions = async () => {
+    if (versions) {
+      setShowVersions((current) => !current);
+      return;
+    }
+
+    setShowVersions(true);
+    setIsLoading(true);
+    setError("");
+    try {
+      const result = await requestProductionJson(
+        `/api/production/workspaces/${encodeURIComponent(workspaceId)}/items/${encodeURIComponent(itemId)}/artwork`,
+        { method: "GET" },
+      );
+      if (
+        !Array.isArray(result.attachments) ||
+        !result.attachments.every(isProductionDashboardAttachment)
+      ) {
+        throw new Error("The server returned an invalid artwork history.");
+      }
+      setVersions(result.attachments);
+    } catch (loadError) {
+      console.error("Could not load product artwork history:", loadError);
+      setError(loadError instanceof Error ? loadError.message : "Could not load artwork history.");
+      setShowVersions(false);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="production-artwork-product-history">
+      <button
+        aria-expanded={showVersions}
+        className="production-text-action"
+        disabled={isLoading}
+        onClick={() => void toggleVersions()}
+        type="button"
+      >
+        {isLoading ? "Loading…" : showVersions ? "Hide versions" : "View versions"}
+      </button>
+      {error && <small aria-live="polite" role="alert">{error}</small>}
+      {showVersions && versions && (
+        versions.length ? (
+          <ol className="production-artwork-version-list">
+            {versions.map((attachment) => {
+              const fileUrl = `/api/production/artwork/${encodeURIComponent(attachment.id)}`;
+              const canPreview = ["application/pdf", "image/jpeg", "image/png", "image/svg+xml"]
+                .includes(attachment.contentType);
+              return (
+                <li key={attachment.id}>
+                  <span>
+                    <strong>Artwork name: {attachment.originalName}</strong>
+                    <small>Version: {attachment.version}</small>
+                    <small>Date: {new Date(attachment.createdAt).toLocaleString()}</small>
+                    <small className="production-artwork-revision-comment">
+                      Revision comments: {attachment.revisionComment || "—"}
+                    </small>
+                  </span>
+                  <a
+                    href={canPreview ? `${fileUrl}?preview=1` : fileUrl}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    {canPreview ? "View" : "Download"}
+                  </a>
+                </li>
+              );
+            })}
+          </ol>
+        ) : (
+          <small>No artwork versions saved.</small>
+        )
+      )}
+    </div>
+  );
+}
+
+function ArtworkHistoryDialog({
+  job,
+  onClose,
+  onUploadRevision,
+}: {
+  job: ProductionDashboardJob | null;
+  onClose: () => void;
+  onUploadRevision: (job: ProductionDashboardJob) => void;
+}) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const [history, setHistory] = useState<{
+    jobId: string;
+    attachments: ProductionDashboardAttachment[];
+    error: string;
+  } | null>(null);
+  const currentHistory = job && history?.jobId === job.id ? history : null;
+  const isLoading = Boolean(job && !currentHistory);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (job && !dialog.open) dialog.showModal();
+    if (!job && dialog.open) dialog.close();
+  }, [job]);
+
+  useEffect(() => {
+    if (!job) return;
+    let active = true;
+    requestProductionJson(
+      `/api/production/jobs/${encodeURIComponent(job.id)}/artwork`,
+      { method: "GET" },
+    )
+      .then((result) => {
+        if (
+          !Array.isArray(result.attachments) ||
+          !result.attachments.every(isProductionDashboardAttachment)
+        ) {
+          throw new Error("The server returned an invalid artwork history.");
+        }
+        if (active) {
+          setHistory({
+            jobId: job.id,
+            attachments: result.attachments,
+            error: "",
+          });
+        }
+      })
+      .catch((loadError) => {
+        if (!active) return;
+        console.error("Could not load artwork history for the selected job:", loadError);
+        setHistory({
+          jobId: job.id,
+          attachments: [],
+          error: loadError instanceof Error ? loadError.message : "Could not load artwork history.",
+        });
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [job]);
+
+  const attachments = currentHistory?.attachments ?? [];
+  const currentArtwork = attachments[0] ?? null;
+  const previousVersions = attachments.slice(1);
+
+  return (
+    <dialog
+      aria-labelledby="production-artwork-history-title"
+      className="production-artwork-history-dialog"
+      onCancel={(event) => {
+        event.preventDefault();
+        onClose();
+      }}
+      ref={dialogRef}
+    >
+      <div>
+        <header className="production-artwork-history-heading">
+          <div>
+            <span className="production-panel-kicker">ARTWORK HISTORY</span>
+            <h2 id="production-artwork-history-title">
+              {job?.jobName || job?.jobNo || "Artwork"}
+            </h2>
+            {job?.jobNo && job.jobName && <p>{job.jobNo}</p>}
+          </div>
+          <div className="production-artwork-history-actions">
+            <button
+              className="production-primary-button"
+              disabled={!job}
+              onClick={() => {
+                if (job) onUploadRevision(job);
+              }}
+              type="button"
+            >
+              <FiPlus aria-hidden="true" />
+              Upload revision
+            </button>
+            <button
+              aria-label="Close artwork history"
+              className="production-table-action"
+              onClick={onClose}
+              type="button"
+            >
+              <FiX aria-hidden="true" />
+            </button>
+          </div>
+        </header>
+        {isLoading ? (
+          <p className="production-quote-message" role="status">Loading artwork history…</p>
+        ) : currentHistory?.error ? (
+          <p className="production-order-booking-error" role="alert">{currentHistory.error}</p>
+        ) : currentArtwork ? (
+          <>
+            <article className="production-artwork-current-version">
+              <h3>Latest artwork version</h3>
+              <dl className="production-artwork-version-details">
+                <div>
+                  <dt>Artwork name</dt>
+                  <dd>{currentArtwork.originalName}</dd>
+                </div>
+                <div>
+                  <dt>Version</dt>
+                  <dd>{currentArtwork.version}</dd>
+                </div>
+                <div>
+                  <dt>Date</dt>
+                  <dd>{new Date(currentArtwork.createdAt).toLocaleString()}</dd>
+                </div>
+                <div>
+                  <dt>Revision comments</dt>
+                  <dd>{currentArtwork.revisionComment || "—"}</dd>
+                </div>
+              </dl>
+              {(() => {
+                const fileUrl = `/api/production/artwork/${encodeURIComponent(currentArtwork.id)}`;
+                const canPreview = ["application/pdf", "image/jpeg", "image/png", "image/svg+xml"]
+                  .includes(currentArtwork.contentType);
+                return (
+                  <a
+                    className="production-artwork-current-version-link"
+                    href={canPreview ? `${fileUrl}?preview=1` : fileUrl}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    {canPreview ? "View latest artwork" : "Download latest artwork"}
+                  </a>
+                );
+              })()}
+            </article>
+            {previousVersions.length > 0 && (
+              <section className="production-artwork-previous-versions">
+                <h3>Previous versions</h3>
+                <ol className="production-artwork-version-list">
+                  {previousVersions.map((attachment) => {
+                    const fileUrl = `/api/production/artwork/${encodeURIComponent(attachment.id)}`;
+                    const canPreview = ["application/pdf", "image/jpeg", "image/png", "image/svg+xml"]
+                      .includes(attachment.contentType);
+                    return (
+                      <li key={attachment.id}>
+                        <span>
+                          <strong>Artwork name: {attachment.originalName}</strong>
+                          <small>Version: {attachment.version}</small>
+                          <small>Date: {new Date(attachment.createdAt).toLocaleString()}</small>
+                          <small className="production-artwork-revision-comment">
+                            Revision comments: {attachment.revisionComment || "—"}
+                          </small>
+                        </span>
+                        <a
+                          href={canPreview ? `${fileUrl}?preview=1` : fileUrl}
+                          rel="noreferrer"
+                          target="_blank"
+                        >
+                          {canPreview ? "View" : "Download"}
+                        </a>
+                      </li>
+                    );
+                  })}
+                </ol>
+              </section>
+            )}
+          </>
+        ) : currentHistory ? (
+          <p className="production-chart-empty">No artwork versions have been uploaded for this job.</p>
+        ) : (
+          <p className="production-chart-empty">Loading artwork history…</p>
+        )}
+      </div>
+    </dialog>
+  );
+}
+
 function CreateProductionItemForm({
   workspaceId,
   cartonTypes,
@@ -6502,17 +6829,42 @@ function OrderBookingDialog({
 function ArtworkUploadButton({
   job,
   onUploaded,
+  onRegisterUploadTrigger,
 }: {
   job: ProductionDashboardJob;
   onUploaded?: () => void;
+  onRegisterUploadTrigger?: (
+    jobId: string,
+    trigger: (() => void) | null,
+  ) => void;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadDialogRef = useRef<HTMLDialogElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [status, setStatus] = useState("");
   const [hasError, setHasError] = useState(false);
+  const [pendingUploadFile, setPendingUploadFile] = useState<File | null>(null);
+  const [revisionComment, setRevisionComment] = useState("");
+  const [versions, setVersions] = useState<ProductionDashboardAttachment[] | null>(null);
+  const [showVersions, setShowVersions] = useState(false);
+  const [isLoadingVersions, setIsLoadingVersions] = useState(false);
 
-  const uploadArtwork = async (event: ChangeEvent<HTMLInputElement>) => {
+  useEffect(() => {
+    const dialog = uploadDialogRef.current;
+    if (!dialog) return;
+    if (pendingUploadFile && !dialog.open) dialog.showModal();
+    if (!pendingUploadFile && dialog.open) dialog.close();
+  }, [pendingUploadFile]);
+
+  useEffect(() => {
+    if (!onRegisterUploadTrigger) return;
+    const trigger = () => fileInputRef.current?.click();
+    onRegisterUploadTrigger(job.id, trigger);
+    return () => onRegisterUploadTrigger(job.id, null);
+  }, [job.id, onRegisterUploadTrigger]);
+
+  const selectArtwork = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.currentTarget.files?.[0];
     if (!file) return;
     event.currentTarget.value = "";
@@ -6521,7 +6873,16 @@ function ArtworkUploadButton({
       setHasError(true);
       return;
     }
+    setStatus("");
+    setHasError(false);
+    setRevisionComment("");
+    setPendingUploadFile(file);
+  };
 
+  const uploadArtwork = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const file = pendingUploadFile;
+    if (!file) return;
     setIsUploading(true);
     setStatus("Uploading artwork…");
     setHasError(false);
@@ -6550,11 +6911,20 @@ function ArtworkUploadButton({
 
       await requestProductionJson(jobPath, {
         method: "POST",
-        body: JSON.stringify({ pathname: upload.pathname, fileName: file.name }),
+        body: JSON.stringify({
+          pathname: upload.pathname,
+          fileName: file.name,
+          revisionComment,
+        }),
       });
       notifyToast(job.itemId
-        ? "Artwork saved to the product for future orders."
+        ? "New artwork version uploaded."
         : "Artwork attached.");
+      setStatus("");
+      setVersions(null);
+      setShowVersions(false);
+      setPendingUploadFile(null);
+      setRevisionComment("");
       onUploaded?.();
     } catch (error) {
       console.error("Could not attach artwork to the production job:", error);
@@ -6587,7 +6957,32 @@ function ArtworkUploadButton({
     }
   };
 
-  if (job.artworkCount > 0) {
+  const loadVersions = async () => {
+    setShowVersions((current) => !current);
+    if (versions || isLoadingVersions) return;
+    setIsLoadingVersions(true);
+    try {
+      const result = await requestProductionJson(
+        `/api/production/jobs/${encodeURIComponent(job.id)}/artwork`,
+        { method: "GET" },
+      );
+      if (
+        !Array.isArray(result.attachments) ||
+        !result.attachments.every(isProductionDashboardAttachment)
+      ) {
+        throw new Error("The server returned an invalid artwork history.");
+      }
+      setVersions(result.attachments);
+    } catch (error) {
+      console.error("Could not load product artwork history:", error);
+      setStatus(`Could not load artwork history: ${error instanceof Error ? error.message : String(error)}`);
+      setHasError(true);
+    } finally {
+      setIsLoadingVersions(false);
+    }
+  };
+
+  if (job.artworkCount > 0 && !job.productArtwork && !job.itemId) {
     return (
       <div className="production-artwork-upload">
         <span className="production-artwork-attached">
@@ -6611,30 +7006,137 @@ function ArtworkUploadButton({
 
   return (
     <div className="production-artwork-upload">
+      {job.productArtwork && (
+        <div className="production-artwork-product-history">
+          <span className="production-artwork-attached">
+            <FiCheckCircle aria-hidden="true" />
+            {job.artworkCount} artwork version{job.artworkCount === 1 ? "" : "s"}
+          </span>
+          <button
+            aria-expanded={showVersions}
+            className="production-text-action"
+            disabled={isLoadingVersions}
+            onClick={() => void loadVersions()}
+            type="button"
+          >
+            {isLoadingVersions ? "Loading…" : showVersions ? "Hide versions" : "View versions"}
+          </button>
+          {showVersions && versions && (
+            <ol className="production-artwork-version-list">
+              {versions.map((attachment) => {
+                const fileUrl = `/api/production/artwork/${encodeURIComponent(attachment.id)}`;
+                const canPreview = ["application/pdf", "image/jpeg", "image/png", "image/svg+xml"]
+                  .includes(attachment.contentType);
+                return (
+                  <li key={attachment.id}>
+                    <span>
+                      <strong>Artwork name: {attachment.originalName}</strong>
+                      <small>Version: {attachment.version}</small>
+                      <small>Date: {new Date(attachment.createdAt).toLocaleString()}</small>
+                      <small className="production-artwork-revision-comment">
+                        Revision comments: {attachment.revisionComment || "—"}
+                      </small>
+                    </span>
+                    <a
+                      href={canPreview ? `${fileUrl}?preview=1` : fileUrl}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      {canPreview ? "View" : "Download"}
+                    </a>
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+        </div>
+      )}
       <input
         ref={fileInputRef}
         accept=".ai,.cdr,.eps,.indd,.jpeg,.jpg,.pdf,.png,.ps,.psd,.svg,.tif,.tiff"
-        aria-label={`Artwork file for ${job.jobNo || "untitled job"}`}
+        aria-label={`${job.productArtwork ? "New artwork version" : "Artwork file"} for ${job.jobNo || "untitled job"}`}
         className="sr-only"
         disabled={isUploading}
-        onChange={uploadArtwork}
+        onChange={selectArtwork}
         type="file"
       />
       <button
         aria-label={isUploading
           ? `Uploading artwork for ${job.jobNo || "job"}`
-          : `Attach artwork to ${job.jobNo || "job"}`}
+          : job.productArtwork
+            ? `Upload new artwork version for ${job.jobNo || "product"}`
+            : `Attach artwork to ${job.jobNo || "job"}`}
         className="production-table-action production-artwork-attach-button"
         disabled={isUploading}
         onClick={() => fileInputRef.current?.click()}
-        title={isUploading ? "Uploading artwork" : "Attach artwork"}
+        title={isUploading
+          ? "Uploading artwork"
+          : job.productArtwork
+            ? "Upload new artwork version"
+            : "Attach artwork"}
         type="button"
       >
         {isUploading
           ? <FiLoader className="production-refresh-spinner" aria-hidden="true" />
           : <FiPaperclip aria-hidden="true" />}
       </button>
-      {status && <small aria-live="polite" role={hasError ? "alert" : "status"}>{status}</small>}
+      <dialog
+        aria-labelledby={`artwork-upload-title-${job.id}`}
+        className="production-artwork-upload-dialog"
+        onCancel={(event) => {
+          event.preventDefault();
+          if (!isUploading) setPendingUploadFile(null);
+        }}
+        ref={uploadDialogRef}
+      >
+        <form onSubmit={uploadArtwork}>
+          <div className="production-artwork-history-heading">
+            <div>
+              <span className="production-panel-kicker">NEW ARTWORK VERSION</span>
+              <h2 id={`artwork-upload-title-${job.id}`}>Upload artwork</h2>
+              <p>{pendingUploadFile?.name}</p>
+            </div>
+          </div>
+          <label className="production-order-booking-field">
+            Revision comments (optional)
+            <textarea
+              maxLength={MAX_ARTWORK_REVISION_COMMENT_LENGTH}
+              onChange={(event) => setRevisionComment(event.currentTarget.value)}
+              placeholder="Describe what changed in this version"
+              rows={4}
+              value={revisionComment}
+            />
+          </label>
+          {status && (
+            <small aria-live="polite" role={hasError ? "alert" : "status"}>
+              {status}
+            </small>
+          )}
+          <div className="production-artwork-upload-actions">
+            <button
+              className="production-primary-button"
+              disabled={isUploading}
+              type="submit"
+            >
+              {isUploading ? "Uploading…" : "Upload version"}
+            </button>
+            <button
+              className="production-text-action"
+              disabled={isUploading}
+              onClick={() => {
+                setStatus("");
+                setPendingUploadFile(null);
+              }}
+              type="button"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </dialog>
+      {!pendingUploadFile && status && (
+        <small aria-live="polite" role={hasError ? "alert" : "status"}>{status}</small>
+      )}
     </div>
   );
 }
@@ -9425,6 +9927,19 @@ export default function ProductionDashboard({
   );
   const [workspaceFilter, setWorkspaceFilter] = useState("all");
   const [selectedJob, setSelectedJob] = useState<ProductionDashboardJob | null>(null);
+  const [artworkHistoryJob, setArtworkHistoryJob] = useState<ProductionDashboardJob | null>(null);
+  const artworkUploadTriggers = useRef(new Map<string, () => void>());
+  const registerArtworkUploadTrigger = useCallback((
+    jobId: string,
+    trigger: (() => void) | null,
+  ) => {
+    if (trigger) artworkUploadTriggers.current.set(jobId, trigger);
+    else artworkUploadTriggers.current.delete(jobId);
+  }, []);
+  const uploadRevisionFromHistory = useCallback((job: ProductionDashboardJob) => {
+    setArtworkHistoryJob(null);
+    artworkUploadTriggers.current.get(job.id)?.();
+  }, []);
   const [editingOriginationJob, setEditingOriginationJob] = useState<ProductionDashboardJob | null>(null);
   const handledJobDeepLink = useRef("");
   const [customerSearch, setCustomerSearch] = useState("");
@@ -11048,9 +11563,11 @@ export default function ProductionDashboard({
                         onEditPrintDetails={setEditingOriginationJob}
                         canFlagJobs
                         canResolveJobFlag={(job) => productionWorkspaceIds.has(job.workspaceId)}
+                        onRegisterArtworkUploadTrigger={registerArtworkUploadTrigger}
                         showArtwork
                         showWorkspace={!hasDesignerRole}
-                        jobNameOpensJobSheet
+                        jobNameOpensArtworkHistory
+                        onArtworkHistory={setArtworkHistoryJob}
                       />
                     </>
                   )}
@@ -11479,6 +11996,11 @@ export default function ProductionDashboard({
         }}
         open={isCreatingCustomer || Boolean(editingCustomer)}
         workspaces={productOrganizations}
+      />
+      <ArtworkHistoryDialog
+        job={artworkHistoryJob}
+        onClose={() => setArtworkHistoryJob(null)}
+        onUploadRevision={uploadRevisionFromHistory}
       />
     </div>
   );

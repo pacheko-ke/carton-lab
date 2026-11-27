@@ -155,25 +155,31 @@ async function AuthenticatedProductionAdminPage() {
       .map((job) => productionJobItemId(job.data))
       .filter((itemId): itemId is string => itemId !== null),
   )];
-  const productArtworkItemIds = new Set(
-    artworkItemIds.length
-      ? (await prisma.productionAttachment.findMany({
-          where: { itemId: { in: artworkItemIds } },
-          select: { itemId: true },
-        }))
-          .map((attachment) => attachment.itemId)
-          .filter((itemId): itemId is string => itemId !== null)
-      : [],
-  );
+  const productArtworkCounts = artworkItemIds.length
+    ? await prisma.productionAttachment.groupBy({
+        by: ["itemId"],
+        where: { itemId: { in: artworkItemIds } },
+        _count: { _all: true },
+      })
+    : [];
+  const productArtworkCountByItemId = new Map<string, number>();
+  for (const entry of productArtworkCounts) {
+    if (entry.itemId) {
+      productArtworkCountByItemId.set(entry.itemId, entry._count._all);
+    }
+  }
   const toDashboardJob = (job: (typeof jobs)[number]): ProductionDashboardJob => {
     const rawStage = textValue(job.data, "workflowStage");
     const itemId = productionJobItemId(job.data);
+    const productArtworkCount = itemId
+      ? productArtworkCountByItemId.get(itemId) ?? 0
+      : 0;
     return {
       id: job.id,
       workspaceId: job.workspaceId,
       workspaceName: workspaceNames.get(job.workspaceId) ?? "Production workspace",
       itemId,
-      productArtwork: itemId !== null && productArtworkItemIds.has(itemId),
+      productArtwork: productArtworkCount > 0,
       jobNo: textValue(job.data, "jobNo"),
       jobName: textValue(job.data, "jobName"),
       customer: textValue(job.data, "customer"),
@@ -186,8 +192,7 @@ async function AuthenticatedProductionAdminPage() {
       workflowStage: isProductionWorkflowStage(rawStage)
         ? rawStage
         : "Origination",
-      artworkCount: job._count.attachments ||
-        (itemId !== null && productArtworkItemIds.has(itemId) ? 1 : 0),
+      artworkCount: productArtworkCount || job._count.attachments,
       updatedAt: job.updatedAt.toISOString(),
     };
   };

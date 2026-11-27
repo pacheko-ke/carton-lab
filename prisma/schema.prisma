@@ -1020,7 +1020,7 @@ model ProductionItem {
   createdBy       User?                 @relation("ProductionItemCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
   customer        ProductionCustomer?   @relation(fields: [customerId], references: [id], onDelete: SetNull)
   quoteLines      ProductionQuoteLine[]
-  artwork         ProductionAttachment?
+  artwork         ProductionAttachment[]
 
   @@unique([workspaceId, itemCode])
   @@index([workspaceId, name])
@@ -1134,16 +1134,20 @@ model ProductionJobFlag {
 model ProductionAttachment {
   id               String          @id @default(cuid())
   jobId            String
-  itemId           String?         @unique
+  itemId           String?
   uploadedByUserId String?
   pathname         String          @unique
   originalName     String
   contentType      String
   size             Int
+  version          Int             @default(1)
+  revisionComment  String          @default("")
   createdAt        DateTime        @default(now())
   job              ProductionJob   @relation(fields: [jobId], references: [id], onDelete: Cascade)
   item             ProductionItem? @relation(fields: [itemId], references: [id], onDelete: SetNull)
   uploadedBy       User?           @relation("ProductionAttachmentUploader", fields: [uploadedByUserId], references: [id], onDelete: SetNull)
 
+  @@unique([itemId, version])
   @@index([jobId, createdAt])
+  @@index([itemId, createdAt])
 }

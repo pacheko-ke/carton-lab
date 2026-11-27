@@ -4,6 +4,7 @@ import {
   canAttachProductionArtwork,
   getArtworkContentType,
   MAX_ARTWORK_FILE_BYTES,
+  MAX_ARTWORK_REVISION_COMMENT_LENGTH,
   productionJobItemId,
   sanitizeArtworkFileName,
 } from "@/lib/production-data";
@@ -34,35 +35,38 @@ export async function GET(_request: Request, { params }: RouteContext) {
     return NextResponse.json({ error: "Production job not found" }, { status: 404 });
   }
 
-  const jobAttachments = await prisma.productionAttachment.findMany({
-    where: { jobId },
-    orderBy: { createdAt: "desc" },
-    select: {
-      id: true,
-      originalName: true,
-      contentType: true,
-      size: true,
-      createdAt: true,
-    },
-  });
   const itemId = productionJobItemId(access.job.data);
-  const productArtwork = !jobAttachments.length && itemId
-    ? await prisma.productionAttachment.findUnique({
+  const productAttachments = itemId
+    ? await prisma.productionAttachment.findMany({
         where: { itemId },
+        orderBy: { version: "desc" },
         select: {
           id: true,
           originalName: true,
           contentType: true,
           size: true,
+          version: true,
+          revisionComment: true,
           createdAt: true,
         },
       })
-    : null;
-  const attachments = jobAttachments.length
-    ? jobAttachments
-    : productArtwork
-      ? [productArtwork]
-      : [];
+    : [];
+  const jobAttachments = productAttachments.length
+    ? []
+    : await prisma.productionAttachment.findMany({
+        where: { jobId },
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          originalName: true,
+          contentType: true,
+          size: true,
+          version: true,
+          revisionComment: true,
+          createdAt: true,
+        },
+      });
+  const attachments = productAttachments.length ? productAttachments : jobAttachments;
 
   return NextResponse.json(
     { attachments },
@@ -91,35 +95,26 @@ export async function DELETE(_request: Request, { params }: RouteContext) {
       { status: 403 },
     );
   }
-  const jobAttachment = await prisma.productionAttachment.findFirst({
-    where: { jobId },
+  const itemId = productionJobItemId(access.job.data);
+  if (
+    itemId &&
+    await prisma.productionAttachment.findFirst({
+      where: { itemId },
+      select: { id: true },
+    })
+  ) {
+    return NextResponse.json(
+      { error: "Artwork versions linked to this product are retained. Upload a new version instead of deleting them." },
+      { status: 409 },
+    );
+  }
+  const attachment = await prisma.productionAttachment.findFirst({
+    where: { jobId, itemId: null },
     orderBy: { createdAt: "desc" },
     select: { id: true, pathname: true },
   });
-  const itemId = productionJobItemId(access.job.data);
-  const productArtwork = !jobAttachment && itemId
-    ? await prisma.productionAttachment.findUnique({
-        where: { itemId },
-        select: { id: true, pathname: true },
-      })
-    : null;
-  const attachment = jobAttachment ?? productArtwork;
   if (!attachment) {
     return NextResponse.json({ error: "Artwork not found" }, { status: 404 });
-  }
-
-  if (productArtwork) {
-    const result = await prisma.productionAttachment.updateMany({
-      where: { id: productArtwork.id, itemId },
-      data: { itemId: null },
-    });
-    if (!result.count) {
-      return NextResponse.json({ error: "Artwork not found" }, { status: 404 });
-    }
-    return NextResponse.json(
-      { deleted: true },
-      { headers: { "Cache-Control": "private, no-store" } },
-    );
   }
 
   if (!isPrivateBlobStorageConfigured()) {
@@ -208,6 +203,17 @@ export async function POST(request: Request, { params }: RouteContext) {
     );
   }
 
+  const revisionComment = "revisionComment" in body ? body.revisionComment : "";
+  if (
+    typeof revisionComment !== "string" ||
+    revisionComment.length > MAX_ARTWORK_REVISION_COMMENT_LENGTH
+  ) {
+    return NextResponse.json(
+      { error: `Revision comments must be ${MAX_ARTWORK_REVISION_COMMENT_LENGTH} characters or fewer.` },
+      { status: 400 },
+    );
+  }
+
   const fileName = sanitizeArtworkFileName(body.fileName);
   const contentType = fileName ? getArtworkContentType(fileName) : null;
   const expectedPrefix = `production/${access.job.workspaceId}/${jobId}/`;
@@ -253,6 +259,8 @@ export async function POST(request: Request, { params }: RouteContext) {
           originalName: true,
           contentType: true,
           size: true,
+          version: true,
+          revisionComment: true,
           createdAt: true,
         },
       });
@@ -261,12 +269,6 @@ export async function POST(request: Request, { params }: RouteContext) {
           ? { attachment: existingPath, created: false as const }
           : { conflict: true as const };
       }
-
-      const existingJobArtwork = await transaction.productionAttachment.findFirst({
-        where: { jobId },
-        select: { id: true },
-      });
-      if (existingJobArtwork) return { conflict: true as const };
 
       const requestedItemId = productionJobItemId(access.job.data);
       const item = requestedItemId
@@ -278,23 +280,32 @@ export async function POST(request: Request, { params }: RouteContext) {
             select: { id: true },
           })
         : null;
-      if (item) {
-        const existingProductArtwork = await transaction.productionAttachment.findUnique({
-          where: { itemId: item.id },
+      if (!item) {
+        const existingJobArtwork = await transaction.productionAttachment.findFirst({
+          where: { jobId },
           select: { id: true },
         });
-        if (existingProductArtwork) return { conflict: true as const };
+        if (existingJobArtwork) return { conflict: true as const };
       }
+      const latestProductVersion = item
+        ? await transaction.productionAttachment.findFirst({
+            where: { itemId: item.id },
+            orderBy: { version: "desc" },
+            select: { version: true },
+          })
+        : null;
 
       const attachment = await transaction.productionAttachment.create({
         data: {
           jobId,
           itemId: item?.id ?? null,
+          version: latestProductVersion ? latestProductVersion.version + 1 : 1,
           uploadedByUserId: user.id,
           pathname,
           originalName: fileName,
           contentType,
           size: blob.blob.size,
+          revisionComment: revisionComment.trim(),
         },
         select: {
           id: true,
@@ -302,6 +313,8 @@ export async function POST(request: Request, { params }: RouteContext) {
           originalName: true,
           contentType: true,
           size: true,
+          version: true,
+          revisionComment: true,
           createdAt: true,
         },
       });
@@ -313,7 +326,7 @@ export async function POST(request: Request, { params }: RouteContext) {
       (error.code === "P2034" || error.code === "P2002")
     ) {
       return NextResponse.json(
-        { error: "Artwork is already attached to this job or product. Delete it first to replace it." },
+        { error: "Artwork upload conflicted with another upload. Please try again." },
         { status: 409 },
       );
     }
@@ -322,7 +335,7 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   if ("conflict" in result) {
     return NextResponse.json(
-      { error: "Artwork is already attached to this job or product. Delete it first to replace it." },
+      { error: "Artwork is already attached to this job. Delete it first to replace it." },
       { status: 409 },
     );
   }
