@@ -28,7 +28,7 @@ async function LoginPageContent({ searchParams }: LoginPageProps) {
     <AuthForm
       mode="login"
       error={error}
-      redirectTo={getSafeReturnPath(callbackUrl)}
+      redirectTo={getSafeReturnPath(callbackUrl, "/production/admin")}
     />
   );
 }

@@ -67,7 +67,7 @@ function GoogleMark() {
 export default async function AuthForm({
   mode,
   error,
-  redirectTo = "/app",
+  redirectTo = "/production/admin",
 }: AuthFormProps) {
   const isSignup = mode === "signup";
   const hasAccessDeniedError =
