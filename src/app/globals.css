@@ -3824,9 +3824,18 @@ input {
 }
 
 .production-job-row-actions {
-  display: grid;
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
   min-width: 120px;
   gap: 10px;
+  white-space: nowrap;
+}
+
+.production-job-row-actions > .production-artwork-upload {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .production-planning-mode-actions {

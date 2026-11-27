@@ -155,31 +155,39 @@ async function AuthenticatedProductionAdminPage() {
       .map((job) => productionJobItemId(job.data))
       .filter((itemId): itemId is string => itemId !== null),
   )];
-  const productArtworkCounts = artworkItemIds.length
+  const productArtworkSummaries = artworkItemIds.length
     ? await prisma.productionAttachment.groupBy({
         by: ["itemId"],
         where: { itemId: { in: artworkItemIds } },
         _count: { _all: true },
+        _max: { version: true },
       })
     : [];
-  const productArtworkCountByItemId = new Map<string, number>();
-  for (const entry of productArtworkCounts) {
+  const productArtworkByItemId = new Map<
+    string,
+    { count: number; latestVersion: number | null }
+  >();
+  for (const entry of productArtworkSummaries) {
     if (entry.itemId) {
-      productArtworkCountByItemId.set(entry.itemId, entry._count._all);
+      productArtworkByItemId.set(entry.itemId, {
+        count: entry._count._all,
+        latestVersion: entry._max.version,
+      });
     }
   }
   const toDashboardJob = (job: (typeof jobs)[number]): ProductionDashboardJob => {
     const rawStage = textValue(job.data, "workflowStage");
     const itemId = productionJobItemId(job.data);
-    const productArtworkCount = itemId
-      ? productArtworkCountByItemId.get(itemId) ?? 0
-      : 0;
+    const productArtwork = itemId ? productArtworkByItemId.get(itemId) : undefined;
+    const productArtworkCount = productArtwork?.count ?? 0;
     return {
       id: job.id,
       workspaceId: job.workspaceId,
       workspaceName: workspaceNames.get(job.workspaceId) ?? "Production workspace",
       itemId,
       productArtwork: productArtworkCount > 0,
+      latestArtworkVersion: productArtwork?.latestVersion ??
+        (job._count.attachments > 0 ? 1 : null),
       jobNo: textValue(job.data, "jobNo"),
       jobName: textValue(job.data, "jobName"),
       customer: textValue(job.data, "customer"),
