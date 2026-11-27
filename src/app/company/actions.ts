@@ -132,7 +132,7 @@ export async function createCompany(formData: FormData) {
   revalidatePath("/app");
   revalidatePath("/company");
   revalidatePath("/production/admin");
-  redirect("/app");
+  redirect("/production/admin");
 }
 
 export async function updateCompanyDetails(formData: FormData) {
@@ -290,5 +290,5 @@ export async function acceptCompanyInvitation(token: string) {
   revalidatePath("/app");
   revalidatePath("/company");
   revalidatePath("/production/admin");
-  redirect("/app");
+  redirect("/production/admin");
 }

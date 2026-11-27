@@ -28,7 +28,7 @@ async function SignupPageContent({ searchParams }: SignupPageProps) {
     <AuthForm
       mode="signup"
       error={error}
-      redirectTo={getSafeReturnPath(callbackUrl)}
+      redirectTo={getSafeReturnPath(callbackUrl, "/production/admin")}
     />
   );
 }
