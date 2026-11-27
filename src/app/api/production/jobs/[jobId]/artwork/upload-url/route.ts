@@ -74,7 +74,7 @@ export async function POST(request: Request, { params }: RouteContext) {
   const fileSize = isUploadRequest(body) ? body.fileSize : NaN;
   if (!fileName || !contentType || !Number.isInteger(fileSize) || fileSize <= 0) {
     return NextResponse.json(
-      { error: "Choose a supported artwork file" },
+      { error: "Choose a PDF artwork file" },
       { status: 400 },
     );
   }

@@ -19,7 +19,9 @@ export async function updateEmailPreferences(formData: FormData) {
   });
 
   revalidatePath("/account");
-  redirect(`/account?marketing=${enabled ? "enabled" : "disabled"}`);
+  revalidatePath("/production/admin");
+  if (formData.get("embeddedDashboard") === "true") return;
+  redirect(`/production/admin?view=account&marketing=${enabled ? "enabled" : "disabled"}`);
 }
 
 export async function unsubscribeFromMarketingEmails(formData: FormData) {

@@ -68,7 +68,7 @@ export default async function CompanyContent({
           </Link>
           <nav className="account-header-links" aria-label="Company navigation">
             <Link href="/app" className="account-back-link">Back to Studio</Link>
-            <Link href="/account" className="account-back-link">Account</Link>
+            <Link href="/production/admin?view=account" className="account-back-link">Account</Link>
             <SignOutButton />
           </nav>
         </header>

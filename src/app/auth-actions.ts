@@ -219,5 +219,7 @@ export async function updateAccountProfile(formData: FormData) {
   revalidatePath("/account");
   revalidatePath("/account/profile");
   revalidatePath("/app");
-  redirect("/account/profile?profile=updated");
+  revalidatePath("/production/admin");
+  if (formData.get("embeddedDashboard") === "true") return;
+  redirect("/production/admin?view=account");
 }

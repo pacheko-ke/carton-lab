@@ -35,7 +35,7 @@ export async function startPremiumCheckout(formData: FormData) {
   const membership = user.companyMembership;
   if (!membership) redirect("/company/setup");
   if (!canManageCompany(membership.role)) {
-    redirect("/account?billing=company-admin-required");
+    redirect("/production/admin?view=account&billing=company-admin-required");
   }
   if (
     hasPremiumSubscriptionAccess(
@@ -43,7 +43,7 @@ export async function startPremiumCheckout(formData: FormData) {
       membership.company.premiumAccessGranted,
     )
   ) {
-    redirect("/account?billing=already-premium");
+    redirect("/production/admin?view=account&billing=already-premium");
   }
   if (!user.email) {
     throw new Error("A verified email address is required for billing.");
@@ -51,7 +51,7 @@ export async function startPremiumCheckout(formData: FormData) {
 
   const paymentMethod = formData.get("paymentMethod");
   if (paymentMethod !== "card") {
-    redirect("/account?billing=mpesa-unavailable");
+    redirect("/production/admin?view=account&billing=mpesa-unavailable");
   }
   if (!isPaystackBillingConfigured()) {
     throw new Error("Paystack billing is not fully configured.");
@@ -68,7 +68,7 @@ export async function startPremiumCheckout(formData: FormData) {
     plan.amount !== PREMIUM_PRICE * 100 ||
     plan.interval !== "monthly"
   ) {
-    redirect("/account?billing=plan-mismatch");
+    redirect("/production/admin?view=account&billing=plan-mismatch");
   }
 
   const txRef = `packstudio-${user.id}-${randomUUID()}`;
@@ -82,7 +82,7 @@ export async function startPremiumCheckout(formData: FormData) {
         currency: PREMIUM_CURRENCY,
         plan: planId,
         reference: txRef,
-        callback_url: `${getApplicationUrl()}/account?billing=checkout-complete`,
+        callback_url: `${getApplicationUrl()}/production/admin?view=account&billing=checkout-complete`,
         metadata: {
           cartonlabUserId: user.id,
           cartonlabCompanyId: membership.company.id,
@@ -140,7 +140,7 @@ export async function cancelPremiumSubscription() {
   );
   const subscription = companySubscription ?? personalSubscription;
   if (!subscription || !subscription.currentPeriodEnd) {
-    redirect("/account?billing=not-active");
+    redirect("/production/admin?view=account&billing=not-active");
   }
   if (!subscription.providerSubscriptionToken) {
     throw new Error("Paystack subscription cancellation is not available.");
@@ -181,5 +181,5 @@ export async function cancelPremiumSubscription() {
       },
     ],
   });
-  redirect("/account?billing=cancelled");
+  redirect("/production/admin?view=account&billing=cancelled");
 }

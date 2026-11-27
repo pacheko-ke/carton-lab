@@ -66,7 +66,7 @@ export default async function CompanyInvitationPage({ params }: InvitationPagePr
               <button className="button button-large" type="submit">Accept invitation</button>
             </form>
           ) : (
-            <Link className="button button-large" href="/account">Return to account</Link>
+            <Link className="button button-large" href="/production/admin?view=account">Return to account</Link>
           )}
         </section>
       </section>

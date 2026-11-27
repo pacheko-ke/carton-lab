@@ -106,7 +106,17 @@ function isProductionInvoiceStatus(
     value === "CREDITED";
 }
 
-export default function ProductionAdminPage() {
+type ProductionAdminPageProps = {
+  searchParams: Promise<{
+    view?: string | string[];
+    billing?: string | string[];
+    marketing?: string | string[];
+  }>;
+};
+
+export default function ProductionAdminPage({
+  searchParams,
+}: ProductionAdminPageProps) {
   return (
     <Suspense
       fallback={
@@ -115,14 +125,20 @@ export default function ProductionAdminPage() {
         </main>
       }
     >
-      <AuthenticatedProductionAdminPage />
+      <AuthenticatedProductionAdminPage searchParams={searchParams} />
     </Suspense>
   );
 }
 
-async function AuthenticatedProductionAdminPage() {
+async function AuthenticatedProductionAdminPage({
+  searchParams,
+}: ProductionAdminPageProps) {
   await connection();
-  const user = await requireVerifiedUser();
+  const [user, params] = await Promise.all([
+    requireVerifiedUser(),
+    searchParams,
+  ]);
+  const openAccountOnLoad = params.view === "account";
   const [isAdmin, productionRoles, canManagePayroll] = await Promise.all([
     isSuperAdminUser(user.id),
     getProductionRoleCapabilities(user.id),
@@ -1287,12 +1303,19 @@ async function AuthenticatedProductionAdminPage() {
     <ProductionDashboard
       accountId={user.id}
       accountContent={
-        <AccountContent searchParams={Promise.resolve({})} embedded />
+        <AccountContent
+          searchParams={Promise.resolve({
+            billing: params.billing,
+            marketing: params.marketing,
+          })}
+          embedded
+        />
       }
       companyContent={
         user.companyMembership ? <CompanyContent embedded /> : null
       }
       hasCompany={Boolean(user.companyMembership)}
+      openAccountOnLoad={openAccountOnLoad}
       accountName={
         user.name ||
         user.companyMembership?.company.name ||

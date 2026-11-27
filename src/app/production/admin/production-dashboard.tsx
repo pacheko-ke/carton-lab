@@ -697,6 +697,7 @@ type Props = {
   accountContent: ReactNode;
   companyContent: ReactNode;
   hasCompany: boolean;
+  openAccountOnLoad: boolean;
   accountName: string;
   profile: {
     createdBy: string;
@@ -6879,6 +6880,11 @@ function ArtworkUploadButton({
     const file = event.currentTarget.files?.[0];
     if (!file) return;
     event.currentTarget.value = "";
+    if (!file.name.toLowerCase().endsWith(".pdf")) {
+      setStatus("Only PDF files can be uploaded as artwork.");
+      setHasError(true);
+      return;
+    }
     if (file.size > MAX_ARTWORK_FILE_BYTES) {
       setStatus("Artwork files must be 5 MB or smaller.");
       setHasError(true);
@@ -6998,7 +7004,7 @@ function ArtworkUploadButton({
       )}
       <input
         ref={fileInputRef}
-        accept=".ai,.cdr,.eps,.indd,.jpeg,.jpg,.pdf,.png,.ps,.psd,.svg,.tif,.tiff"
+        accept=".pdf,application/pdf"
         aria-label={`${job.productArtwork ? "New artwork version" : "Artwork file"} for ${job.jobNo || "untitled job"}`}
         className="sr-only"
         disabled={isUploading}
@@ -9827,6 +9833,7 @@ export default function ProductionDashboard({
   accountContent,
   companyContent,
   hasCompany,
+  openAccountOnLoad,
   cartonTypes,
   workspaces,
   jobs,
@@ -9867,7 +9874,11 @@ export default function ProductionDashboard({
     );
   const router = useRouter();
   const [view, setView] = useState<DashboardView>(
-    hasDesignerRole ? "origination" : "overview",
+    openAccountOnLoad
+      ? "account"
+      : hasDesignerRole
+        ? "origination"
+        : "overview",
   );
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [expandedNavGroup, setExpandedNavGroup] = useState<WorkspaceNavGroup | null>(

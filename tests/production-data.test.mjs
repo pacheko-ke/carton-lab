@@ -135,11 +135,13 @@ test("returns only string-valued Origination print details", () => {
   assert.deepEqual(getProductionOriginationPrintDetails(null), {});
 });
 
-test("limits artwork files to 5 MiB and accepts supported artwork formats", () => {
+test("limits artwork uploads to PDF files up to 5 MiB", () => {
   assert.equal(MAX_ARTWORK_FILE_BYTES, 5 * 1024 * 1024);
   assert.equal(getArtworkContentType("design.pdf"), "application/pdf");
-  assert.equal(getArtworkContentType("layout.AI"), "application/postscript");
-  assert.equal(getArtworkContentType("logo.svg"), "image/svg+xml");
+  assert.equal(getArtworkContentType("design.PDF"), "application/pdf");
+  assert.equal(getArtworkContentType("layout.AI"), null);
+  assert.equal(getArtworkContentType("logo.svg"), null);
+  assert.equal(getArtworkContentType("photo.jpg"), null);
   assert.equal(getArtworkContentType("program.exe"), null);
   assert.equal(
     sanitizeArtworkFileName("C:\\artwork\\box design.pdf"),

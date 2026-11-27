@@ -221,7 +221,7 @@ async function AdminDashboard({ searchParams }: AdminPageProps) {
           <BrandLogo className="brand-wordmark" />
         </Link>
         <nav className="account-header-links" aria-label="Admin navigation">
-          <Link href="/account" className="account-back-link">
+          <Link href="/production/admin?view=account" className="account-back-link">
             Account
           </Link>
           <Link href="/admin/access-control" className="account-back-link">

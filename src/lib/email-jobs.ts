@@ -135,7 +135,10 @@ function isInCampaignAudience(
 async function sendJobEmail(job: EmailJobWithRelations, now: Date) {
   const { user } = job;
   if (!user.email || !user.emailVerified) return false;
-  const accountUrl = new URL("/account", getApplicationUrl()).toString();
+  const accountUrl = new URL(
+    "/production/admin?view=account",
+    getApplicationUrl(),
+  ).toString();
 
   if (job.kind === "trial-ending") {
     if (

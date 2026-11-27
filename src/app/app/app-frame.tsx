@@ -58,7 +58,7 @@ export default function AppFrame({
       } else if (event.data.type === "packstudio:auth-required") {
         window.location.replace("/login");
       } else if (event.data.type === "packstudio:upgrade") {
-        router.push("/account");
+        router.push("/production/admin?view=account");
       } else if (event.data.type === "packstudio:production-updated") {
         router.refresh();
       }

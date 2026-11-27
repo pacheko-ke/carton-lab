@@ -578,19 +578,7 @@ const TRACKING_FIELD_LIMITS: Record<string, number> = {
 };
 
 const ARTWORK_CONTENT_TYPES: Record<string, string> = {
-  ai: "application/postscript",
-  cdr: "application/octet-stream",
-  eps: "application/postscript",
-  indd: "application/octet-stream",
-  jpeg: "image/jpeg",
-  jpg: "image/jpeg",
   pdf: "application/pdf",
-  png: "image/png",
-  ps: "application/postscript",
-  psd: "image/vnd.adobe.photoshop",
-  svg: "image/svg+xml",
-  tif: "image/tiff",
-  tiff: "image/tiff",
 };
 
 export function isRecord(value: unknown): value is Record<string, unknown> {

@@ -16,6 +16,7 @@ import {
 import BrandLogo from "../brand-logo";
 import { isSuperAdminUser } from "@/lib/access-control";
 import { updateEmailPreferences } from "../email-actions";
+import { updateAccountProfile } from "../auth-actions";
 import SignOutButton from "@/app/sign-out-button";
 
 type AccountPageProps = {
@@ -200,7 +201,7 @@ async function AccountContentView({ searchParams, embedded }: AccountPageProps) 
           </p>
         )}
         <section
-          className="account-profile-card"
+          className="account-profile-card account-profile-edit-card"
           aria-labelledby="profile-heading"
         >
           <div>
@@ -214,9 +215,78 @@ async function AccountContentView({ searchParams, embedded }: AccountPageProps) 
               . Update the details included in your keyline drawing.
             </p>
           </div>
-          <Link className="button button-large" href="/account/profile">
-            Update profile <span>→</span>
-          </Link>
+          <form action={updateAccountProfile} className="account-profile-form">
+            <input name="embeddedDashboard" type="hidden" value="true" />
+            <label className="account-profile-field" htmlFor="profile-name">
+              Name
+              <input
+                autoComplete="name"
+                defaultValue={user.name ?? ""}
+                id="profile-name"
+                maxLength={100}
+                name="name"
+                required
+                type="text"
+              />
+            </label>
+            {user.companyMembership?.company.name || user.companyName ? (
+              <div className="account-profile-field">
+                Company name
+                <p className="account-profile-value">
+                  {user.companyMembership?.company.name ?? user.companyName}
+                </p>
+              </div>
+            ) : (
+              <label className="account-profile-field" htmlFor="profile-company">
+                Company name
+                <span>Can be set once and cannot be changed later.</span>
+                <input
+                  autoComplete="organization"
+                  id="profile-company"
+                  maxLength={100}
+                  name="companyName"
+                  type="text"
+                />
+              </label>
+            )}
+            <label className="account-profile-field" htmlFor="profile-role">
+              Role
+              <input
+                autoComplete="organization-title"
+                defaultValue={user.role ?? ""}
+                id="profile-role"
+                maxLength={100}
+                name="role"
+                type="text"
+              />
+            </label>
+            <label className="account-profile-field" htmlFor="profile-contact">
+              Contact
+              <input
+                autoComplete="tel"
+                defaultValue={user.contact ?? ""}
+                id="profile-contact"
+                maxLength={120}
+                name="contact"
+                placeholder="Phone or email"
+                type="text"
+              />
+            </label>
+            <label className="account-profile-field account-profile-address" htmlFor="profile-address">
+              Address
+              <textarea
+                autoComplete="street-address"
+                defaultValue={user.address ?? ""}
+                id="profile-address"
+                maxLength={120}
+                name="address"
+                rows={3}
+              />
+            </label>
+            <button className="production-primary-button account-profile-save" type="submit">
+              Save details
+            </button>
+          </form>
         </section>
 
         {user.companyMembership ? (
@@ -399,6 +469,7 @@ async function AccountContentView({ searchParams, embedded }: AccountPageProps) 
             </p>
           </div>
           <form action={updateEmailPreferences}>
+            <input name="embeddedDashboard" type="hidden" value="true" />
             <label className="email-preference-toggle">
               <input
                 type="checkbox"
