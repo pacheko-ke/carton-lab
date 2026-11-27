@@ -52,6 +52,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
   if ("response" in access) return access.response;
 
   const customers = await prisma.productionCustomer.findMany({
+    where: { workspaceId },
     orderBy: [{ name: "asc" }, { createdAt: "desc" }],
     select: customerSelection,
   });
@@ -81,6 +82,7 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   const customer = await prisma.productionCustomer.create({
     data: {
+      workspaceId,
       createdByUserId: access.user.id,
       name: body.name.trim(),
       kraPin: body.kraPin?.trim().toUpperCase() || null,

@@ -918,6 +918,197 @@ input {
   padding: 72px 0 96px;
 }
 
+.account-page-embedded {
+  min-height: 0;
+  background: transparent;
+}
+
+.account-page-embedded .account-content {
+  width: min(100% - 32px, 1000px);
+  padding: 28px 0 42px;
+}
+
+.account-page-embedded .account-intro {
+  display: none;
+}
+
+.account-page-embedded-company .account-intro {
+  display: block;
+  margin-bottom: 0;
+}
+
+.account-page-embedded-company .account-intro h1 {
+  margin-top: 0;
+  font-size: 20px;
+}
+
+.account-page-embedded-company .account-intro p {
+  font-size: 11px;
+}
+
+.account-page-embedded-company .account-content {
+  gap: 16px;
+}
+
+.account-page-embedded-company .account-profile-card {
+  align-items: stretch;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+
+.account-page-embedded-company .company-details-form,
+.account-page-embedded-company .company-invite-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 13px 16px;
+}
+
+.account-page-embedded-company .company-details-form > *,
+.account-page-embedded-company .company-invite-form > * {
+  min-width: 0;
+}
+
+.account-page-embedded-company .company-address-field,
+.account-page-embedded-company .company-save-button,
+.account-page-embedded-company .company-invite-submit {
+  grid-column: 1 / -1;
+}
+
+.account-page-embedded-company .company-save-button,
+.account-page-embedded-company .company-invite-submit {
+  justify-self: start;
+  width: auto;
+  min-width: 190px;
+}
+
+.account-page-embedded-company .account-company-details {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.account-page-embedded-company .account-company-details div {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid rgba(165, 190, 214, 0.12);
+  border-radius: 9px;
+  background: rgba(12, 28, 46, 0.55);
+}
+
+.account-page-embedded-company .account-company-details dt {
+  font-size: 10px;
+}
+
+.account-page-embedded-company .account-company-details dd {
+  text-align: left;
+}
+
+.account-page-embedded-company .company-member-list {
+  gap: 8px;
+  margin: 0;
+}
+
+.account-page-embedded-company .company-member-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid rgba(165, 190, 214, 0.12);
+  border-radius: 9px;
+  background: rgba(12, 28, 46, 0.55);
+}
+
+.account-page-embedded-company .company-member-list li > span:first-child {
+  color: #e7f0f8;
+  font-weight: 650;
+}
+
+.account-page-embedded-company .company-member-list li > span:nth-child(2) {
+  color: #9aacc0;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.account-page-embedded-company .company-member-list li > strong {
+  padding: 5px 8px;
+  border: 1px solid rgba(57, 169, 237, 0.22);
+  border-radius: 999px;
+  background: rgba(57, 169, 237, 0.1);
+  color: #9bd8f1;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+}
+
+.account-page-embedded-company .company-pending-invitations {
+  display: grid;
+  gap: 10px;
+  padding-top: 15px;
+  border-top: 1px solid rgba(165, 190, 214, 0.12);
+}
+
+.account-page-embedded-company .company-pending-invitations h3 {
+  margin: 0;
+  color: #e7f0f8;
+  font-size: 12px;
+}
+
+.account-panel-loading {
+  padding: 32px;
+  color: #dce8f2;
+}
+
+.account-page-embedded .account-content {
+  display: grid;
+  gap: 13px;
+}
+
+.account-page-embedded .account-profile-card,
+.account-page-embedded .account-plan-card {
+  align-items: center;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  margin: 0;
+  padding: 18px;
+  border-color: rgba(165, 190, 214, 0.12);
+  border-radius: 13px;
+  background: linear-gradient(145deg, rgba(16, 34, 56, 0.94), rgba(12, 28, 46, 0.96));
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.12);
+}
+
+.account-page-embedded .account-profile-card h2,
+.account-page-embedded .account-plan-heading h2 {
+  font-size: 15px;
+  letter-spacing: -0.02em;
+}
+
+.account-page-embedded .account-profile-card p {
+  margin-top: 6px;
+  color: #9aacc0;
+}
+
+.account-page-embedded .account-plan-price {
+  margin-top: 18px;
+  font-size: 32px;
+}
+
+.account-page-embedded .account-notice,
+.account-page-embedded .account-billing-unavailable {
+  margin: 0;
+}
+
+.account-page-embedded .account-profile-card .button,
+.account-page-embedded .account-plan-card .button {
+  width: auto;
+  min-width: 190px;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-size: 11px;
+}
+
+.account-page-embedded .account-feature-list {
+  margin-bottom: 18px;
+}
+
 .account-header-links {
   display: flex;
   align-items: center;
@@ -3077,12 +3268,31 @@ input {
 
 .production-user-card {
   display: flex;
+  width: 100%;
   min-width: 0;
   align-items: center;
   gap: 10px;
   margin-top: 13px;
   padding: 13px 8px 3px;
   border-top: 1px solid rgba(165, 190, 214, 0.08);
+  border-right: 0;
+  border-bottom: 0;
+  border-left: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.production-user-card:hover,
+.production-user-card.is-active {
+  background: rgba(165, 190, 214, 0.06);
+}
+
+.production-user-card:focus-visible {
+  outline: 2px solid #65c5dc;
+  outline-offset: 2px;
 }
 
 .production-user-avatar {
@@ -8133,6 +8343,37 @@ input {
 }
 
 @media (max-width: 720px) {
+  .account-page-embedded-company .company-details-form,
+  .account-page-embedded-company .company-invite-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .account-page-embedded-company .company-address-field,
+  .account-page-embedded-company .company-save-button,
+  .account-page-embedded-company .company-invite-submit {
+    grid-column: auto;
+  }
+
+  .account-page-embedded-company .company-save-button,
+  .account-page-embedded-company .company-invite-submit {
+    width: 100%;
+  }
+
+  .account-page-embedded-company .account-company-details,
+  .account-page-embedded-company .company-member-list li {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .account-page-embedded .account-profile-card,
+  .account-page-embedded .account-plan-card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .account-page-embedded .account-profile-card .button,
+  .account-page-embedded .account-plan-card .button {
+    width: 100%;
+  }
+
   .app-toast-region {
     top: 10px;
     right: 10px;
@@ -8158,4 +8399,73 @@ input {
     width: 42px;
     height: 42px;
   }
+}
+
+:root[data-theme="light"] .production-dashboard-shell .account-page-embedded {
+  background: transparent;
+}
+
+:root[data-theme="light"] .production-dashboard-shell .account-page-embedded .account-profile-card,
+:root[data-theme="light"] .production-dashboard-shell .account-page-embedded .account-plan-card {
+  border-color: #d8e2ec;
+  background: #ffffff;
+  color: #344b61;
+  box-shadow: 0 5px 16px rgba(36, 61, 86, 0.06);
+}
+
+:root[data-theme="light"] .production-dashboard-shell .account-page-embedded .account-profile-card :is(h2, p),
+:root[data-theme="light"] .production-dashboard-shell .account-page-embedded .account-plan-heading h2,
+:root[data-theme="light"] .production-dashboard-shell .account-page-embedded .account-plan-price {
+  color: #20384f;
+}
+
+:root[data-theme="light"] .production-dashboard-shell .account-page-embedded .account-profile-card p,
+:root[data-theme="light"] .production-dashboard-shell .account-page-embedded .account-plan-kicker,
+:root[data-theme="light"] .production-dashboard-shell .account-page-embedded .account-feature-list {
+  color: #60758a;
+}
+
+:root[data-theme="light"] .production-dashboard-shell .account-page-embedded .account-panel-loading {
+  color: #30475d;
+}
+
+:root[data-theme="light"] .production-dashboard-shell .account-page-embedded-company .account-intro h1 {
+  color: #20384f;
+}
+
+:root[data-theme="light"] .production-dashboard-shell .account-page-embedded-company .account-intro p {
+  color: #60758a;
+}
+
+:root[data-theme="light"] .production-dashboard-shell .account-page-embedded-company .account-company-details div,
+:root[data-theme="light"] .production-dashboard-shell .account-page-embedded-company .company-member-list li {
+  border-color: #d8e2ec;
+  background: #f7fafc;
+}
+
+:root[data-theme="light"] .production-dashboard-shell .account-page-embedded-company .company-pending-invitations {
+  border-top-color: #d8e2ec;
+}
+
+:root[data-theme="light"] .production-dashboard-shell .account-page-embedded-company .account-company-details dt {
+  color: #60758a;
+}
+
+:root[data-theme="light"] .production-dashboard-shell .account-page-embedded-company .account-company-details dd {
+  color: #203449;
+}
+
+:root[data-theme="light"] .production-dashboard-shell .account-page-embedded-company .company-member-list li > span:first-child,
+:root[data-theme="light"] .production-dashboard-shell .account-page-embedded-company .company-pending-invitations h3 {
+  color: #20384f;
+}
+
+:root[data-theme="light"] .production-dashboard-shell .account-page-embedded-company .company-member-list li > span:nth-child(2) {
+  color: #60758a;
+}
+
+:root[data-theme="light"] .production-dashboard-shell .account-page-embedded-company .company-member-list li > strong {
+  border-color: #b9d8e9;
+  background: #e5f3fb;
+  color: #155d89;
 }

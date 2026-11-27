@@ -54,8 +54,8 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     return NextResponse.json({ error: "Invalid customer details" }, { status: 400 });
   }
 
-  const existingCustomer = await prisma.productionCustomer.findUnique({
-    where: { id: customerId },
+  const existingCustomer = await prisma.productionCustomer.findFirst({
+    where: { id: customerId, workspaceId },
     select: { id: true, name: true, kraPin: true },
   });
   if (!existingCustomer) {

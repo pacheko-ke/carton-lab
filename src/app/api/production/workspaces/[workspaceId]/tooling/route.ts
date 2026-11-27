@@ -90,8 +90,8 @@ export async function POST(request: Request, { params }: RouteContext) {
     return NextResponse.json({ error: "Invalid tooling details" }, { status: 400 });
   }
   if (body.ownerType === "CUSTOMER") {
-    const customer = await prisma.productionCustomer.findUnique({
-      where: { id: body.customerId },
+    const customer = await prisma.productionCustomer.findFirst({
+      where: { id: body.customerId, workspaceId },
       select: { id: true },
     });
     if (!customer) {

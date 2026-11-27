@@ -11,6 +11,8 @@ import {
 import { hasPremiumAccess } from "@/lib/billing";
 import { getEffectiveBillingSource } from "@/lib/company-billing";
 import { createKeylineCatalog } from "@/lib/keyline-catalog";
+import AccountContent from "@/app/account/account-content";
+import CompanyContent from "@/app/company/company-content";
 import {
   isProductionOperation,
   isProductionOperationStatus,
@@ -215,6 +217,14 @@ async function AuthenticatedProductionAdminPage() {
   const productionWorkspaceIds = workspaces
     .filter((workspace) => hasProductionRole(workspace.role, "PRODUCTION"))
     .map((workspace) => workspace.id);
+  const customerWorkspaceIds = isAdmin
+    ? workspaces.map((workspace) => workspace.id)
+    : workspaces
+      .filter((workspace) =>
+        hasProductionRole(workspace.role, "PRODUCTION") ||
+        hasProductionRole(workspace.role, "ORDER_BOOKER"),
+      )
+      .map((workspace) => workspace.id);
   const operationSchedules = productionWorkspaceIds.length
     ? await prisma.productionOperationSchedule.findMany({
         where: { workspaceId: { in: productionWorkspaceIds } },
@@ -689,7 +699,7 @@ async function AuthenticatedProductionAdminPage() {
     createdAt: movement.createdAt.toISOString(),
     createdByName: movement.createdBy?.name || "Production user",
   }));
-  const [toolingRows, customerRows] = productionWorkspaceIds.length
+  const [toolingRows, customerRows] = customerWorkspaceIds.length
     ? await Promise.all([
         prisma.productionTooling.findMany({
           where: { workspaceId: { in: productionWorkspaceIds } },
@@ -726,6 +736,7 @@ async function AuthenticatedProductionAdminPage() {
           },
         }),
         prisma.productionCustomer.findMany({
+          where: { workspaceId: { in: customerWorkspaceIds } },
           orderBy: { name: "asc" },
           take: 500,
           select: {
@@ -1275,6 +1286,13 @@ async function AuthenticatedProductionAdminPage() {
   return (
     <ProductionDashboard
       accountId={user.id}
+      accountContent={
+        <AccountContent searchParams={Promise.resolve({})} embedded />
+      }
+      companyContent={
+        user.companyMembership ? <CompanyContent embedded /> : null
+      }
+      hasCompany={Boolean(user.companyMembership)}
       accountName={
         user.name ||
         user.companyMembership?.company.name ||

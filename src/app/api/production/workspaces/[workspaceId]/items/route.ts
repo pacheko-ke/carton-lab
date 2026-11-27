@@ -90,12 +90,12 @@ export async function POST(request: Request, { params }: RouteContext) {
     return NextResponse.json({ error: "Invalid item details" }, { status: 400 });
   }
 
-  const customer = await prisma.productionCustomer.findUnique({
-    where: { id: body.customerId },
+  const customer = await prisma.productionCustomer.findFirst({
+    where: { id: body.customerId, workspaceId },
     select: { id: true },
   });
   if (!customer) {
-    return NextResponse.json({ error: "Select a customer from the shared catalog" }, { status: 404 });
+    return NextResponse.json({ error: "Select a customer from this workspace" }, { status: 404 });
   }
 
   try {

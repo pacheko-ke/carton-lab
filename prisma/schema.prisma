@@ -1097,6 +1097,7 @@ model ProductionItem {
 
 model ProductionCustomer {
   id              String              @id @default(cuid())
+  workspaceId     String              @default("global-production")
   createdByUserId String?
   name            String
   kraPin          String?
@@ -1112,6 +1113,7 @@ model ProductionCustomer {
   invoices        ProductionInvoice[]
   tooling         ProductionTooling[]
 
+  @@index([workspaceId, name])
   @@index([name])
 }
 

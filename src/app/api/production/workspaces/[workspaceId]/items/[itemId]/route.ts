@@ -61,8 +61,8 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       where: { id: itemId, workspaceId },
       select: { id: true },
     }),
-    prisma.productionCustomer.findUnique({
-      where: { id: body.customerId },
+    prisma.productionCustomer.findFirst({
+      where: { id: body.customerId, workspaceId },
       select: { id: true },
     }),
   ]);

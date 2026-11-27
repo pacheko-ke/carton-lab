@@ -10,6 +10,7 @@ import {
   useTransition,
   type ChangeEvent,
   type FormEvent,
+  type ReactNode,
 } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
@@ -693,6 +694,9 @@ type ProductionDashboardNotification = {
 
 type Props = {
   accountId: string;
+  accountContent: ReactNode;
+  companyContent: ReactNode;
+  hasCompany: boolean;
   accountName: string;
   profile: {
     createdBy: string;
@@ -737,6 +741,8 @@ type Props = {
 
 type DashboardView =
   | "overview"
+  | "account"
+  | "company"
   | "jobs"
   | "origination"
   | "quotes"
@@ -5791,14 +5797,22 @@ function CreateProductionItemForm({
   const [width, setWidth] = useState(item?.width ?? "");
   const [height, setHeight] = useState(item?.height ?? "");
   const [unit, setUnit] = useState<"mm" | "in">(item?.unit ?? "mm");
-  const [isLoadingCustomers, setIsLoadingCustomers] = useState(true);
+  const [isLoadingCustomers, setIsLoadingCustomers] = useState(Boolean(workspaceId));
   const [isCreatingCustomer, setIsCreatingCustomer] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [status, setStatus] = useState("");
-  const [hasError, setHasError] = useState(false);
+  const [status, setStatus] = useState(
+    workspaceId ? "" : "No production workspace is available for this product.",
+  );
+  const [hasError, setHasError] = useState(!workspaceId);
 
   useEffect(() => {
     let active = true;
+    if (!workspaceId) {
+      return () => {
+        active = false;
+      };
+    }
+
     requestProductionJson(
       `/api/production/workspaces/${encodeURIComponent(workspaceId)}/customers`,
       { method: "GET" },
@@ -5826,6 +5840,11 @@ function CreateProductionItemForm({
 
   const submitItem = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!workspaceId) {
+      setStatus("No production workspace is available for this product.");
+      setHasError(true);
+      return;
+    }
     setIsSaving(true);
     setStatus("");
     setHasError(false);
@@ -5911,7 +5930,7 @@ function CreateProductionItemForm({
         </label>
         <button
           className="production-text-action"
-          disabled={isLoadingCustomers || isSaving}
+          disabled={!workspaceId || isLoadingCustomers || isSaving}
           onClick={() => {
             setStatus("");
             setIsCreatingCustomer(true);
@@ -6034,7 +6053,7 @@ function CreateProductionItemForm({
       <div className="production-order-booking-actions">
         <button
           className="production-primary-button"
-          disabled={isSaving || isLoadingCustomers}
+          disabled={!workspaceId || isSaving || isLoadingCustomers}
           type="submit"
         >
           {isSaving ? "Saving…" : item ? "Save changes" : "Save item"}
@@ -6574,6 +6593,7 @@ function OrderBookingDialog({
         {isCreatingItem ? (
           <CreateProductionItemForm
             cartonTypes={cartonTypes}
+            key={workspaceId}
             onCustomerCreated={(customer) => {
               setCustomers((current) =>
                 [...current, customer].sort((left, right) => left.name.localeCompare(right.name)),
@@ -9804,6 +9824,9 @@ function ProductionJobSheetArtworkPreviews({
 
 export default function ProductionDashboard({
   accountName,
+  accountContent,
+  companyContent,
+  hasCompany,
   cartonTypes,
   workspaces,
   jobs,
@@ -9915,10 +9938,12 @@ export default function ProductionDashboard({
     [isAdmin, workspaces],
   );
   const orderBookingOrganizations = useMemo(
-    () => workspaces.filter((workspace) =>
-      hasProductionRole(workspace.role, "ORDER_BOOKER"),
-    ),
-    [workspaces],
+    () => isAdmin
+      ? workspaces
+      : workspaces.filter((workspace) =>
+        hasProductionRole(workspace.role, "ORDER_BOOKER"),
+      ),
+    [isAdmin, workspaces],
   );
   const quoteOrganizations = useMemo(
     () => isAdmin
@@ -9930,7 +9955,12 @@ export default function ProductionDashboard({
     [isAdmin, workspaces],
   );
   const navigateTo = (nextView: DashboardView) => {
-    if (hasDesignerRole && nextView !== "origination") return;
+    if (
+      hasDesignerRole &&
+      nextView !== "origination" &&
+      nextView !== "account" &&
+      nextView !== "company"
+    ) return;
     setView(nextView);
     setIsMobileMenuOpen(false);
     const group = WORKSPACE_ITEMS.find((item) => item.id === nextView)?.group;
@@ -9944,9 +9974,9 @@ export default function ProductionDashboard({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isMobileMenuOpen]);
-  const canBookOrders = !hasDesignerRole && (orderBookingOrganizations.some(
+  const canBookOrders = !hasDesignerRole && orderBookingOrganizations.some(
     (workspace) => workspaceFilter === "all" || workspace.id === workspaceFilter,
-  ) || isAdmin);
+  );
   const defaultOrderBookingWorkspaceId =
     orderBookingOrganizations.find((workspace) => workspace.id === workspaceFilter)?.id ??
     orderBookingOrganizations[0]?.id ??
@@ -10231,7 +10261,9 @@ export default function ProductionDashboard({
   });
   const deliveryMax = Math.max(1, ...deliveryDays.map(({ count }) => count));
   const pageTitle =
-    view === "overview" ? "Production overview"
+    view === "company" ? "Company workspace"
+      : view === "account" ? "Account"
+      : view === "overview" ? "Production overview"
       : view === "jobs" ? "All production jobs"
         : view === "customers" ? "Customers"
         : view === "products" ? "Products"
@@ -10253,7 +10285,11 @@ export default function ProductionDashboard({
               : view === "inventory" ? "Inventory & WIP"
           : view;
   const pageDescription =
-    view === "overview"
+    view === "company"
+      ? "Manage company details and team access."
+      : view === "account"
+      ? "Manage your profile, company workspace, and Premium plan."
+      : view === "overview"
       ? "Live snapshot of your shared production work."
       : view === "jobs"
         ? "Track and open jobs across your production workspaces."
@@ -10596,7 +10632,12 @@ export default function ProductionDashboard({
             <span className="production-nav-icon" aria-hidden="true"><FiArrowLeft /></span>
             Back to Studio
           </Link>
-          <div className="production-user-card">
+          <button
+            aria-current={view === "account" ? "page" : undefined}
+            className={`production-user-card${view === "account" ? " is-active" : ""}`}
+            onClick={() => navigateTo("account")}
+            type="button"
+          >
             <span className="production-user-avatar" aria-hidden="true">
               {accountName.slice(0, 1).toUpperCase()}
             </span>
@@ -10608,7 +10649,7 @@ export default function ProductionDashboard({
                   : "No workspace access"}
               </small>
             </span>
-          </div>
+          </button>
         </div>
       </aside>
 
@@ -10632,6 +10673,24 @@ export default function ProductionDashboard({
           </div>
           <div className="production-topbar-actions">
             <ProductionNotificationBell />
+            {view === "account" && hasCompany && (
+              <button
+                className="production-refresh-button"
+                onClick={() => navigateTo("company")}
+                type="button"
+              >
+                Manage company
+              </button>
+            )}
+            {view === "company" && (
+              <button
+                className="production-refresh-button"
+                onClick={() => navigateTo("account")}
+                type="button"
+              >
+                Back to account
+              </button>
+            )}
             <label className="production-workspace-filter">
               <span>Workspace</span>
               <select
@@ -10669,7 +10728,11 @@ export default function ProductionDashboard({
         </header>
 
         <main className="production-dashboard-content">
-          {view === "order-detail" ? (
+          {view === "account" ? (
+            <div className="production-page-content">{accountContent}</div>
+          ) : view === "company" ? (
+            <div className="production-page-content">{companyContent}</div>
+          ) : view === "order-detail" ? (
             <div className="production-page-content">
               <section className="production-panel production-list-panel">
                 <div className="production-panel-heading">

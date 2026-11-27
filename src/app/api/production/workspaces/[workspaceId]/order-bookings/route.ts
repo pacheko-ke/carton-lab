@@ -73,8 +73,8 @@ export async function POST(request: Request, { params }: RouteContext) {
   }
   const itemsById = new Map(items.map((item) => [item.id, item]));
 
-  const customer = await prisma.productionCustomer.findUnique({
-    where: { id: body.customerId },
+  const customer = await prisma.productionCustomer.findFirst({
+    where: { id: body.customerId, workspaceId },
     select: { name: true },
   });
   if (!customer) {

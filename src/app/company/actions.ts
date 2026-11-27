@@ -155,6 +155,7 @@ export async function updateCompanyDetails(formData: FormData) {
   revalidatePath("/company");
   revalidatePath("/app");
   revalidatePath("/production/admin");
+  if (formData.get("embeddedDashboard") === "true") return;
   redirect("/company?updated=1");
 }
 
@@ -234,6 +235,8 @@ export async function inviteCompanyMember(formData: FormData) {
   }
 
   revalidatePath("/company");
+  revalidatePath("/production/admin");
+  if (formData.get("embeddedDashboard") === "true") return;
   redirect("/company?invited=1");
 }
 

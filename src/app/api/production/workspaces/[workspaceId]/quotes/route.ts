@@ -110,6 +110,7 @@ export async function GET(request: Request, { params }: RouteContext) {
         },
       }),
       prisma.productionCustomer.findMany({
+        where: { workspaceId },
         orderBy: [{ name: "asc" }, { createdAt: "desc" }],
         select: { id: true, name: true },
       }),
@@ -172,8 +173,8 @@ export async function POST(request: Request, { params }: RouteContext) {
   }
 
   const [customer, items] = await Promise.all([
-    prisma.productionCustomer.findUnique({
-      where: { id: body.customerId },
+    prisma.productionCustomer.findFirst({
+      where: { id: body.customerId, workspaceId },
       select: { id: true },
     }),
     prisma.productionItem.findMany({
