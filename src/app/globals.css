@@ -2070,6 +2070,7 @@ input {
 }
 
 .account-profile-field input,
+.account-profile-field select,
 .account-profile-field textarea {
   width: 100%;
   min-height: 44px;
@@ -2081,11 +2082,16 @@ input {
   font: inherit;
 }
 
+.account-profile-field select {
+  color-scheme: dark;
+}
+
 .account-profile-field textarea {
   resize: vertical;
 }
 
 .account-profile-field input:focus-visible,
+.account-profile-field select:focus-visible,
 .account-profile-field textarea:focus-visible {
   outline: 2px solid #66d3e8;
   outline-offset: 2px;
@@ -8606,6 +8612,10 @@ input {
   color: #526579;
 }
 
+:root[data-theme="light"] .account-profile-field select {
+  color-scheme: light;
+}
+
 :root[data-theme="light"] .production-dashboard-shell .production-artwork-history-dialog,
 :root[data-theme="light"] .production-dashboard-shell .production-artwork-upload-dialog {
   border-color: #d3dee8;
@@ -8671,4 +8681,50 @@ input {
 
 :root[data-theme="light"] .production-dashboard-shell .production-artwork-upload-dialog textarea::placeholder {
   color: #60758a;
+}
+
+:root[data-theme="light"] .production-dashboard-shell .production-flag-dialog {
+  border-color: #d3dee8;
+  background: #ffffff;
+  color: #203449;
+  color-scheme: light;
+  box-shadow: 0 24px 64px rgba(36, 61, 86, 0.22);
+}
+
+:root[data-theme="light"] .production-dashboard-shell .production-flag-dialog::backdrop {
+  background: rgba(32, 52, 73, 0.38);
+}
+
+:root[data-theme="light"] .production-dashboard-shell .production-flag-dialog-heading h2 {
+  color: #203449;
+}
+
+:root[data-theme="light"] .production-dashboard-shell .production-flag-dialog-heading p {
+  color: #60758a;
+}
+
+:root[data-theme="light"] .production-dashboard-shell .production-flag-dialog label {
+  color: #40566b;
+}
+
+:root[data-theme="light"] .production-dashboard-shell .production-flag-dialog textarea {
+  border-color: #b8c8d6;
+  background: #ffffff;
+  color: #203449;
+}
+
+:root[data-theme="light"] .production-dashboard-shell .production-flag-dialog textarea::placeholder {
+  color: #60758a;
+}
+
+:root[data-theme="light"] .production-dashboard-shell .production-flag-dialog small[role="alert"] {
+  padding: 8px 10px;
+  border: 1px solid #e7b5b5;
+  border-radius: 7px;
+  background: #fff2f2;
+  color: #a33131;
+}
+
+:root[data-theme="light"] .production-dashboard-shell .production-flag-dialog small[role="status"] {
+  color: #12699e;
 }

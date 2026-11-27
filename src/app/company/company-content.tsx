@@ -4,6 +4,11 @@ import BrandLogo from "@/app/brand-logo";
 import SignOutButton from "@/app/sign-out-button";
 import { requireVerifiedUser } from "@/lib/account";
 import { canManageCompany, getCompanyMembership } from "@/lib/company";
+import {
+  getCompanyCountryOptions,
+  getCompanyCurrencyOptions,
+  getCompanyTimeZoneGroups,
+} from "@/lib/company-options";
 import { prisma } from "@/lib/prisma";
 import {
   inviteCompanyMember,
@@ -55,6 +60,9 @@ export default async function CompanyContent({
   const updated = params.updated === "1";
   const invited = params.invited === "1";
   const company = membership.company;
+  const countryOptions = getCompanyCountryOptions(company.country);
+  const timeZoneGroups = getCompanyTimeZoneGroups(company.timezone);
+  const currencyOptions = getCompanyCurrencyOptions(company.currency);
   const CompanyShell = embedded ? "div" : "main";
 
   return (
@@ -96,7 +104,11 @@ export default async function CompanyContent({
               </label>
               <label className="account-profile-field" htmlFor="company-country">
                 Country
-                <input defaultValue={company.country} id="company-country" maxLength={100} name="country" required />
+                <select defaultValue={company.country} id="company-country" name="country" required>
+                  {countryOptions.map((country) => (
+                    <option key={country.value} value={country.value}>{country.label}</option>
+                  ))}
+                </select>
               </label>
               <label className="account-profile-field" htmlFor="company-email">
                 Company contact email
@@ -112,11 +124,27 @@ export default async function CompanyContent({
               </label>
               <label className="account-profile-field" htmlFor="company-timezone">
                 Timezone
-                <input defaultValue={company.timezone} id="company-timezone" maxLength={100} name="timezone" required />
+                <select defaultValue={company.timezone} id="company-timezone" name="timezone" required>
+                  {timeZoneGroups.map((group) => (
+                    <optgroup key={group.label} label={group.label}>
+                      {group.options.map((timeZone) => (
+                        <option key={timeZone.value} value={timeZone.value}>
+                          {timeZone.label}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
               </label>
               <label className="account-profile-field" htmlFor="company-currency">
-                Currency (ISO code)
-                <input defaultValue={company.currency} id="company-currency" maxLength={3} name="currency" required />
+                Currency
+                <select defaultValue={company.currency} id="company-currency" name="currency" required>
+                  {currencyOptions.map((currency) => (
+                    <option key={currency.value} value={currency.value}>
+                      {currency.label}
+                    </option>
+                  ))}
+                </select>
               </label>
               <label className="account-profile-field" htmlFor="company-logo">
                 Company logo URL (optional)
