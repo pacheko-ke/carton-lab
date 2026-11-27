@@ -123,6 +123,7 @@ async function createLocalSubscription(
       orderBy: { createdAt: "desc" },
     });
   const user = existing?.user ?? checkout?.user;
+  const companyId = existing?.companyId ?? checkout?.companyId ?? null;
 
   const currentPeriodEnd = parseNextPaymentDate(providerSubscription);
   if (
@@ -145,6 +146,7 @@ async function createLocalSubscription(
     where: { providerSubscriptionId: code },
     create: {
       userId: user.id,
+      companyId,
       providerSubscriptionId: code,
       providerSubscriptionToken: providerSubscription.email_token,
       providerPlanId: planCode,
@@ -154,6 +156,7 @@ async function createLocalSubscription(
       providerEventCreatedAt: updatedAt,
     },
     update: {
+      companyId,
       providerSubscriptionToken: providerSubscription.email_token,
       providerPlanId: planCode,
       status: "active",
@@ -385,13 +388,25 @@ async function recordPaystackPayment(
       })
     : null;
   const user = checkout?.user ?? linkedSubscription?.user ?? metadataUser;
+  const companyId = checkout?.companyId ?? linkedSubscription?.companyId ?? null;
+  const metadataCompanyId =
+    (isRecord(transaction.metadata)
+      ? readString(transaction.metadata.cartonlabCompanyId)
+      : undefined) ??
+    (isRecord(data.metadata)
+      ? readString(data.metadata.cartonlabCompanyId)
+      : undefined);
   if (
     (checkout &&
       linkedSubscription &&
       checkout.user.id !== linkedSubscription.user.id) ||
+    (checkout &&
+      linkedSubscription &&
+      checkout.companyId !== linkedSubscription.companyId) ||
     !user?.emailVerified ||
     user.email?.toLowerCase() !== transaction.customer.email.toLowerCase() ||
-    (metadataUserId && metadataUserId !== user.id)
+    (metadataUserId && metadataUserId !== user.id) ||
+    (metadataCompanyId && metadataCompanyId !== companyId)
   ) {
     return;
   }
@@ -407,7 +422,11 @@ async function recordPaystackPayment(
   const existingPayment = await prisma.billingPayment.findUnique({
     where: { providerTransactionId },
   });
-  if (existingPayment && existingPayment.userId !== user.id) return;
+  if (
+    existingPayment &&
+    (existingPayment.userId !== user.id ||
+      existingPayment.companyId !== companyId)
+  ) return;
   if (existingPayment?.status === expectedStatus) return;
 
   const paidAt = transaction.paid_at ? new Date(transaction.paid_at) : null;
@@ -417,6 +436,7 @@ async function recordPaystackPayment(
     where: { providerTransactionId },
     create: {
       userId: user.id,
+      companyId,
       provider: "paystack",
       providerTransactionId,
       reference,

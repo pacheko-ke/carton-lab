@@ -24,6 +24,7 @@ export async function getVerifiedProductionUser() {
   return {
     id: access.user.id,
     email: access.user.email,
+    companyName: access.user.companyName,
     emailVerified: access.user.emailVerified,
     isSuperAdmin: access.isSuperAdmin,
   };
@@ -34,12 +35,22 @@ export async function getProductionWorkspaceMembership(
   workspaceId: string,
   isAdmin = false,
 ) {
-  if (workspaceId !== GLOBAL_PRODUCTION_WORKSPACE_ID) return null;
-  const roles = isAdmin
-    ? ["VIEWER", "PRODUCTION", "DESIGNER", "ORDER_BOOKER"]
-    : await getProductionRoleCapabilities(userId);
+  if (isAdmin) {
+    return {
+      workspaceId,
+      role: "VIEWER|PRODUCTION|DESIGNER|ORDER_BOOKER",
+    };
+  }
+  const companyMembership = await prisma.companyMembership.findUnique({
+    where: { userId },
+    select: { companyId: true },
+  });
+  if (!companyMembership || companyMembership.companyId !== workspaceId) {
+    return null;
+  }
+  const roles = await getProductionRoleCapabilities(userId);
   if (!roles.length) return null;
-  return { workspaceId: GLOBAL_PRODUCTION_WORKSPACE_ID, role: roles.join("|") };
+  return { workspaceId, role: roles.join("|") };
 }
 
 export async function getAuthorizedProductionJob(

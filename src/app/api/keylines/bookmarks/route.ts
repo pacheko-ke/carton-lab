@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { hasPremiumAccess } from "@/lib/billing";
 import { hasAccessPermission } from "@/lib/access-control";
+import { getEffectiveBillingSource } from "@/lib/company-billing";
 import { createKeylineCatalog } from "@/lib/keyline-catalog";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
@@ -41,6 +42,18 @@ async function getVerifiedUser() {
       premiumAccessGranted: true,
       trialEndsAt: true,
       subscriptions: true,
+      companyMembership: {
+        select: {
+          companyId: true,
+          company: {
+            select: {
+              premiumAccessGranted: true,
+              trialEndsAt: true,
+              subscriptions: true,
+            },
+          },
+        },
+      },
     },
   });
 
@@ -49,7 +62,7 @@ async function getVerifiedUser() {
 
 export async function GET() {
   const user = await getVerifiedUser();
-  if (!user) {
+  if (!user || !user.companyMembership) {
     return NextResponse.json({ error: "Verified account required" }, { status: 401 });
   }
   if (!(await hasAccessPermission(user.id, "keylines.use"))) {
@@ -76,7 +89,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const user = await getVerifiedUser();
-  if (!user) {
+  if (!user || !user.companyMembership) {
     return NextResponse.json({ error: "Verified account required" }, { status: 401 });
   }
   if (!(await hasAccessPermission(user.id, "keylines.use"))) {
@@ -126,10 +139,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid bookmark settings" }, { status: 400 });
   }
 
+  const billing = getEffectiveBillingSource(user);
   const premium = hasPremiumAccess(
-    user.subscriptions,
-    user.premiumAccessGranted,
-    user.trialEndsAt,
+    billing.subscriptions,
+    billing.premiumAccessGranted,
+    billing.trialEndsAt,
   );
   const availableKeylines = createKeylineCatalog(premium).definitions;
   if (
@@ -154,6 +168,7 @@ export async function POST(request: Request) {
     const bookmark = await prisma.keylineBookmark.create({
       data: {
         userId: user.id,
+        companyId: user.companyMembership.companyId,
         keylineId: body.keylineId,
         name: body.name.trim(),
         settings: body.settings as Prisma.InputJsonValue,

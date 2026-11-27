@@ -2,6 +2,7 @@ import { requireVerifiedUser } from "@/lib/account";
 import QRCode from "qrcode";
 import { Suspense } from "react";
 import AppFrame from "./app-frame";
+import { redirect } from "next/navigation";
 
 export default function PackStudioApp() {
   return (
@@ -19,12 +20,14 @@ export default function PackStudioApp() {
 
 async function AuthenticatedPackStudioApp() {
   const user = await requireVerifiedUser();
+  if (!user.companyMembership) redirect("/company/setup");
+  const company = user.companyMembership.company;
   const profile = {
     createdBy: (user.name ?? "").slice(0, 100),
-    companyName: (user.companyName ?? "").slice(0, 100),
+    companyName: company.name.slice(0, 100),
     role: (user.role ?? "").slice(0, 100),
-    contact: (user.contact ?? "").slice(0, 120),
-    address: (user.address ?? "").slice(0, 120),
+    contact: (company.contactPhone || company.contactEmail).slice(0, 120),
+    address: company.address.slice(0, 120),
   };
   const qr = QRCode.create(JSON.stringify(profile), { errorCorrectionLevel: "M" });
   const profileQrCode = Array.from({ length: qr.modules.size }, (_, row) =>

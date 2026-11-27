@@ -152,6 +152,7 @@ export async function POST(request: Request) {
       where: { providerTransactionId },
       create: {
         userId: checkout.user.id,
+        companyId: checkout.companyId,
         provider: "daraja",
         providerTransactionId,
         reference: checkout.txRef,
@@ -161,6 +162,7 @@ export async function POST(request: Request) {
         currency: checkout.currency,
       },
       update: {
+        companyId: checkout.companyId,
         status: "failed",
         amount: checkout.amount,
         currency: checkout.currency,
@@ -223,8 +225,12 @@ export async function POST(request: Request) {
     where: { providerTransactionId },
   });
   if (
-    (existing && existing.userId !== checkout.user.id) ||
-    (existingPayment && existingPayment.userId !== checkout.user.id)
+    (existing &&
+      (existing.userId !== checkout.user.id ||
+        existing.companyId !== checkout.companyId)) ||
+    (existingPayment &&
+      (existingPayment.userId !== checkout.user.id ||
+        existingPayment.companyId !== checkout.companyId))
   ) {
     return NextResponse.json(
       { error: "The M-Pesa receipt is already linked to another account." },
@@ -235,6 +241,7 @@ export async function POST(request: Request) {
     where: { providerTransactionId },
     create: {
       userId: checkout.user.id,
+      companyId: checkout.companyId,
       provider: "daraja",
       providerTransactionId,
       reference: checkout.txRef,
@@ -245,6 +252,7 @@ export async function POST(request: Request) {
       paidAt,
     },
     update: {
+      companyId: checkout.companyId,
       status: "success",
       amount: checkout.amount,
       currency: checkout.currency,
@@ -258,7 +266,7 @@ export async function POST(request: Request) {
 
   const currentAccess = await prisma.subscription.findFirst({
     where: {
-      userId: checkout.user.id,
+      companyId: checkout.companyId,
       status: "active",
       currentPeriodEnd: { gt: paidAt },
     },
@@ -274,6 +282,7 @@ export async function POST(request: Request) {
     where: { providerSubscriptionId: providerTransactionId },
     create: {
       userId: checkout.user.id,
+      companyId: checkout.companyId,
       providerSubscriptionId: providerTransactionId,
       providerPlanId: MPESA_PROVIDER_PLAN_ID,
       status: "active",
@@ -281,6 +290,7 @@ export async function POST(request: Request) {
       providerEventCreatedAt: paidAt,
     },
     update: {
+      companyId: checkout.companyId,
       providerPlanId: MPESA_PROVIDER_PLAN_ID,
       status: "active",
       currentPeriodEnd,

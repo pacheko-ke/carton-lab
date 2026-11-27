@@ -2,6 +2,7 @@
 
 import { randomUUID } from "node:crypto";
 import { requireVerifiedUser } from "@/lib/account";
+import { canManageCompany } from "@/lib/company";
 import {
   getApplicationUrl,
   getPaystackPlanCode,
@@ -31,8 +32,16 @@ type PaystackCheckout = {
 
 export async function startPremiumCheckout(formData: FormData) {
   const user = await requireVerifiedUser();
+  const membership = user.companyMembership;
+  if (!membership) redirect("/company/setup");
+  if (!canManageCompany(membership.role)) {
+    redirect("/account?billing=company-admin-required");
+  }
   if (
-    hasPremiumSubscriptionAccess(user.subscriptions, user.premiumAccessGranted)
+    hasPremiumSubscriptionAccess(
+      membership.company.subscriptions,
+      membership.company.premiumAccessGranted,
+    )
   ) {
     redirect("/account?billing=already-premium");
   }
@@ -76,6 +85,7 @@ export async function startPremiumCheckout(formData: FormData) {
         callback_url: `${getApplicationUrl()}/account?billing=checkout-complete`,
         metadata: {
           cartonlabUserId: user.id,
+          cartonlabCompanyId: membership.company.id,
           planCode: planId,
         },
       }),
@@ -96,6 +106,7 @@ export async function startPremiumCheckout(formData: FormData) {
     data: {
       txRef,
       userId: user.id,
+      companyId: membership.company.id,
       planId,
       paymentMethod: "card",
       amount: PREMIUM_PRICE,
@@ -107,8 +118,19 @@ export async function startPremiumCheckout(formData: FormData) {
 
 export async function cancelPremiumSubscription() {
   const user = await requireVerifiedUser();
+  const membership = user.companyMembership;
   const planId = getPaystackPlanCode();
-  const subscription = user.subscriptions.find(
+  const companySubscription = membership && canManageCompany(membership.role)
+    ? membership.company.subscriptions.find(
+        (item) =>
+          item.providerPlanId === planId &&
+          item.status === "active" &&
+          !item.cancelAtPeriodEnd &&
+          item.currentPeriodEnd !== null &&
+          item.currentPeriodEnd > new Date(),
+      )
+    : undefined;
+  const personalSubscription = user.subscriptions.find(
     (item) =>
       item.providerPlanId === planId &&
       item.status === "active" &&
@@ -116,6 +138,7 @@ export async function cancelPremiumSubscription() {
       item.currentPeriodEnd !== null &&
       item.currentPeriodEnd > new Date(),
   );
+  const subscription = companySubscription ?? personalSubscription;
   if (!subscription || !subscription.currentPeriodEnd) {
     redirect("/account?billing=not-active");
   }

@@ -19,6 +19,7 @@ import EmailOtpForm from "./email-otp-form";
 type AuthFormProps = {
   mode: "login" | "signup";
   error?: string | string[];
+  redirectTo?: string;
 };
 
 export function AuthLoading() {
@@ -66,6 +67,7 @@ function GoogleMark() {
 export default async function AuthForm({
   mode,
   error,
+  redirectTo = "/app",
 }: AuthFormProps) {
   const isSignup = mode === "signup";
   const hasAccessDeniedError =
@@ -90,7 +92,7 @@ export default async function AuthForm({
     (Array.isArray(error) && error.includes("UnverifiedEmail"));
 
   if (session?.user.isEmailVerified) {
-    redirect("/app");
+    redirect(redirectTo);
   }
 
   return (
@@ -147,6 +149,7 @@ export default async function AuthForm({
                 </p>
               )}
               <form action={signInWithGoogle} className="google-auth-form">
+                <input type="hidden" name="redirectTo" value={redirectTo} />
                 <button
                   type="submit"
                   className="google-button"
@@ -157,7 +160,7 @@ export default async function AuthForm({
                 </button>
               </form>
               {emailOtpConfigured && (
-                <EmailOtpForm configured={emailOtpConfigured} />
+                <EmailOtpForm configured={emailOtpConfigured} redirectTo={redirectTo} />
               )}
               {!configured && (
                 <p className="auth-config-notice" role="status">

@@ -31,17 +31,51 @@ function campaignAudienceWhere(
   now: Date,
 ): Prisma.UserWhereInput {
   const activeSubscription = activeSubscriptionWhere(now);
+  const companyPremium: Prisma.UserWhereInput[] = [
+    {
+      companyMembership: {
+        is: { company: { premiumAccessGranted: true } },
+      },
+    },
+    {
+      companyMembership: {
+        is: { company: { subscriptions: { some: activeSubscription } } },
+      },
+    },
+  ];
   return audience === "premium"
     ? {
         OR: [
           { premiumAccessGranted: true },
           { subscriptions: { some: activeSubscription } },
+          ...companyPremium,
         ],
       }
     : {
         premiumAccessGranted: false,
         OR: [{ trialEndsAt: null }, { trialEndsAt: { lte: now } }],
         subscriptions: { none: activeSubscription },
+        AND: [
+          {
+            OR: [
+              { companyMembership: { is: null } },
+              {
+                companyMembership: {
+                  is: {
+                    company: {
+                      premiumAccessGranted: false,
+                      OR: [
+                        { trialEndsAt: null },
+                        { trialEndsAt: { lte: now } },
+                      ],
+                      subscriptions: { none: activeSubscription },
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        ],
       };
 }
 

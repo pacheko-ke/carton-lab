@@ -1,8 +1,10 @@
 import { getProductionRoleTag } from "@/lib/access-control";
 import {
   getVerifiedProductionUser,
-  GLOBAL_PRODUCTION_WORKSPACE_ID,
+  isProductionAdmin,
 } from "@/lib/production-access";
+import { getCompanyMembership } from "@/lib/company";
+import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -14,9 +16,20 @@ export async function GET() {
     );
   }
 
-  const role = await getProductionRoleTag(user.id);
+  const [role, companyMembership] = await Promise.all([
+    getProductionRoleTag(user.id),
+    getCompanyMembership(user.id),
+  ]);
+  const companies = isProductionAdmin(user)
+    ? await prisma.company.findMany({
+        select: { id: true, name: true },
+        orderBy: { name: "asc" },
+      })
+    : companyMembership
+      ? [companyMembership.company]
+      : [];
   const workspaces = role
-    ? [{ id: GLOBAL_PRODUCTION_WORKSPACE_ID, name: "Production workspace", role }]
+    ? companies.map((company) => ({ id: company.id, name: company.name, role }))
     : [];
 
   return NextResponse.json(

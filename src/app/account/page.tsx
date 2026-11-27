@@ -5,8 +5,11 @@ import {
   startPremiumCheckout,
 } from "../billing-actions";
 import { requireVerifiedUser } from "@/lib/account";
+import { canManageCompany } from "@/lib/company";
+import { getEffectiveBillingSource } from "@/lib/company-billing";
 import {
   hasPremiumAccess,
+  hasPremiumSubscriptionAccess,
   isPaystackBillingConfigured,
   MPESA_PROVIDER_PLAN_ID,
 } from "@/lib/billing";
@@ -30,6 +33,8 @@ const billingMessages: Record<string, string> = {
     "Your subscription was cancelled. Premium access remains until the paid period ends.",
   "not-active": "No active Premium subscription was found.",
   "already-premium": "Your Premium subscription is already active.",
+  "company-admin-required":
+    "Only a company owner or admin can manage the shared Premium plan.",
   "plan-mismatch":
     "Paystack's selected plan must match $5 USD per month. Check that PAYSTACK_PLAN_CODE points to a USD 5 monthly plan in the same Live Paystack account as your API key.",
   "marketing-enabled": "You are subscribed to PackStudio product emails.",
@@ -57,35 +62,91 @@ async function AccountContent({ searchParams }: AccountPageProps) {
   ]);
   const isSuperAdmin = await isSuperAdminUser(user.id);
   const now = new Date();
-  const premium = hasPremiumAccess(
-    user.subscriptions,
+  const billing = getEffectiveBillingSource(user);
+  const company = user.companyMembership?.company;
+  const companySubscriptions = company?.subscriptions ?? [];
+  const personalSubscriptions = user.subscriptions.filter(
+    (subscription) => subscription.companyId === null,
+  );
+  const companyPremium = company
+    ? hasPremiumAccess(
+        companySubscriptions,
+        company.premiumAccessGranted,
+        company.trialEndsAt,
+        now,
+      )
+    : false;
+  const personalPremium = hasPremiumAccess(
+    personalSubscriptions,
     user.premiumAccessGranted,
     user.trialEndsAt,
     now,
   );
-  const activeSubscription = user.subscriptions
-    .filter(
-      (subscription) =>
-        ((Boolean(process.env.PAYSTACK_PLAN_CODE) &&
-          subscription.providerPlanId === process.env.PAYSTACK_PLAN_CODE) ||
-          subscription.providerPlanId === MPESA_PROVIDER_PLAN_ID) &&
-        (subscription.status === "active" ||
-          (subscription.status === "cancelled" &&
-            subscription.cancelAtPeriodEnd)) &&
-        subscription.currentPeriodEnd !== null &&
-        subscription.currentPeriodEnd > now,
-    )
-    .sort(
-      (first, second) =>
-        (second.currentPeriodEnd?.getTime() ?? 0) -
-        (first.currentPeriodEnd?.getTime() ?? 0),
-    )[0];
-  const complimentaryPremium = user.premiumAccessGranted && !activeSubscription;
-  const trialActive = Boolean(
-    !user.premiumAccessGranted &&
-      !activeSubscription &&
+  const premium = companyPremium || personalPremium;
+  const activeSubscriptionFor = (
+    subscriptions: typeof billing.subscriptions,
+  ) =>
+    subscriptions
+      .filter(
+        (subscription) =>
+          ((Boolean(process.env.PAYSTACK_PLAN_CODE) &&
+            subscription.providerPlanId === process.env.PAYSTACK_PLAN_CODE) ||
+            subscription.providerPlanId === MPESA_PROVIDER_PLAN_ID) &&
+          (subscription.status === "active" ||
+            (subscription.status === "cancelled" &&
+              subscription.cancelAtPeriodEnd)) &&
+          subscription.currentPeriodEnd !== null &&
+          subscription.currentPeriodEnd > now,
+      )
+      .sort(
+        (first, second) =>
+          (second.currentPeriodEnd?.getTime() ?? 0) -
+          (first.currentPeriodEnd?.getTime() ?? 0),
+      )[0];
+  const activeSubscription =
+    activeSubscriptionFor(companySubscriptions) ??
+    activeSubscriptionFor(personalSubscriptions);
+  const complimentaryPremium =
+    (company?.premiumAccessGranted === true || user.premiumAccessGranted) &&
+    !activeSubscription;
+  const companyTrialActive = Boolean(
+    company &&
+      !hasPremiumSubscriptionAccess(
+        companySubscriptions,
+        company.premiumAccessGranted,
+        now,
+      ) &&
+      company.trialEndsAt &&
+      company.trialEndsAt > now,
+  );
+  const personalTrialActive = Boolean(
+    !hasPremiumSubscriptionAccess(
+      personalSubscriptions,
+      user.premiumAccessGranted,
+      now,
+    ) &&
       user.trialEndsAt &&
       user.trialEndsAt > now,
+  );
+  const trialActive = Boolean(
+    !activeSubscription && (companyTrialActive || personalTrialActive),
+  );
+  const trialEndDate = companyTrialActive
+    ? company?.trialEndsAt
+    : personalTrialActive
+      ? user.trialEndsAt
+      : billing.trialEndsAt;
+  const companyBillingManager = Boolean(
+    user.companyMembership && canManageCompany(user.companyMembership.role),
+  );
+  const canStartCompanySubscription = Boolean(
+    companyBillingManager &&
+      company &&
+      !hasPremiumSubscriptionAccess(
+        companySubscriptions,
+        company.premiumAccessGranted,
+        now,
+      ),
   );
   const message =
     (Array.isArray(params.billing)
@@ -138,7 +199,9 @@ async function AccountContent({ searchParams }: AccountPageProps) {
             <h2 id="profile-heading">Your account</h2>
             <p>
               {user.name || user.email || "Manage your profile"}
-              {user.companyName ? ` · ${user.companyName}` : ""}
+              {user.companyMembership?.company.name || user.companyName
+                ? ` · ${user.companyMembership?.company.name ?? user.companyName}`
+                : ""}
               . Update the details included in your keyline drawing.
             </p>
           </div>
@@ -146,6 +209,30 @@ async function AccountContent({ searchParams }: AccountPageProps) {
             Update profile <span>→</span>
           </Link>
         </section>
+
+        {user.companyMembership ? (
+          <section className="account-profile-card" aria-labelledby="company-profile-heading">
+            <div>
+              <span className="account-plan-kicker">COMPANY WORKSPACE</span>
+              <h2 id="company-profile-heading">{user.companyMembership.company.name}</h2>
+              <p>Manage your company details, timezone, currency, and team access.</p>
+            </div>
+            <Link className="button button-large" href="/company">
+              Manage company <span>→</span>
+            </Link>
+          </section>
+        ) : (
+          <section className="account-profile-card" aria-labelledby="company-setup-heading">
+            <div>
+              <span className="account-plan-kicker">COMPANY WORKSPACE</span>
+              <h2 id="company-setup-heading">Set up your company</h2>
+              <p>Create a private workspace for your company and team.</p>
+            </div>
+            <Link className="button button-large" href="/company/setup">
+              Set up company <span>→</span>
+            </Link>
+          </section>
+        )}
 
         <section
           className={`account-plan-card${premium ? "" : " is-upgrade"}`}
@@ -191,18 +278,32 @@ async function AccountContent({ searchParams }: AccountPageProps) {
 
           {premium ? (
             <>
-              {trialActive && user.trialEndsAt && (
+              {trialActive && trialEndDate && (
                 <p className="account-subscription-note">
                   Your 7-day Premium trial ends on{" "}
-                  {user.trialEndsAt.toLocaleDateString()}. If you subscribe
-                  now, we will start charging $5/month immediately;
-                  otherwise, your account returns to Free after the trial.
+                  {trialEndDate.toLocaleDateString()}.{" "}
+                  {companyBillingManager
+                    ? "If you subscribe now, your company will be charged $5/month immediately."
+                    : user.companyMembership
+                      ? "Ask your company owner or admin about the shared Premium plan."
+                      : "Set up your company workspace to start a shared Premium plan."}
+                  {" "}Otherwise, your account returns to Free after the trial.
                 </p>
               )}
               {complimentaryPremium && (
                 <p className="account-subscription-note">
-                  Premium access is granted to this account; no paid
+                  Premium access is granted to this account or company; no paid
                   subscription is required.
+                </p>
+              )}
+              {company && companyPremium && (
+                <p className="account-subscription-note">
+                  The company Premium plan is shared with all company members.
+                </p>
+              )}
+              {company && !companyPremium && personalPremium && (
+                <p className="account-subscription-note">
+                  Your personal Premium access is not shared with other company members.
                 </p>
               )}
               {activeSubscription?.cancelAtPeriodEnd &&
@@ -223,7 +324,8 @@ async function AccountContent({ searchParams }: AccountPageProps) {
                 )}
               {activeSubscription?.status === "active" &&
                 !activeSubscription.cancelAtPeriodEnd &&
-                activeSubscription.providerPlanId !== MPESA_PROVIDER_PLAN_ID && (
+                activeSubscription.providerPlanId !== MPESA_PROVIDER_PLAN_ID &&
+                (!activeSubscription.companyId || companyBillingManager) && (
                   <form action={cancelPremiumSubscription}>
                     <button className="button button-large" type="submit">
                       Cancel subscription
@@ -234,7 +336,7 @@ async function AccountContent({ searchParams }: AccountPageProps) {
           ) : (
             <>
               <p className="account-subscription-note">
-                {user.trialEndsAt && user.trialEndsAt <= now
+                {billing.trialEndsAt && billing.trialEndsAt <= now
                   ? "Your 7-day free trial has ended. "
                   : ""}
                 Your current plan is Free. Upgrade to unlock the complete
@@ -242,12 +344,12 @@ async function AccountContent({ searchParams }: AccountPageProps) {
               </p>
             </>
           )}
-          {!activeSubscription && !complimentaryPremium && (
+          {canStartCompanySubscription && (
             isPaystackBillingConfigured() ? (
               <form action={startPremiumCheckout}>
                 <input type="hidden" name="paymentMethod" value="card" />
                 <button className="button button-large" type="submit">
-                  Subscribe to Premium — $5/month <span>→</span>
+                  Subscribe company to Premium — $5/month <span>→</span>
                 </button>
               </form>
             ) : (
@@ -255,6 +357,20 @@ async function AccountContent({ searchParams }: AccountPageProps) {
                 Premium checkout is not available yet.
               </p>
             )
+          )}
+          {user.companyMembership && !companyBillingManager && !companyPremium && (
+            <p className="account-subscription-note">
+              {personalPremium
+                ? "Your personal Premium access is not shared with other company members. "
+                : ""}
+              Ask your company owner or admin to subscribe to the shared Premium plan.
+            </p>
+          )}
+          {!user.companyMembership && !premium && (
+            <p className="account-subscription-note">
+              Set up a company workspace before starting a shared Premium plan.
+              <Link href="/company/setup"> Set up company details</Link>
+            </p>
           )}
         </section>
 

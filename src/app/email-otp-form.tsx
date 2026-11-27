@@ -9,11 +9,12 @@ import {
 
 type EmailOtpFormProps = {
   configured: boolean;
+  redirectTo: string;
 };
 
 const initialState: EmailOtpActionState = { status: "idle" };
 
-export default function EmailOtpForm({ configured }: EmailOtpFormProps) {
+export default function EmailOtpForm({ configured, redirectTo }: EmailOtpFormProps) {
   const [email, setEmail] = useState("");
   const [codeEmail, setCodeEmail] = useState("");
   const [showCodeForm, setShowCodeForm] = useState(false);
@@ -54,6 +55,7 @@ export default function EmailOtpForm({ configured }: EmailOtpFormProps) {
           </p>
           <form action={verifyAction} className="auth-form email-otp-form">
             <input type="hidden" name="email" value={codeEmail} />
+            <input type="hidden" name="redirectTo" value={redirectTo} />
             <label htmlFor="email-otp-code">
               Verification code
               <input

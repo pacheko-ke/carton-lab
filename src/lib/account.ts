@@ -23,6 +23,27 @@ export async function requireVerifiedUser() {
       trialEndsAt: true,
       marketingEmailsEnabled: true,
       subscriptions: true,
+      companyMembership: {
+        select: {
+          role: true,
+          company: {
+            select: {
+              id: true,
+              name: true,
+              country: true,
+              contactEmail: true,
+              contactPhone: true,
+              address: true,
+              timezone: true,
+              currency: true,
+              logoUrl: true,
+              premiumAccessGranted: true,
+              trialEndsAt: true,
+              subscriptions: true,
+            },
+          },
+        },
+      },
     },
   });
 

@@ -40,6 +40,7 @@ export const ACCESS_PERMISSIONS = ACCESS_PERMISSION_GROUPS.reduce<
 const accessSnapshotSelection = {
   id: true,
   name: true,
+  companyName: true,
   email: true,
   emailVerified: true,
   accessRoles: {

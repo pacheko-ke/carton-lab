@@ -9,6 +9,7 @@ import {
   isSuperAdminUser,
 } from "@/lib/access-control";
 import { hasPremiumAccess } from "@/lib/billing";
+import { getEffectiveBillingSource } from "@/lib/company-billing";
 import { createKeylineCatalog } from "@/lib/keyline-catalog";
 import {
   isProductionOperation,
@@ -28,7 +29,6 @@ import {
   isRecord,
 } from "@/lib/production-data";
 import { prisma } from "@/lib/prisma";
-import { GLOBAL_PRODUCTION_WORKSPACE_ID } from "@/lib/production-access";
 import ProductionDashboard, {
   type ProductionDashboardJob,
   type ProductionDashboardWorkspace,
@@ -126,15 +126,22 @@ async function AuthenticatedProductionAdminPage() {
     getProductionRoleCapabilities(user.id),
     hasAccessPermission(user.id, "production.payroll.manage"),
   ]);
+  if (!isAdmin && !user.companyMembership) redirect("/company/setup");
   if (!isAdmin && !productionRoles.length) redirect("/app");
   const role = productionRoles.join("|");
-  const workspaces: ProductionDashboardWorkspace[] = role
-    ? [{
-        id: GLOBAL_PRODUCTION_WORKSPACE_ID,
-        name: "Production workspace",
-        role,
-      }]
-    : [];
+  const companies = isAdmin
+    ? await prisma.company.findMany({
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+      })
+    : user.companyMembership
+      ? [user.companyMembership.company]
+      : [];
+  const workspaces: ProductionDashboardWorkspace[] = companies.map((company) => ({
+    id: company.id,
+    name: company.name,
+    role,
+  }));
   const hasDesignerRole = !isAdmin &&
     productionRoles.includes("DESIGNER");
   const workspaceNames = new Map(
@@ -1237,22 +1244,28 @@ async function AuthenticatedProductionAdminPage() {
       linePriceTotal: line.linePriceTotal.toString(),
     })),
   }));
+  const billing = getEffectiveBillingSource(user);
   const cartonTypes = Array.from(new Set([
     "RSC 0201",
     ...createKeylineCatalog(
       hasPremiumAccess(
-        user.subscriptions,
-        user.premiumAccessGranted,
-        user.trialEndsAt,
+        billing.subscriptions,
+        billing.premiumAccessGranted,
+        billing.trialEndsAt,
       ),
     ).definitions.map(({ name }) => name),
   ])).sort((left, right) => left.localeCompare(right));
   const profile = {
     createdBy: (user.name ?? "").slice(0, 100),
-    companyName: (user.companyName ?? "").slice(0, 100),
+    companyName: (user.companyMembership?.company.name ?? user.companyName ?? "").slice(0, 100),
     role: (user.role ?? "").slice(0, 100),
-    contact: (user.contact ?? "").slice(0, 120),
-    address: (user.address ?? "").slice(0, 120),
+    contact: (
+      user.companyMembership?.company.contactPhone ||
+      user.companyMembership?.company.contactEmail ||
+      user.contact ||
+      ""
+    ).slice(0, 120),
+    address: (user.companyMembership?.company.address ?? user.address ?? "").slice(0, 120),
   };
   const qr = QRCode.create(JSON.stringify(profile), { errorCorrectionLevel: "M" });
   const profileQrCode = Array.from({ length: qr.modules.size }, (_, row) =>
@@ -1262,7 +1275,13 @@ async function AuthenticatedProductionAdminPage() {
   return (
     <ProductionDashboard
       accountId={user.id}
-      accountName={user.name || user.companyName || user.email || "Production user"}
+      accountName={
+        user.name ||
+        user.companyMembership?.company.name ||
+        user.companyName ||
+        user.email ||
+        "Production user"
+      }
       profile={profile}
       profileQrCode={profileQrCode}
       cartonTypes={cartonTypes}

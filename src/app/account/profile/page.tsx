@@ -89,10 +89,15 @@ async function ProfileContent({ searchParams }: ProfilePageProps) {
                 required
               />
             </label>
-            {user.companyName ? (
+            {user.companyMembership?.company.name || user.companyName ? (
               <div className="account-profile-field">
                 Company name
-                <p className="account-profile-value">{user.companyName}</p>
+                <p className="account-profile-value">
+                  {user.companyMembership?.company.name ?? user.companyName}
+                </p>
+                <Link href={user.companyMembership ? "/company" : "/company/setup"}>
+                  {user.companyMembership ? "Manage company details" : "Set up company details"}
+                </Link>
               </div>
             ) : (
               <label className="account-profile-field" htmlFor="profile-company">

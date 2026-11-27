@@ -16,6 +16,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { getSafeReturnPath } from "@/lib/auth-redirect";
 
 export type EmailOtpActionState = {
   status: "idle" | "sent" | "error";
@@ -23,11 +24,13 @@ export type EmailOtpActionState = {
   message?: string;
 };
 
-export async function signInWithGoogle() {
+export async function signInWithGoogle(formData: FormData) {
   if (!isGoogleAuthConfigured()) {
     throw new Error("Google authentication has not been configured.");
   }
-  await signIn("google", { redirectTo: "/app" });
+  await signIn("google", {
+    redirectTo: getSafeReturnPath(formData.get("redirectTo")),
+  });
 }
 
 export async function requestEmailOtp(
@@ -118,6 +121,7 @@ export async function verifyEmailOtp(
 
   const email = normalizeEmail(rawEmail);
   const code = rawCode.trim();
+  const redirectTo = getSafeReturnPath(formData.get("redirectTo"));
   if (!isValidEmail(email) || !/^\d{6}$/.test(code)) {
     return {
       status: "error",
@@ -134,7 +138,7 @@ export async function verifyEmailOtp(
     await signIn("email-otp", {
       email,
       code,
-      redirectTo: "/app",
+      redirectTo,
     });
   } catch (error) {
     if (error instanceof AuthError && error.type === "CredentialsSignin") {

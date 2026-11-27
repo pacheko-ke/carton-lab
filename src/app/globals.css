@@ -3838,6 +3838,43 @@ input {
   gap: 8px;
 }
 
+.account-company-details {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+}
+
+.account-company-details div,
+.account-company-member-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.account-company-details dt {
+  color: #8ca0b3;
+}
+
+.account-company-details dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+.account-company-member-list {
+  display: grid;
+  gap: 10px;
+  padding: 0;
+  list-style: none;
+}
+
+.account-company-member-list li {
+  flex-wrap: wrap;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(165, 190, 214, 0.12);
+}
+
 .production-planning-mode-actions {
   display: flex;
   align-items: center;

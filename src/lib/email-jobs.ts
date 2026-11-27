@@ -3,6 +3,7 @@ import {
   hasPremiumSubscriptionAccess,
   PREMIUM_TRIAL_DAYS,
 } from "@/lib/billing";
+import { getEffectiveBillingSource } from "@/lib/company-billing";
 import { getEmailPreferencesUrl } from "@/lib/email-preferences";
 import { prisma } from "@/lib/prisma";
 import { sendResendEmail } from "@/lib/resend-email";
@@ -94,15 +95,23 @@ export async function backfillRecentTrialEmailJobs(now = new Date()) {
 
 type EmailJobWithRelations = Prisma.EmailJobGetPayload<{
   include: {
-    user: { include: { subscriptions: true } };
+    user: {
+      include: {
+        subscriptions: true;
+        companyMembership: {
+          include: { company: { include: { subscriptions: true } } };
+        };
+      };
+    };
     campaign: true;
   };
 }>;
 
 function hasCurrentPremiumAccess(user: EmailJobWithRelations["user"], now: Date) {
+  const billing = getEffectiveBillingSource(user);
   return hasPremiumSubscriptionAccess(
-    user.subscriptions,
-    user.premiumAccessGranted,
+    billing.subscriptions,
+    billing.premiumAccessGranted,
     now,
   );
 }
@@ -114,11 +123,12 @@ function isInCampaignAudience(
   const { campaign, user } = job;
   if (!campaign || !user.marketingEmailsEnabled) return false;
   const premium = hasCurrentPremiumAccess(user, now);
+  const billing = getEffectiveBillingSource(user);
   if (campaign.audience === "premium") return premium;
   return (
     campaign.audience === "free" &&
     !premium &&
-    (!user.trialEndsAt || user.trialEndsAt <= now)
+    (!billing.trialEndsAt || billing.trialEndsAt <= now)
   );
 }
 
@@ -253,7 +263,14 @@ export async function processEmailJobs(now = new Date()) {
       ],
     },
     include: {
-      user: { include: { subscriptions: true } },
+      user: {
+        include: {
+          subscriptions: true,
+          companyMembership: {
+            include: { company: { include: { subscriptions: true } } },
+          },
+        },
+      },
       campaign: true,
     },
     orderBy: { scheduledAt: "asc" },

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import AuthForm, { AuthLoading } from "../auth-form";
+import { getSafeReturnPath } from "@/lib/auth-redirect";
 
 export const metadata: Metadata = {
   title: "Create an account | PackStudio",
@@ -9,6 +10,7 @@ export const metadata: Metadata = {
 type SignupPageProps = {
   searchParams: Promise<{
     error?: string | string[];
+    callbackUrl?: string | string[];
   }>;
 };
 
@@ -21,6 +23,12 @@ export default function SignupPage({ searchParams }: SignupPageProps) {
 }
 
 async function SignupPageContent({ searchParams }: SignupPageProps) {
-  const { error } = await searchParams;
-  return <AuthForm mode="signup" error={error} />;
+  const { error, callbackUrl } = await searchParams;
+  return (
+    <AuthForm
+      mode="signup"
+      error={error}
+      redirectTo={getSafeReturnPath(callbackUrl)}
+    />
+  );
 }
