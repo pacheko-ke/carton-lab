@@ -59,6 +59,7 @@ import ProductionDashboard, {
   type ProductionDashboardShift,
   type ProductionDashboardLeaveRequest,
   type ProductionDashboardSafetyTraining,
+  type ProductionDashboardSafetyIncident,
 } from "./production-dashboard";
 
 function textValue(data: unknown, key: string): string {
@@ -905,7 +906,7 @@ async function AuthenticatedProductionAdminPage({
         issuedByName: part.issuedBy?.name || "Production user",
       })),
     }));
-  const [employeeRows, rosterShiftRows, leaveRequestRows, safetyTrainingRows] =
+  const [employeeRows, rosterShiftRows, leaveRequestRows, safetyTrainingRows, safetyIncidentRows] =
     productionWorkspaceIds.length
       ? await Promise.all([
           prisma.productionEmployee.findMany({
@@ -985,8 +986,33 @@ async function AuthenticatedProductionAdminPage({
               employee: { select: { employeeNo: true, name: true, department: true } },
             },
           }),
+          prisma.productionSafetyIncident.findMany({
+            where: { workspaceId: { in: productionWorkspaceIds } },
+            orderBy: { occurredAt: "desc" },
+            take: 500,
+            select: {
+              id: true,
+              workspaceId: true,
+              employeeId: true,
+              incidentType: true,
+              severity: true,
+              status: true,
+              title: true,
+              occurredAt: true,
+              location: true,
+              description: true,
+              immediateAction: true,
+              investigationNotes: true,
+              correctiveAction: true,
+              closedAt: true,
+              createdAt: true,
+              employee: { select: { employeeNo: true, name: true } },
+              createdBy: { select: { name: true } },
+              closedBy: { select: { name: true } },
+            },
+          }),
         ])
-      : [[], [], [], []];
+      : [[], [], [], [], []];
   const dashboardEmployees: ProductionDashboardEmployee[] = employeeRows.map((employee) => ({
     ...employee,
     hiredAt: employee.hiredAt.toISOString(),
@@ -1014,6 +1040,12 @@ async function AuthenticatedProductionAdminPage({
     ...training,
     completedAt: training.completedAt.toISOString(),
     expiresAt: training.expiresAt?.toISOString() ?? null,
+  }));
+  const dashboardSafetyIncidents: ProductionDashboardSafetyIncident[] = safetyIncidentRows.map((incident) => ({
+    ...incident,
+    occurredAt: incident.occurredAt.toISOString(),
+    closedAt: incident.closedAt?.toISOString() ?? null,
+    createdAt: incident.createdAt.toISOString(),
   }));
   const [warehousePalletRows, dispatchRows] = productionWorkspaceIds.length
     ? await Promise.all([
@@ -1363,6 +1395,7 @@ async function AuthenticatedProductionAdminPage({
       rosterShifts={dashboardRosterShifts}
       leaveRequests={dashboardLeaveRequests}
       safetyTrainings={dashboardSafetyTrainings}
+      safetyIncidents={dashboardSafetyIncidents}
       quotes={dashboardQuotes}
       isAdmin={isAdmin}
       canManageAccess={isAdmin}

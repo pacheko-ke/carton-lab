@@ -2,12 +2,16 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   isProductionLeaveTransitionAllowed,
+  isProductionSafetyIncidentTransitionAllowed,
   validateProductionAttendance,
   validateProductionAttendanceClose,
   validateProductionEmployee,
+  validateProductionEmployeeStatus,
   validateProductionLeaveRequest,
   validateProductionLeaveReview,
   validateProductionRosterShift,
+  validateProductionSafetyIncident,
+  validateProductionSafetyIncidentUpdate,
   validateProductionSafetyTraining,
 } from "../src/lib/production-hr-data.ts";
 
@@ -95,4 +99,45 @@ test("validates leave review transitions and safety-training expiry", () => {
     expiresAt: "2026-09-30",
     notes: "",
   }), false);
+});
+
+test("validates employee status changes and safety incident reports", () => {
+  assert.equal(validateProductionEmployeeStatus({ status: "INACTIVE" }), true);
+  assert.equal(validateProductionEmployeeStatus({ status: "TERMINATED" }), false);
+
+  const report = {
+    employeeId: "",
+    incidentType: "NEAR_MISS",
+    severity: "HIGH",
+    title: "Forklift nearly struck a pedestrian",
+    occurredAt: "2026-11-24T06:00:00.000Z",
+    location: "Dispatch bay",
+    description: "A forklift entered the marked pedestrian route.",
+    immediateAction: "Stopped vehicle and cleared the route.",
+  };
+  assert.equal(validateProductionSafetyIncident(report), true);
+  assert.equal(validateProductionSafetyIncident({ ...report, severity: "EXTREME" }), false);
+  assert.equal(validateProductionSafetyIncident({ ...report, occurredAt: "not-a-date" }), false);
+  assert.equal(validateProductionSafetyIncident({ ...report, title: "" }), false);
+});
+
+test("requires investigation and corrective actions before safety incident closure", () => {
+  assert.equal(validateProductionSafetyIncidentUpdate({
+    status: "INVESTIGATING",
+    investigationNotes: "",
+    correctiveAction: "",
+  }), true);
+  assert.equal(validateProductionSafetyIncidentUpdate({
+    status: "CLOSED",
+    investigationNotes: "Pedestrian route markings were obscured.",
+    correctiveAction: "",
+  }), false);
+  assert.equal(validateProductionSafetyIncidentUpdate({
+    status: "CLOSED",
+    investigationNotes: "Pedestrian route markings were obscured.",
+    correctiveAction: "Repaint route and brief forklift operators.",
+  }), true);
+  assert.equal(isProductionSafetyIncidentTransitionAllowed("OPEN", "INVESTIGATING"), true);
+  assert.equal(isProductionSafetyIncidentTransitionAllowed("INVESTIGATING", "CLOSED"), true);
+  assert.equal(isProductionSafetyIncidentTransitionAllowed("CLOSED", "OPEN"), false);
 });

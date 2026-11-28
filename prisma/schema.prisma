@@ -74,6 +74,8 @@ model User {
   createdProductionLeaveRequests      ProductionLeaveRequest[]      @relation("ProductionLeaveRequestCreator")
   reviewedProductionLeaveRequests     ProductionLeaveRequest[]      @relation("ProductionLeaveRequestReviewer")
   createdProductionSafetyTrainings    ProductionSafetyTraining[]    @relation("ProductionSafetyTrainingCreator")
+  createdProductionSafetyIncidents    ProductionSafetyIncident[]    @relation("ProductionSafetyIncidentCreator")
+  closedProductionSafetyIncidents     ProductionSafetyIncident[]    @relation("ProductionSafetyIncidentCloser")
   createdProductionPayrollRuns        ProductionPayrollRun[]        @relation("ProductionPayrollRunCreator")
   finalizedProductionPayrollRuns      ProductionPayrollRun[]        @relation("ProductionPayrollRunFinalizer")
   uploadedProductionFiles             ProductionAttachment[]        @relation("ProductionAttachmentUploader")
@@ -386,6 +388,7 @@ model ProductionEmployee {
   shifts                   ProductionRosterShift[]
   leaveRequests            ProductionLeaveRequest[]
   safetyTrainings          ProductionSafetyTraining[]
+  safetyIncidents          ProductionSafetyIncident[]
   payrollLines             ProductionPayrollLine[]
 
   @@unique([workspaceId, employeeNo])
@@ -513,6 +516,33 @@ model ProductionSafetyTraining {
 
   @@index([workspaceId, expiresAt])
   @@index([employeeId, completedAt])
+}
+
+model ProductionSafetyIncident {
+  id                 String              @id @default(cuid())
+  workspaceId        String              @default("global-production")
+  employeeId         String?
+  createdByUserId    String?
+  closedByUserId     String?
+  incidentType       String
+  severity           String
+  status             String              @default("OPEN")
+  title              String
+  occurredAt         DateTime
+  location           String              @default("")
+  description        String
+  immediateAction    String              @default("")
+  investigationNotes String              @default("")
+  correctiveAction   String              @default("")
+  closedAt           DateTime?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  employee           ProductionEmployee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  createdBy          User?               @relation("ProductionSafetyIncidentCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  closedBy           User?               @relation("ProductionSafetyIncidentCloser", fields: [closedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, status, occurredAt])
+  @@index([employeeId, occurredAt])
 }
 
 model ProductionJob {

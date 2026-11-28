@@ -27,6 +27,7 @@ import {
   FiCheckSquare,
   FiChevronDown,
   FiClipboard,
+  FiClock,
   FiDollarSign,
   FiEdit2,
   FiFlag,
@@ -121,7 +122,11 @@ const ProductionArtworkPdfPreview = dynamic(
     ),
   },
 );
-import { PRODUCTION_LEAVE_TYPES } from "@/lib/production-hr-data";
+import {
+  PRODUCTION_LEAVE_TYPES,
+  PRODUCTION_SAFETY_INCIDENT_TYPES,
+  PRODUCTION_SAFETY_SEVERITIES,
+} from "@/lib/production-hr-data";
 
 export type ProductionDashboardWorkspace = {
   id: string;
@@ -681,6 +686,27 @@ export type ProductionDashboardSafetyTraining = {
   employee: { employeeNo: string; name: string; department: string };
 };
 
+export type ProductionDashboardSafetyIncident = {
+  id: string;
+  workspaceId: string;
+  employeeId: string | null;
+  incidentType: string;
+  severity: string;
+  status: string;
+  title: string;
+  occurredAt: string;
+  location: string;
+  description: string;
+  immediateAction: string;
+  investigationNotes: string;
+  correctiveAction: string;
+  closedAt: string | null;
+  createdAt: string;
+  employee: { employeeNo: string; name: string } | null;
+  createdBy: { name: string | null } | null;
+  closedBy: { name: string | null } | null;
+};
+
 type ProductionDashboardNotification = {
   id: string;
   jobId: string;
@@ -736,6 +762,7 @@ type Props = {
   rosterShifts: ProductionDashboardShift[];
   leaveRequests: ProductionDashboardLeaveRequest[];
   safetyTrainings: ProductionDashboardSafetyTraining[];
+  safetyIncidents: ProductionDashboardSafetyIncident[];
   quotes: ProductionDashboardQuote[];
   isAdmin: boolean;
   canManageAccess: boolean;
@@ -9866,6 +9893,7 @@ export default function ProductionDashboard({
   rosterShifts,
   leaveRequests,
   safetyTrainings,
+  safetyIncidents,
   quotes,
   isAdmin,
   canManageAccess,
@@ -11895,6 +11923,7 @@ export default function ProductionDashboard({
                   preferredWorkspaceId={planningWorkspaceId}
                   rosterShifts={rosterShifts}
                   safetyTrainings={safetyTrainings}
+                  safetyIncidents={safetyIncidents}
                 />
               ) : view === "invoicing" ? (
                 <ProductionInvoiceBoard
@@ -12237,7 +12266,7 @@ function ProductionPayrollPanel({
   ) ?? 0;
 
   return (
-    <section className="production-panel">
+    <section className="production-panel production-hr-section" id="hr-payroll">
       <div className="production-panel-heading">
         <div>
           <span className="production-panel-kicker">PAYROLL &amp; STATUTORY DEDUCTIONS</span>
@@ -12418,6 +12447,7 @@ function ProductionHrBoard({
   rosterShifts,
   leaveRequests,
   safetyTrainings,
+  safetyIncidents,
   onSaved,
 }: {
   canManagePayroll: boolean;
@@ -12427,6 +12457,7 @@ function ProductionHrBoard({
   rosterShifts: ProductionDashboardShift[];
   leaveRequests: ProductionDashboardLeaveRequest[];
   safetyTrainings: ProductionDashboardSafetyTraining[];
+  safetyIncidents: ProductionDashboardSafetyIncident[];
   onSaved: () => void;
 }) {
   const [workspaceId, setWorkspaceId] = useState(
@@ -12437,15 +12468,29 @@ function ProductionHrBoard({
   const [message, setMessage] = useState("");
   const [hasError, setHasError] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [employeeStatusFilter, setEmployeeStatusFilter] = useState("ACTIVE");
   const orgEmployees = employees.filter((employee) => employee.workspaceId === workspaceId);
   const activeEmployees = orgEmployees.filter((employee) => employee.status === "ACTIVE");
+  const visibleEmployees = orgEmployees.filter((employee) =>
+    employeeStatusFilter === "ALL" || employee.status === employeeStatusFilter,
+  );
   const orgShifts = rosterShifts.filter((shift) => shift.workspaceId === workspaceId);
   const orgLeaveRequests = leaveRequests.filter((request) => request.workspaceId === workspaceId);
   const orgTrainings = safetyTrainings.filter((training) => training.workspaceId === workspaceId);
+  const orgIncidents = safetyIncidents.filter((incident) => incident.workspaceId === workspaceId);
   const openLeaveCount = orgLeaveRequests.filter((request) => request.status === "PENDING").length;
   const todayKey = dateKey(new Date());
+  const trainingDueCutoff = new Date();
+  trainingDueCutoff.setDate(trainingDueCutoff.getDate() + 30);
+  const trainingDueCutoffKey = dateKey(trainingDueCutoff);
   const expiringTrainingCount = orgTrainings.filter((training) =>
-    training.expiresAt && training.expiresAt.slice(0, 10) <= todayKey,
+    training.expiresAt &&
+    training.expiresAt.slice(0, 10) <= trainingDueCutoffKey,
+  ).length;
+  const openIncidentCount = orgIncidents.filter((incident) => incident.status !== "CLOSED").length;
+  const seriousIncidentCount = orgIncidents.filter((incident) =>
+    incident.status !== "CLOSED" &&
+    (incident.severity === "HIGH" || incident.severity === "CRITICAL"),
   ).length;
 
   const submitJson = async (
@@ -12489,6 +12534,26 @@ function ProductionHrBoard({
       },
       "Employee added to the register.",
     );
+  };
+
+  const toggleEmployeeStatus = async (employee: ProductionDashboardEmployee) => {
+    const status = employee.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
+    setIsSaving(true);
+    setMessage("");
+    setHasError(false);
+    try {
+      await requestProductionJson(
+        `/api/production/workspaces/${encodeURIComponent(workspaceId)}/hr/employees/${encodeURIComponent(employee.id)}`,
+        { method: "PATCH", body: JSON.stringify({ status }) },
+      );
+      notifyToast(`Employee marked ${status.toLowerCase()}.`);
+      onSaved();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : String(error));
+      setHasError(true);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const createShift = (event: FormEvent<HTMLFormElement>) => {
@@ -12623,13 +12688,70 @@ function ProductionHrBoard({
     );
   };
 
+  const reportSafetyIncident = (event: FormEvent<HTMLFormElement>) => {
+    const data = new FormData(event.currentTarget);
+    const occurredAt = String(data.get("occurredAt") ?? "");
+    return submitJson(
+      event,
+      `/api/production/workspaces/${encodeURIComponent(workspaceId)}/hr/safety-incidents`,
+      {
+        employeeId: String(data.get("employeeId") ?? ""),
+        incidentType: String(data.get("incidentType") ?? ""),
+        severity: String(data.get("severity") ?? ""),
+        title: String(data.get("title") ?? ""),
+        occurredAt: occurredAt ? new Date(occurredAt).toISOString() : "",
+        location: String(data.get("location") ?? ""),
+        description: String(data.get("description") ?? ""),
+        immediateAction: String(data.get("immediateAction") ?? ""),
+      },
+      "Safety incident reported and added to the register.",
+    );
+  };
+
+  const updateSafetyIncident = async (
+    event: FormEvent<HTMLFormElement>,
+    incident: ProductionDashboardSafetyIncident,
+  ) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    const submitter = (event.nativeEvent as SubmitEvent).submitter;
+    const status = submitter instanceof HTMLButtonElement ? submitter.value : "";
+    setIsSaving(true);
+    setMessage("");
+    setHasError(false);
+    try {
+      await requestProductionJson(
+        `/api/production/workspaces/${encodeURIComponent(workspaceId)}/hr/safety-incidents/${encodeURIComponent(incident.id)}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            status,
+            investigationNotes: String(data.get("investigationNotes") ?? ""),
+            correctiveAction: String(data.get("correctiveAction") ?? ""),
+          }),
+        },
+      );
+      notifyToast(status === "CLOSED" ? "Safety incident closed." : "Investigation updated.");
+      onSaved();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : String(error));
+      setHasError(true);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <div className="production-board-stack production-hr-board">
-      <section className="production-panel">
+      <section className="production-panel production-hr-overview">
         <div className="production-panel-heading">
           <div>
             <span className="production-panel-kicker">PEOPLE OPERATIONS</span>
-            <h2>Workforce, attendance &amp; safety</h2>
+            <h2>People &amp; safety operations</h2>
+            <p className="production-hr-overview-copy">
+              A live view of workforce activity, compliance, and safety follow-up.
+            </p>
           </div>
           <label className="production-hr-workspace">
             <span>Production workspace</span>
@@ -12644,29 +12766,66 @@ function ProductionHrBoard({
             </select>
           </label>
         </div>
-        <p className="production-reel-explainer">
-          Record employees, rosters, actual attendance and manually confirmed overtime.
-        </p>
         {message && (
           <p className={hasError ? "production-order-booking-error" : "production-order-booking-status"} role={hasError ? "alert" : "status"}>
             {message}
           </p>
         )}
         <div className="production-hr-metrics">
-          <div><strong>{activeEmployees.length}</strong><span>Active employees</span></div>
-          <div><strong>{orgShifts.length}</strong><span>Rostered shifts</span></div>
-          <div><strong>{openLeaveCount}</strong><span>Leave awaiting review</span></div>
-          <div><strong>{expiringTrainingCount}</strong><span>Training expired / due</span></div>
+          <div className="is-neutral">
+            <span className="production-hr-metric-icon" aria-hidden="true"><FiUsers /></span>
+            <strong>{activeEmployees.length}</strong><span>Active employees</span>
+          </div>
+          <div className="is-neutral">
+            <span className="production-hr-metric-icon" aria-hidden="true"><FiCalendar /></span>
+            <strong>{orgShifts.length}</strong><span>Rostered shifts</span>
+          </div>
+          <div className={openLeaveCount ? "is-warning" : "is-neutral"}>
+            <span className="production-hr-metric-icon" aria-hidden="true"><FiClock /></span>
+            <strong>{openLeaveCount}</strong><span>Leave awaiting review</span>
+          </div>
+          <div className={expiringTrainingCount ? "is-warning" : "is-neutral"}>
+            <span className="production-hr-metric-icon" aria-hidden="true"><FiCheckCircle /></span>
+            <strong>{expiringTrainingCount}</strong><span>Training expired / due in 30 days</span>
+          </div>
+          <div className={openIncidentCount ? "is-warning" : "is-neutral"}>
+            <span className="production-hr-metric-icon" aria-hidden="true"><FiAlertTriangle /></span>
+            <strong>{openIncidentCount}</strong><span>Open safety incidents</span>
+          </div>
+          <div className={seriousIncidentCount ? "is-danger" : "is-neutral"}>
+            <span className="production-hr-metric-icon" aria-hidden="true"><FiActivity /></span>
+            <strong>{seriousIncidentCount}</strong><span>High / critical incidents</span>
+          </div>
         </div>
       </section>
 
-      <section className="production-panel">
+      <nav className="production-hr-section-nav" aria-label="HR and safety sections">
+        <a href="#hr-employees"><FiUsers aria-hidden="true" /> Employees</a>
+        <a href="#hr-shifts"><FiCalendar aria-hidden="true" /> Shifts</a>
+        <a href="#hr-leave"><FiClock aria-hidden="true" /> Leave</a>
+        {canManagePayroll && <a href="#hr-payroll"><FiDollarSign aria-hidden="true" /> Payroll</a>}
+        <a href="#hr-training"><FiCheckCircle aria-hidden="true" /> Training</a>
+        <a href="#hr-incidents"><FiAlertTriangle aria-hidden="true" /> Incidents</a>
+      </nav>
+
+      <section className="production-panel production-hr-section" id="hr-employees">
         <div className="production-panel-heading">
           <div>
             <span className="production-panel-kicker">EMPLOYEE REGISTER</span>
             <h2>Employees</h2>
           </div>
-          <span className="production-panel-total">{orgEmployees.length} employees</span>
+          <label className="production-hr-workspace">
+            <span>Show employees</span>
+            <select
+              aria-label="Filter employees by status"
+              onChange={(event) => setEmployeeStatusFilter(event.target.value)}
+              value={employeeStatusFilter}
+            >
+              <option value="ACTIVE">Active</option>
+              <option value="INACTIVE">Inactive</option>
+              <option value="ALL">All</option>
+            </select>
+          </label>
         </div>
         <form className="production-reel-form production-hr-form" onSubmit={addEmployee}>
           <label><span>Employee number</span><input name="employeeNo" required maxLength={60} /></label>
@@ -12676,29 +12835,56 @@ function ProductionHrBoard({
           <label><span>Hire date</span><input name="hiredAt" type="date" required /></label>
           <button className="production-primary-button" disabled={!workspaceId || isSaving} type="submit">Add employee</button>
         </form>
-        {orgEmployees.length ? (
-          <div className="production-table-scroll">
-            <table className="production-data-table">
-              <thead><tr><th>Employee</th><th>Department</th><th>Position</th><th>Hire date</th><th>Status</th></tr></thead>
-              <tbody>{orgEmployees.map((employee) => (
+        {visibleEmployees.length ? (
+          <div className="production-table-scroll production-hr-employee-table-scroll">
+            <table aria-label="Employees in selected workspace" className="production-hr-employee-table">
+              <thead><tr><th>Employee</th><th>Department</th><th>Position</th><th>Hire date</th><th>Status</th><th>Action</th></tr></thead>
+              <tbody>{visibleEmployees.map((employee) => (
                 <tr key={employee.id}>
-                  <td><strong>{employee.employeeNo}</strong><small>{employee.name}</small></td>
+                  <td>
+                    <div className="production-hr-employee-identity">
+                      <span aria-hidden="true" className="production-hr-employee-avatar">
+                        {employee.name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("")}
+                      </span>
+                      <span className="production-hr-employee-name">
+                        <strong>{employee.name}</strong>
+                        <small>{employee.employeeNo}</small>
+                      </span>
+                    </div>
+                  </td>
                   <td>{employee.department}</td>
                   <td>{employee.jobTitle}</td>
                   <td>{dateOnlyLabel(employee.hiredAt)}</td>
-                  <td>{employee.status}</td>
+                  <td>
+                    <span className={`production-hr-employee-status is-${employee.status.toLowerCase()}`}>
+                      <span aria-hidden="true" />
+                      {employee.status === "ACTIVE" ? "Active" : "Inactive"}
+                    </span>
+                  </td>
+                  <td>
+                    <button
+                      className="production-table-action production-hr-employee-action"
+                      disabled={isSaving}
+                      onClick={() => void toggleEmployeeStatus(employee)}
+                      type="button"
+                    >
+                      {employee.status === "ACTIVE" ? "Deactivate" : "Reactivate"}
+                    </button>
+                  </td>
                 </tr>
               ))}</tbody>
             </table>
           </div>
-        ) : <p className="production-chart-empty">No employees in this workspace yet.</p>}
+        ) : <p className="production-hr-employee-empty">{orgEmployees.length
+          ? `No ${employeeStatusFilter === "ALL" ? "" : `${employeeStatusFilter.toLowerCase()} `}employees to show.`
+          : "No employees in this workspace yet."}</p>}
       </section>
 
       {canManagePayroll && workspaceId && (
         <ProductionPayrollPanel key={workspaceId} workspaceId={workspaceId} />
       )}
 
-      <section className="production-panel">
+      <section className="production-panel production-hr-section" id="hr-shifts">
         <div className="production-panel-heading">
           <div>
             <span className="production-panel-kicker">ROSTER &amp; TIME CAPTURE</span>
@@ -12768,7 +12954,7 @@ function ProductionHrBoard({
         ) : <p className="production-chart-empty">No roster shifts scheduled.</p>}
       </section>
 
-      <section className="production-panel">
+      <section className="production-panel production-hr-section" id="hr-leave">
         <div className="production-panel-heading">
           <div>
             <span className="production-panel-kicker">LEAVE MANAGEMENT</span>
@@ -12815,7 +13001,7 @@ function ProductionHrBoard({
         ) : <p className="production-chart-empty">No leave requests recorded.</p>}
       </section>
 
-      <section className="production-panel">
+      <section className="production-panel production-hr-section" id="hr-training">
         <div className="production-panel-heading">
           <div>
             <span className="production-panel-kicker">HSE &amp; COMPETENCY</span>
@@ -12843,7 +13029,14 @@ function ProductionHrBoard({
             <table className="production-data-table">
               <thead><tr><th>Employee</th><th>Training</th><th>Provider</th><th>Completed</th><th>Expiry</th><th>State</th></tr></thead>
               <tbody>{orgTrainings.map((training) => {
-                const isDue = Boolean(training.expiresAt && training.expiresAt.slice(0, 10) <= todayKey);
+                const expiryDate = training.expiresAt?.slice(0, 10) ?? "";
+                const trainingState = !expiryDate
+                  ? "NO EXPIRY"
+                  : expiryDate < todayKey
+                    ? "EXPIRED"
+                    : expiryDate <= trainingDueCutoffKey
+                      ? "DUE SOON"
+                      : "CURRENT";
                 return (
                   <tr key={training.id}>
                     <td><strong>{training.employee.employeeNo}</strong><small>{training.employee.name}</small></td>
@@ -12851,13 +13044,130 @@ function ProductionHrBoard({
                     <td>{training.provider || "—"}</td>
                     <td>{dateOnlyLabel(training.completedAt)}</td>
                     <td>{training.expiresAt ? dateOnlyLabel(training.expiresAt) : "No expiry"}</td>
-                    <td>{isDue ? "EXPIRED / DUE" : "CURRENT"}</td>
+                    <td><span className={`production-hr-training-state is-${trainingState.toLowerCase().replace(" ", "-")}`}>{trainingState}</span></td>
                   </tr>
                 );
               })}</tbody>
             </table>
           </div>
         ) : <p className="production-chart-empty">No safety training records yet.</p>}
+      </section>
+
+      <section className="production-panel production-hr-section" id="hr-incidents">
+        <div className="production-panel-heading">
+          <div>
+            <span className="production-panel-kicker">INCIDENTS &amp; NEAR MISSES</span>
+            <h2>Safety incident register</h2>
+          </div>
+          <span className="production-panel-total">{openIncidentCount} open · {orgIncidents.length} total</span>
+        </div>
+        <p className="production-reel-explainer">
+          Record incidents, hazards, and near misses. Track investigations and corrective actions through closure.
+        </p>
+        <form className="production-reel-form production-hr-form" onSubmit={reportSafetyIncident}>
+          <label>
+            <span>Incident type</span>
+            <select name="incidentType" defaultValue="NEAR_MISS" required>
+              {PRODUCTION_SAFETY_INCIDENT_TYPES.map((type) => (
+                <option key={type} value={type}>{type.replaceAll("_", " ")}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>Severity</span>
+            <select name="severity" defaultValue="LOW" required>
+              {PRODUCTION_SAFETY_SEVERITIES.map((severity) => (
+                <option key={severity} value={severity}>{severity}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>Employee (optional)</span>
+            <select name="employeeId" defaultValue="">
+              <option value="">Not employee-specific</option>
+              {orgEmployees.map((employee) => (
+                <option key={employee.id} value={employee.id}>{employee.employeeNo} · {employee.name}</option>
+              ))}
+            </select>
+          </label>
+          <label><span>Incident title</span><input name="title" required maxLength={160} /></label>
+          <label><span>Occurred at</span><input name="occurredAt" type="datetime-local" defaultValue={localDateTimeValue()} required /></label>
+          <label><span>Location</span><input name="location" maxLength={160} /></label>
+          <label className="production-hr-wide"><span>Description</span><textarea name="description" rows={3} maxLength={2000} required /></label>
+          <label className="production-hr-wide"><span>Immediate action taken</span><textarea name="immediateAction" rows={2} maxLength={1000} /></label>
+          <button className="production-primary-button" disabled={!workspaceId || isSaving} type="submit">Report incident</button>
+        </form>
+
+        {orgIncidents.length ? (
+          <div className="production-hr-shifts">
+            {orgIncidents
+              .slice()
+              .sort((left, right) => Date.parse(right.occurredAt) - Date.parse(left.occurredAt))
+              .map((incident) => (
+                <article className="production-hr-shift production-hr-incident" key={incident.id}>
+                  <div className="production-panel-heading">
+                    <div>
+                      <h3>{incident.title}</h3>
+                      <p>
+                        {incident.incidentType.replaceAll("_", " ")} · {new Date(incident.occurredAt).toLocaleString()}
+                        {incident.employee && ` · ${incident.employee.employeeNo} ${incident.employee.name}`}
+                        {incident.location && ` · ${incident.location}`}
+                      </p>
+                    </div>
+                    <div className="production-hr-incident-badges">
+                      <span className={`production-quality-severity severity-${incident.severity.toLowerCase()}`}>{incident.severity}</span>
+                      <span className="production-panel-total">{incident.status}</span>
+                    </div>
+                  </div>
+                  <p>{incident.description}</p>
+                  {incident.immediateAction && (
+                    <p className="production-hr-incident-detail"><strong>Immediate action:</strong> {incident.immediateAction}</p>
+                  )}
+                  {incident.status === "CLOSED" ? (
+                    <div className="production-hr-incident-closure">
+                      <p><strong>Investigation:</strong> {incident.investigationNotes}</p>
+                      <p><strong>Corrective action:</strong> {incident.correctiveAction}</p>
+                      <small>
+                        Closed {incident.closedAt ? new Date(incident.closedAt).toLocaleString() : ""}
+                        {incident.closedBy?.name ? ` by ${incident.closedBy.name}` : ""}
+                      </small>
+                    </div>
+                  ) : (
+                    <form
+                      className="production-hr-incident-review"
+                      onSubmit={(event) => void updateSafetyIncident(event, incident)}
+                    >
+                      <label>
+                        <span>Investigation findings (required to close)</span>
+                        <textarea name="investigationNotes" defaultValue={incident.investigationNotes} rows={2} maxLength={2000} required={incident.status === "INVESTIGATING"} />
+                      </label>
+                      <label>
+                        <span>Corrective / preventive action (required to close)</span>
+                        <textarea name="correctiveAction" defaultValue={incident.correctiveAction} rows={2} maxLength={2000} required={incident.status === "INVESTIGATING"} />
+                      </label>
+                      {incident.status === "OPEN" ? (
+                        <button className="production-primary-button" disabled={isSaving} name="status" value="INVESTIGATING" type="submit">
+                          Start investigation
+                        </button>
+                      ) : (
+                        <>
+                          <button className="production-table-action" disabled={isSaving} name="status" value="INVESTIGATING" type="submit">
+                            Save investigation
+                          </button>
+                          <button className="production-primary-button" disabled={isSaving} name="status" value="CLOSED" type="submit">
+                            Close incident
+                          </button>
+                        </>
+                      )}
+                    </form>
+                  )}
+                  <small className="production-hr-incident-reporter">
+                    Reported by {incident.createdBy?.name || "Production user"}
+                  </small>
+                </article>
+              ))}
+          </div>
+        ) : <p className="production-chart-empty">No safety incidents or near misses reported.</p>}
       </section>
     </div>
   );

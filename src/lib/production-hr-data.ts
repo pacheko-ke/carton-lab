@@ -32,6 +32,24 @@ function isBoundedIntegerString(value: unknown, maximum: number): value is strin
 export const PRODUCTION_EMPLOYEE_STATUSES = ["ACTIVE", "INACTIVE"] as const;
 export const PRODUCTION_LEAVE_TYPES = ["ANNUAL", "SICK", "UNPAID", "OTHER"] as const;
 export const PRODUCTION_LEAVE_STATUSES = ["PENDING", "APPROVED", "REJECTED"] as const;
+export const PRODUCTION_SAFETY_INCIDENT_TYPES = [
+  "INJURY",
+  "NEAR_MISS",
+  "HAZARD",
+  "PROPERTY_DAMAGE",
+  "ENVIRONMENTAL",
+] as const;
+export const PRODUCTION_SAFETY_SEVERITIES = [
+  "LOW",
+  "MODERATE",
+  "HIGH",
+  "CRITICAL",
+] as const;
+export const PRODUCTION_SAFETY_INCIDENT_STATUSES = [
+  "OPEN",
+  "INVESTIGATING",
+  "CLOSED",
+] as const;
 
 export type ProductionEmployeeInput = {
   employeeNo: string;
@@ -84,6 +102,23 @@ export type ProductionSafetyTrainingInput = {
   completedAt: string;
   expiresAt: string;
   notes: string;
+};
+
+export type ProductionSafetyIncidentInput = {
+  employeeId: string;
+  incidentType: typeof PRODUCTION_SAFETY_INCIDENT_TYPES[number];
+  severity: typeof PRODUCTION_SAFETY_SEVERITIES[number];
+  title: string;
+  occurredAt: string;
+  location: string;
+  description: string;
+  immediateAction: string;
+};
+
+export type ProductionSafetyIncidentUpdateInput = {
+  status: "INVESTIGATING" | "CLOSED";
+  investigationNotes: string;
+  correctiveAction: string;
 };
 
 export function validateProductionEmployee(value: unknown): value is ProductionEmployeeInput {
@@ -168,4 +203,48 @@ export function validateProductionSafetyTraining(
     (value.expiresAt === "" || isValidDate(value.expiresAt)) &&
     (value.expiresAt === "" || value.expiresAt >= value.completedAt) &&
     isBoundedString(value.notes, 1000);
+}
+
+export function validateProductionEmployeeStatus(value: unknown): value is {
+  status: typeof PRODUCTION_EMPLOYEE_STATUSES[number];
+} {
+  return isRecord(value) &&
+    PRODUCTION_EMPLOYEE_STATUSES.some((status) => status === value.status);
+}
+
+export function validateProductionSafetyIncident(
+  value: unknown,
+): value is ProductionSafetyIncidentInput {
+  return isRecord(value) &&
+    (value.employeeId === "" || isNonEmptyString(value.employeeId, 100)) &&
+    PRODUCTION_SAFETY_INCIDENT_TYPES.some((type) => type === value.incidentType) &&
+    PRODUCTION_SAFETY_SEVERITIES.some((severity) => severity === value.severity) &&
+    isNonEmptyString(value.title, 160) &&
+    isValidDateTime(value.occurredAt) &&
+    new Date(value.occurredAt).getTime() <= Date.now() &&
+    isBoundedString(value.location, 160) &&
+    isNonEmptyString(value.description, 2000) &&
+    isBoundedString(value.immediateAction, 1000);
+}
+
+export function validateProductionSafetyIncidentUpdate(
+  value: unknown,
+): value is ProductionSafetyIncidentUpdateInput {
+  return isRecord(value) &&
+    (value.status === "INVESTIGATING" || value.status === "CLOSED") &&
+    isBoundedString(value.investigationNotes, 2000) &&
+    isBoundedString(value.correctiveAction, 2000) &&
+    (value.status !== "CLOSED" ||
+      (isNonEmptyString(value.investigationNotes, 2000) &&
+        isNonEmptyString(value.correctiveAction, 2000)));
+}
+
+export function isProductionSafetyIncidentTransitionAllowed(
+  current: string,
+  next: string,
+): boolean {
+  return (current === "OPEN" &&
+      (next === "INVESTIGATING" || next === "CLOSED")) ||
+    (current === "INVESTIGATING" &&
+      (next === "INVESTIGATING" || next === "CLOSED"));
 }
