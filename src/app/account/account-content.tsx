@@ -18,6 +18,12 @@ import { isSuperAdminUser } from "@/lib/access-control";
 import { updateEmailPreferences } from "../email-actions";
 import { updateAccountProfile } from "../auth-actions";
 import SignOutButton from "@/app/sign-out-button";
+import { createCompany } from "../company/actions";
+import {
+  COMPANY_COUNTRY_OPTIONS,
+  COMPANY_CURRENCY_OPTIONS,
+  getCompanyTimeZoneGroups,
+} from "@/lib/company-options";
 
 type AccountPageProps = {
   searchParams: Promise<{
@@ -67,6 +73,7 @@ async function AccountContentView({ searchParams, embedded }: AccountPageProps) 
     requireVerifiedUser(),
     searchParams,
   ]);
+  const timeZoneGroups = getCompanyTimeZoneGroups();
   const isSuperAdmin = await isSuperAdminUser(user.id);
   const now = new Date();
   const billing = getEffectiveBillingSource(user);
@@ -309,9 +316,101 @@ async function AccountContentView({ searchParams, embedded }: AccountPageProps) 
               <h2 id="company-setup-heading">Set up your company</h2>
               <p>Create a private workspace for your company and team.</p>
             </div>
-            <Link className="button button-large" href="/company/setup">
-              Set up company <span>→</span>
-            </Link>
+            <form action={createCompany} className="account-profile-form">
+              <label className="account-profile-field" htmlFor="company-name">
+                Company name
+                <input
+                  autoComplete="organization"
+                  defaultValue={user.companyName ?? ""}
+                  id="company-name"
+                  maxLength={120}
+                  name="name"
+                  required
+                />
+              </label>
+              <label className="account-profile-field" htmlFor="company-country">
+                Country
+                <select
+                  autoComplete="country-name"
+                  defaultValue=""
+                  id="company-country"
+                  name="country"
+                  required
+                >
+                  <option disabled value="">Select a country</option>
+                  {COMPANY_COUNTRY_OPTIONS.map((country) => (
+                    <option key={country.value} value={country.value}>{country.label}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="account-profile-field" htmlFor="company-email">
+                Company contact email
+                <input
+                  autoComplete="email"
+                  defaultValue={user.email ?? ""}
+                  id="company-email"
+                  maxLength={254}
+                  name="contactEmail"
+                  required
+                  type="email"
+                />
+              </label>
+              <label className="account-profile-field" htmlFor="company-phone">
+                Company phone
+                <input
+                  autoComplete="tel"
+                  defaultValue={user.contact ?? ""}
+                  id="company-phone"
+                  maxLength={40}
+                  name="contactPhone"
+                  type="tel"
+                />
+              </label>
+              <label className="account-profile-field" htmlFor="company-address">
+                Address
+                <textarea
+                  autoComplete="street-address"
+                  defaultValue={user.address ?? ""}
+                  id="company-address"
+                  maxLength={300}
+                  name="address"
+                  rows={3}
+                />
+              </label>
+              <label className="account-profile-field" htmlFor="company-timezone">
+                Timezone
+                <select defaultValue="Africa/Nairobi" id="company-timezone" name="timezone" required>
+                  {timeZoneGroups.map((group) => (
+                    <optgroup key={group.label} label={group.label}>
+                      {group.options.map((timeZone) => (
+                        <option key={timeZone.value} value={timeZone.value}>{timeZone.label}</option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+              </label>
+              <label className="account-profile-field" htmlFor="company-currency">
+                Currency
+                <select defaultValue="KES" id="company-currency" name="currency" required>
+                  {COMPANY_CURRENCY_OPTIONS.map((currency) => (
+                    <option key={currency.value} value={currency.value}>{currency.label}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="account-profile-field" htmlFor="company-logo">
+                Company logo URL (optional)
+                <input
+                  id="company-logo"
+                  maxLength={2048}
+                  name="logoUrl"
+                  placeholder="https://example.com/logo.png"
+                  type="url"
+                />
+              </label>
+              <button className="production-primary-button account-profile-save" type="submit">
+                Create company workspace
+              </button>
+            </form>
           </section>
         )}
 
@@ -450,7 +549,7 @@ async function AccountContentView({ searchParams, embedded }: AccountPageProps) 
           {!user.companyMembership && !premium && (
             <p className="account-subscription-note">
               Set up a company workspace before starting a shared Premium plan.
-              <Link href="/company/setup"> Set up company details</Link>
+              <Link href="/production/admin?view=account"> Set up company details</Link>
             </p>
           )}
         </section>

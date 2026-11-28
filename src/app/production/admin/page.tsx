@@ -13,6 +13,7 @@ import { getEffectiveBillingSource } from "@/lib/company-billing";
 import { createKeylineCatalog } from "@/lib/keyline-catalog";
 import AccountContent from "@/app/account/account-content";
 import CompanyContent from "@/app/company/company-content";
+import { AccessControlContent } from "@/app/admin/access-control/page";
 import {
   isProductionOperation,
   isProductionOperationStatus,
@@ -139,13 +140,19 @@ async function AuthenticatedProductionAdminPage({
     searchParams,
   ]);
   const openAccountOnLoad = params.view === "account";
+  const openAccessControlOnLoad = params.view === "access-control";
   const [isAdmin, productionRoles, canManagePayroll] = await Promise.all([
     isSuperAdminUser(user.id),
     getProductionRoleCapabilities(user.id),
     hasAccessPermission(user.id, "production.payroll.manage"),
   ]);
-  if (!isAdmin && !user.companyMembership) redirect("/company/setup");
-  if (!isAdmin && !productionRoles.length) redirect("/app");
+  if (params.view === "access-control" && !isAdmin) {
+    redirect("/production/admin");
+  }
+  if (!isAdmin && !user.companyMembership && params.view !== "account") {
+    redirect("/production/admin?view=account");
+  }
+  if (!isAdmin && !productionRoles.length && params.view !== "account") redirect("/app");
   const role = productionRoles.join("|");
   const companies = isAdmin
     ? await prisma.company.findMany({
@@ -1314,8 +1321,12 @@ async function AuthenticatedProductionAdminPage({
       companyContent={
         user.companyMembership ? <CompanyContent embedded /> : null
       }
+      accessControlContent={
+        isAdmin ? <AccessControlContent /> : null
+      }
       hasCompany={Boolean(user.companyMembership)}
       openAccountOnLoad={openAccountOnLoad}
+      openAccessControlOnLoad={openAccessControlOnLoad}
       accountName={
         user.name ||
         user.companyMembership?.company.name ||

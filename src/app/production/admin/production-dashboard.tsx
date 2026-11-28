@@ -696,8 +696,10 @@ type Props = {
   accountId: string;
   accountContent: ReactNode;
   companyContent: ReactNode;
+  accessControlContent: ReactNode;
   hasCompany: boolean;
   openAccountOnLoad: boolean;
+  openAccessControlOnLoad: boolean;
   accountName: string;
   profile: {
     createdBy: string;
@@ -744,6 +746,7 @@ type DashboardView =
   | "overview"
   | "account"
   | "company"
+  | "access-control"
   | "jobs"
   | "origination"
   | "quotes"
@@ -9832,8 +9835,10 @@ export default function ProductionDashboard({
   accountName,
   accountContent,
   companyContent,
+  accessControlContent,
   hasCompany,
   openAccountOnLoad,
+  openAccessControlOnLoad,
   cartonTypes,
   workspaces,
   jobs,
@@ -9874,7 +9879,9 @@ export default function ProductionDashboard({
     );
   const router = useRouter();
   const [view, setView] = useState<DashboardView>(
-    openAccountOnLoad
+    openAccessControlOnLoad
+      ? "access-control"
+      : openAccountOnLoad
       ? "account"
       : hasDesignerRole
         ? "origination"
@@ -9970,7 +9977,8 @@ export default function ProductionDashboard({
       hasDesignerRole &&
       nextView !== "origination" &&
       nextView !== "account" &&
-      nextView !== "company"
+      nextView !== "company" &&
+      nextView !== "access-control"
     ) return;
     setView(nextView);
     setIsMobileMenuOpen(false);
@@ -10272,7 +10280,8 @@ export default function ProductionDashboard({
   });
   const deliveryMax = Math.max(1, ...deliveryDays.map(({ count }) => count));
   const pageTitle =
-    view === "company" ? "Company workspace"
+    view === "access-control" ? "Roles and permissions"
+      : view === "company" ? "Company workspace"
       : view === "account" ? "Account"
       : view === "overview" ? "Production overview"
       : view === "jobs" ? "All production jobs"
@@ -10296,7 +10305,9 @@ export default function ProductionDashboard({
               : view === "inventory" ? "Inventory & WIP"
           : view;
   const pageDescription =
-    view === "company"
+    view === "access-control"
+      ? "Manage global roles, permissions, and user access."
+      : view === "company"
       ? "Manage company details and team access."
       : view === "account"
       ? "Manage your profile, company workspace, and Premium plan."
@@ -10628,10 +10639,15 @@ export default function ProductionDashboard({
 
         <div className="production-sidebar-footer">
           {canManageAccess && (
-            <Link className="production-footer-link" href="/admin/access-control">
+            <button
+              aria-current={view === "access-control" ? "page" : undefined}
+              className={`production-footer-link${view === "access-control" ? " is-active" : ""}`}
+              onClick={() => navigateTo("access-control")}
+              type="button"
+            >
               <span className="production-nav-icon" aria-hidden="true"><FiUsers /></span>
               Access control
-            </Link>
+            </button>
           )}
           {canManageAccess && (
             <Link className="production-footer-link" href="/admin#system-metrics">
@@ -10743,6 +10759,8 @@ export default function ProductionDashboard({
             <div className="production-page-content">{accountContent}</div>
           ) : view === "company" ? (
             <div className="production-page-content">{companyContent}</div>
+          ) : view === "access-control" ? (
+            <div className="production-page-content">{accessControlContent}</div>
           ) : view === "order-detail" ? (
             <div className="production-page-content">
               <section className="production-panel production-list-panel">

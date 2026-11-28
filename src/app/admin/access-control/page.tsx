@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { requireAdminUser } from "@/lib/admin";
 import {
   ACCESS_PERMISSION_GROUPS,
@@ -17,20 +18,22 @@ import {
 } from "./actions";
 
 export default function AccessControlPage() {
+  redirect("/production/admin?view=access-control");
+}
+
+export function AccessControlContent() {
   return (
     <Suspense
       fallback={
-        <main className="account-page admin-page" aria-busy="true">
-          <div className="admin-content">Loading access control…</div>
-        </main>
+        <div className="admin-content">Loading access control…</div>
       }
     >
-      <AccessControlDashboard />
+      <AccessControlDashboard embedded />
     </Suspense>
   );
 }
 
-async function AccessControlDashboard() {
+async function AccessControlDashboard({ embedded }: { embedded?: boolean }) {
   await requireAdminUser();
   const [roles, users] = await Promise.all([
     prisma.accessRole.findMany({
@@ -53,8 +56,10 @@ async function AccessControlDashboard() {
     }),
   ]);
 
+  const AccessShell = embedded ? "div" : "main";
   return (
-    <main className="account-page admin-page">
+    <AccessShell className={`account-page admin-page${embedded ? " account-page-embedded admin-page-embedded" : ""}`}>
+      {!embedded && (
       <header className="account-header admin-header">
         <Link href="/" className="brand-lockup" aria-label="PackStudio home">
           <BrandLogo className="brand-wordmark" />
@@ -63,8 +68,10 @@ async function AccessControlDashboard() {
           <SignOutButton />
         </nav>
       </header>
+      )}
 
-      <section className="admin-content access-control-layout">
+      <section className={`admin-content access-control-layout${embedded ? " access-control-layout-embedded" : ""}`}>
+        {!embedded && (
         <aside className="access-control-sidebar">
           <nav aria-label="Access control navigation">
             <div className="access-control-nav-group">
@@ -88,8 +95,10 @@ async function AccessControlDashboard() {
             </div>
           </nav>
         </aside>
+        )}
 
         <div className="access-control-main">
+          {!embedded && (
           <div className="account-intro">
             <span className="eyebrow"><span /> GLOBAL ACCESS</span>
             <h1>Roles and permissions</h1>
@@ -99,11 +108,18 @@ async function AccessControlDashboard() {
               have unrestricted access and can assign any role, including super admin.
             </p>
           </div>
+          )}
+          {embedded && (
+            <p className="access-control-dashboard-note">
+              Roles apply across the application. Permissions are additive when
+              a user has multiple roles.
+            </p>
+          )}
 
-        <section id="create-role" className="admin-panel" aria-labelledby="create-role-heading">
-          <div className="admin-panel-heading">
+        <section id="create-role" className="production-panel access-control-panel" aria-labelledby="create-role-heading">
+          <div className="production-panel-heading">
             <div>
-              <span className="account-plan-kicker">ROLE CATALOG</span>
+              <span className="production-panel-kicker">ROLE CATALOG</span>
               <h2 id="create-role-heading">Create a role</h2>
             </div>
           </div>
@@ -131,25 +147,26 @@ async function AccessControlDashboard() {
               <input name="isSuperAdmin" type="checkbox" />
               <span>Grant unrestricted super-admin access</span>
             </label>
-            <button className="button button-large" type="submit">Create role</button>
+            <button className="production-primary-button" type="submit">Create role</button>
           </form>
         </section>
 
         <div id="role-catalog" className="access-control-role-list">
           <div className="access-control-section-heading">
-            <span className="account-plan-kicker">GLOBAL ACCESS</span>
+            <span className="production-panel-kicker">GLOBAL ACCESS</span>
             <h2>Role catalog</h2>
           </div>
+          <div className="access-control-role-grid">
           {roles.map((role) => (
-          <section className="admin-panel" aria-labelledby={`role-${role.id}`} key={role.id}>
-            <div className="admin-panel-heading">
+          <section className="production-panel access-control-panel" aria-labelledby={`role-${role.id}`} key={role.id}>
+            <div className="production-panel-heading">
               <div>
-                <span className="account-plan-kicker">
+                <span className="production-panel-kicker">
                   {role.isSuperAdmin ? "UNRESTRICTED ACCESS" : "GLOBAL ROLE"}
                 </span>
                 <h2 id={`role-${role.id}`}>{role.name}</h2>
               </div>
-              <span>{role._count.assignments} assigned</span>
+              <span className="production-panel-total">{role._count.assignments} assigned</span>
             </div>
             {role.isSuperAdmin ? (
               <p className="admin-panel-note">
@@ -182,7 +199,7 @@ async function AccessControlDashboard() {
                     ))}
                   </fieldset>
                 ))}
-                <button className="button button-large" type="submit">Save role</button>
+                <button className="production-primary-button" type="submit">Save role</button>
               </form>
             )}
             {!role.isSystem && !role.isSuperAdmin && (
@@ -202,12 +219,13 @@ async function AccessControlDashboard() {
             )}
           </section>
           ))}
+          </div>
         </div>
 
-        <section id="user-access" className="admin-panel" aria-labelledby="assign-role-heading">
-          <div className="admin-panel-heading">
+        <section id="user-access" className="production-panel access-control-panel" aria-labelledby="assign-role-heading">
+          <div className="production-panel-heading">
             <div>
-              <span className="account-plan-kicker">USER ACCESS</span>
+              <span className="production-panel-kicker">USER ACCESS</span>
               <h2 id="assign-role-heading">Assign a role</h2>
             </div>
           </div>
@@ -227,7 +245,7 @@ async function AccessControlDashboard() {
                 ))}
               </select>
             </label>
-            <button className="button button-large" type="submit">Assign role</button>
+            <button className="production-primary-button" type="submit">Assign role</button>
           </form>
 
           <div className="admin-table-wrap">
@@ -284,6 +302,6 @@ async function AccessControlDashboard() {
         </section>
         </div>
       </section>
-    </main>
+    </AccessShell>
   );
 }

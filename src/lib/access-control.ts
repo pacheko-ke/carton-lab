@@ -43,6 +43,12 @@ const accessSnapshotSelection = {
   companyName: true,
   email: true,
   emailVerified: true,
+  companyMembership: {
+    select: {
+      role: true,
+      companyId: true,
+    },
+  },
   accessRoles: {
     select: {
       role: {
@@ -67,16 +73,21 @@ export async function getUserAccessSnapshot(userId: string) {
   if (!user) return null;
 
   const roles = user.accessRoles.map(({ role }) => role);
+  const isCompanyOwner = user.companyMembership?.role === "OWNER";
+  const isCompanyAdmin =
+    isCompanyOwner || user.companyMembership?.role === "ADMIN";
   const isSuperAdmin =
     isAdminEmail(user.email) || roles.some((role) => role.isSuperAdmin);
   const permissions = new Set(roles.flatMap((role) => role.permissions));
-  if (isSuperAdmin) permissions.add("*");
+  if (isSuperAdmin || isCompanyAdmin) permissions.add("*");
 
   return {
     user,
     roles,
     permissions: [...permissions],
     isSuperAdmin,
+    isCompanyOwner,
+    isCompanyAdmin,
   };
 }
 
@@ -101,6 +112,9 @@ export async function getProductionRoleCapabilities(userId: string) {
   const access = await getUserAccessSnapshot(userId);
   if (!access) return [];
   if (access.isSuperAdmin) {
+    return ["VIEWER", "PRODUCTION", "DESIGNER", "ORDER_BOOKER"];
+  }
+  if (access.isCompanyAdmin) {
     return ["VIEWER", "PRODUCTION", "DESIGNER", "ORDER_BOOKER"];
   }
 

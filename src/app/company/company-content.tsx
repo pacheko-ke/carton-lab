@@ -36,7 +36,7 @@ export default async function CompanyContent({
       }>({}),
   ]);
   const membership = await getCompanyMembership(user.id);
-  if (!membership) redirect("/company/setup");
+  if (!membership) redirect("/production/admin?view=account");
 
   const canManage = canManageCompany(membership.role);
   const [members, invitations] = await Promise.all([

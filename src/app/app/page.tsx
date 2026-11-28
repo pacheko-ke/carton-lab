@@ -20,7 +20,7 @@ export default function PackStudioApp() {
 
 async function AuthenticatedPackStudioApp() {
   const user = await requireVerifiedUser();
-  if (!user.companyMembership) redirect("/company/setup");
+  if (!user.companyMembership) redirect("/production/admin?view=account");
   const company = user.companyMembership.company;
   const profile = {
     createdBy: (user.name ?? "").slice(0, 100),

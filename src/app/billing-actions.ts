@@ -33,7 +33,7 @@ type PaystackCheckout = {
 export async function startPremiumCheckout(formData: FormData) {
   const user = await requireVerifiedUser();
   const membership = user.companyMembership;
-  if (!membership) redirect("/company/setup");
+  if (!membership) redirect("/production/admin?view=account");
   if (!canManageCompany(membership.role)) {
     redirect("/production/admin?view=account&billing=company-admin-required");
   }
