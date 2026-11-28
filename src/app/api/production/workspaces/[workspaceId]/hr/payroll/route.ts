@@ -9,13 +9,14 @@ import {
 import {
   getProductionWorkspaceMembership,
   getVerifiedProductionUser,
+  isProductionAdmin,
 } from "@/lib/production-access";
 import { prisma } from "@/lib/prisma";
 
 type RouteContext = { params: Promise<{ workspaceId: string }> };
 
-async function authorizePayroll(userId: string, workspaceId: string) {
-  const membership = await getProductionWorkspaceMembership(userId, workspaceId);
+async function authorizePayroll(userId: string, workspaceId: string, isAdmin: boolean) {
+  const membership = await getProductionWorkspaceMembership(userId, workspaceId, isAdmin);
   if (!membership) return "workspace" as const;
   return await hasAccessPermission(userId, "production.payroll.manage")
     ? "allowed" as const
@@ -28,7 +29,11 @@ export async function GET(_request: Request, { params }: RouteContext) {
     return NextResponse.json({ error: "Verified account required" }, { status: 401 });
   }
   const { workspaceId } = await params;
-  const authorization = await authorizePayroll(user.id, workspaceId);
+  const authorization = await authorizePayroll(
+    user.id,
+    workspaceId,
+    isProductionAdmin(user),
+  );
   if (authorization !== "allowed") {
     return NextResponse.json(
       { error: authorization === "workspace" ? "Workspace access denied" : "Payroll permission required" },
@@ -103,7 +108,11 @@ export async function POST(request: Request, { params }: RouteContext) {
     return NextResponse.json({ error: "Verified account required" }, { status: 401 });
   }
   const { workspaceId } = await params;
-  const authorization = await authorizePayroll(user.id, workspaceId);
+  const authorization = await authorizePayroll(
+    user.id,
+    workspaceId,
+    isProductionAdmin(user),
+  );
   if (authorization !== "allowed") {
     return NextResponse.json(
       { error: authorization === "workspace" ? "Workspace access denied" : "Payroll permission required" },
