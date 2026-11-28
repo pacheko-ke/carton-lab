@@ -91,6 +91,10 @@ model Company {
   timezone      String               @default("Africa/Nairobi")
   currency      String               @default("KES")
   logoUrl       String?
+  employeeNumberNext Int             @default(1)
+  hrDepartments String[]             @default([])
+  hrJobTitles   String[]             @default([])
+  hrWorkAreas   String[]             @default([])
   premiumAccessGranted Boolean        @default(false)
   trialEndsAt   DateTime?
   createdAt     DateTime             @default(now())
@@ -375,8 +379,16 @@ model ProductionEmployee {
   createdByUserId          String?
   employeeNo               String
   name                     String
+  nationalId               String?
+  dateOfBirth              DateTime?
+  address                  String                     @default("")
+  nextOfKinName            String                     @default("")
+  nextOfKinRelationship    String                     @default("")
+  nextOfKinPhone           String                     @default("")
   department               String
   jobTitle                 String
+  machineId                String?
+  workArea                 String                     @default("")
   monthlyBasicSalary       Int                        @default(0)
   monthlyTaxableAllowances Int                        @default(0)
   payrollConfiguredAt      DateTime?
@@ -385,6 +397,7 @@ model ProductionEmployee {
   createdAt                DateTime                   @default(now())
   updatedAt                DateTime                   @updatedAt
   createdBy                User?                      @relation("ProductionEmployeeCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  machine                  ProductionMachine?         @relation(fields: [machineId], references: [id], onDelete: SetNull)
   shifts                   ProductionRosterShift[]
   leaveRequests            ProductionLeaveRequest[]
   safetyTrainings          ProductionSafetyTraining[]
@@ -392,6 +405,7 @@ model ProductionEmployee {
   payrollLines             ProductionPayrollLine[]
 
   @@unique([workspaceId, employeeNo])
+  @@unique([workspaceId, nationalId])
   @@index([workspaceId, status, name])
 }
 
@@ -731,6 +745,7 @@ model ProductionMachine {
   operationSchedules ProductionOperationSchedule[]
   plans              ProductionMaintenancePlan[]
   tickets            ProductionMaintenanceTicket[]
+  assignedEmployees  ProductionEmployee[]
 
   @@unique([workspaceId, machineNo])
   @@index([workspaceId, workCenter, status])

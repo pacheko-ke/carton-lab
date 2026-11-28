@@ -3,6 +3,12 @@ type EmailDetail = {
   value: string;
 };
 
+type EmailAttachment = {
+  filename: string;
+  content: string;
+  content_type?: string;
+};
+
 type ResendEmailInput = {
   to: string;
   idempotencyKey?: string;
@@ -10,6 +16,7 @@ type ResendEmailInput = {
   heading: string;
   message: string;
   details?: EmailDetail[];
+  attachments?: EmailAttachment[];
   action?: {
     label: string;
     href: string;
@@ -119,6 +126,7 @@ export async function sendResendEmail(input: ResendEmailInput) {
       subject: input.subject,
       html: email.html,
       text: email.text,
+      ...(input.attachments?.length ? { attachments: input.attachments } : {}),
     }),
     signal: AbortSignal.timeout(10_000),
   });

@@ -12,13 +12,16 @@ import {
 import { prisma } from "@/lib/prisma";
 import {
   inviteCompanyMember,
+  updateCompanyHrSettings,
   updateCompanyDetails,
 } from "./actions";
+import { formatProductionEmployeeNumber } from "@/lib/production-hr-data";
 
 type CompanyPageProps = {
   searchParams?: Promise<{
     updated?: string | string[];
     invited?: string | string[];
+    hrSettingsUpdated?: string | string[];
   }>;
   embedded?: boolean;
 };
@@ -33,6 +36,7 @@ export default async function CompanyContent({
       Promise.resolve<{
         updated?: string | string[];
         invited?: string | string[];
+        hrSettingsUpdated?: string | string[];
       }>({}),
   ]);
   const membership = await getCompanyMembership(user.id);
@@ -59,6 +63,7 @@ export default async function CompanyContent({
   ]);
   const updated = params.updated === "1";
   const invited = params.invited === "1";
+  const hrSettingsUpdated = params.hrSettingsUpdated === "1";
   const company = membership.company;
   const countryOptions = getCompanyCountryOptions(company.country);
   const timeZoneGroups = getCompanyTimeZoneGroups(company.timezone);
@@ -89,6 +94,7 @@ export default async function CompanyContent({
         </div>
         {updated && <p className="account-notice" role="status">Company details updated.</p>}
         {invited && <p className="account-notice" role="status">Invitation sent by email.</p>}
+        {hrSettingsUpdated && <p className="account-notice" role="status">Company HR settings updated.</p>}
 
         <section className="account-profile-card company-details-card" aria-labelledby="company-details-heading">
           <div>
@@ -160,6 +166,78 @@ export default async function CompanyContent({
               <div><dt>Address</dt><dd>{company.address || "—"}</dd></div>
               <div><dt>Timezone</dt><dd>{company.timezone}</dd></div>
               <div><dt>Currency</dt><dd>{company.currency}</dd></div>
+            </dl>
+          )}
+        </section>
+
+        <section className="account-profile-card company-hr-settings-card" aria-labelledby="company-hr-settings-heading">
+          <div>
+            <span className="account-plan-kicker">HR CONFIGURATION</span>
+            <h2 id="company-hr-settings-heading">Employee setup</h2>
+            <p>Configure employee number sequencing and the options used by your employee register.</p>
+          </div>
+          {canManage ? (
+            <form action={updateCompanyHrSettings} className="company-details-form company-hr-settings-form">
+              {embedded && <input name="embeddedDashboard" type="hidden" value="true" />}
+              <div className="account-profile-field company-employee-number-setting">
+                Employee number format
+                <span>Company prefix uses the first three letters of the company name.</span>
+                <strong>{formatProductionEmployeeNumber(company.name, company.employeeNumberNext)}</strong>
+              </div>
+              <label className="account-profile-field" htmlFor="company-employee-number-next">
+                Next employee number
+                <span>Change this to control the next number assigned.</span>
+                <input
+                  id="company-employee-number-next"
+                  max="2147483646"
+                  min="1"
+                  name="employeeNumberNext"
+                  required
+                  type="number"
+                  defaultValue={company.employeeNumberNext}
+                />
+              </label>
+              <label className="account-profile-field" htmlFor="company-hr-departments">
+                Departments
+                <span>Enter one department per line.</span>
+                <textarea
+                  id="company-hr-departments"
+                  maxLength={8192}
+                  name="hrDepartments"
+                  rows={5}
+                  defaultValue={company.hrDepartments.join("\n")}
+                />
+              </label>
+              <label className="account-profile-field" htmlFor="company-hr-job-titles">
+                Job titles
+                <span>Enter one job title per line.</span>
+                <textarea
+                  id="company-hr-job-titles"
+                  maxLength={8192}
+                  name="hrJobTitles"
+                  rows={5}
+                  defaultValue={company.hrJobTitles.join("\n")}
+                />
+              </label>
+              <label className="account-profile-field" htmlFor="company-hr-work-areas">
+                Work areas
+                <span>Enter one work area per line.</span>
+                <textarea
+                  id="company-hr-work-areas"
+                  maxLength={8192}
+                  name="hrWorkAreas"
+                  rows={5}
+                  defaultValue={company.hrWorkAreas.join("\n")}
+                />
+              </label>
+              <button className="button button-large company-save-button" type="submit">Save HR settings</button>
+            </form>
+          ) : (
+            <dl className="account-company-details">
+              <div><dt>Next employee number</dt><dd>{formatProductionEmployeeNumber(company.name, company.employeeNumberNext)}</dd></div>
+              <div><dt>Departments</dt><dd>{company.hrDepartments.join(", ") || "Not configured"}</dd></div>
+              <div><dt>Job titles</dt><dd>{company.hrJobTitles.join(", ") || "Not configured"}</dd></div>
+              <div><dt>Work areas</dt><dd>{company.hrWorkAreas.join(", ") || "Not configured"}</dd></div>
             </dl>
           )}
         </section>

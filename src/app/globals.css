@@ -962,6 +962,36 @@ input {
   gap: 13px 16px;
 }
 
+.company-hr-settings-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 13px 16px;
+}
+
+.company-hr-settings-form > * {
+  min-width: 0;
+}
+
+.company-hr-settings-form .account-profile-field {
+  align-content: start;
+}
+
+.company-employee-number-setting strong {
+  display: block;
+  width: fit-content;
+  padding: 8px 11px;
+  border: 1px solid rgba(102, 211, 232, 0.2);
+  border-radius: 7px;
+  background: rgba(39, 111, 145, 0.12);
+  color: #a4e4f2;
+  font-size: 15px;
+  letter-spacing: 0.05em;
+}
+
+.company-hr-settings-form button {
+  justify-self: start;
+}
+
 .account-page-embedded-company .company-details-form > *,
 .account-page-embedded-company .company-invite-form > * {
   min-width: 0;
@@ -3224,30 +3254,31 @@ input {
   min-height: 0;
   flex: 1;
   flex-direction: column;
-  gap: 4px;
+  gap: 8px;
   overflow-y: auto;
+  font-family: system-ui, "Segoe UI", Arial, sans-serif;
 }
 
 .production-nav-group {
   display: grid;
-  gap: 3px;
+  gap: 4px;
 }
 
 .production-nav-group-toggle {
   display: flex;
-  min-height: 34px;
+  min-height: 40px;
   align-items: center;
   gap: 8px;
   padding: 0 10px;
   border: 1px solid transparent;
   border-radius: 7px;
   background: transparent;
-  color: #8299ae;
+  color: #a9bacb;
   cursor: pointer;
   font: inherit;
-  font-size: 9px;
-  font-weight: 750;
-  letter-spacing: 0.08em;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
   text-align: left;
   text-transform: uppercase;
 }
@@ -3276,14 +3307,6 @@ input {
   transform: rotate(180deg);
 }
 
-.production-nav-group-count {
-  min-width: 16px;
-  color: #61798f;
-  font-size: 9px;
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-}
-
 .production-nav-group-items {
   display: grid;
   gap: 3px;
@@ -3309,7 +3332,7 @@ input {
 .production-nav-item,
 .production-footer-link {
   display: flex;
-  min-height: 42px;
+  min-height: 44px;
   align-items: center;
   gap: 11px;
   padding: 0 10px;
@@ -3319,7 +3342,7 @@ input {
   color: #a7b8c9;
   cursor: pointer;
   font: inherit;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   text-align: left;
   text-decoration: none;
@@ -3367,15 +3390,6 @@ input {
   border-color: rgba(102, 211, 232, 0.28);
   background: rgba(57, 169, 237, 0.16);
   color: #9be4f1;
-}
-
-.production-nav-count {
-  min-width: 20px;
-  margin-left: auto;
-  color: #8299ae;
-  font-size: 10px;
-  font-variant-numeric: tabular-nums;
-  text-align: right;
 }
 
 .production-sidebar-footer {
@@ -4360,6 +4374,18 @@ input {
   gap: 10px;
 }
 
+.production-purchase-order-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
+
+.production-purchase-order-actions + small {
+  display: block;
+  margin-top: 5px;
+}
+
 .production-quote-workspace {
   max-width: 360px;
   margin: 14px 0;
@@ -5173,7 +5199,7 @@ input {
 
 .production-hr-employee-table {
   width: 100%;
-  min-width: 760px;
+  min-width: 1040px;
   border-collapse: separate;
   border-spacing: 0;
   color: #b7c6d4;
@@ -5315,6 +5341,70 @@ input {
   color: #91a8bc;
   font-size: 11px;
   text-align: center;
+}
+
+.production-hr-employee-number-preview {
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  min-height: 76px;
+  padding: 10px 12px;
+  border: 1px solid rgba(102, 211, 232, 0.18);
+  border-radius: 8px;
+  background: linear-gradient(140deg, rgba(39, 111, 145, 0.16), rgba(165, 190, 214, 0.025));
+}
+
+.production-hr-employee-number-preview > span {
+  color: #91a8bc;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.production-hr-employee-number-preview strong {
+  color: #b7eaf3;
+  font-size: 16px;
+  letter-spacing: 0.04em;
+}
+
+.production-hr-employee-number-preview small {
+  color: #8499ad;
+  font-size: 9px;
+}
+
+.production-hr-configuration-warning {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(240, 185, 104, 0.2);
+  border-radius: 7px;
+  background: rgba(153, 101, 34, 0.1);
+  color: #e1c28e;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.production-hr-configuration-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #a4e4f2;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.production-hr-configuration-link:hover {
+  color: #d3f5fb;
+}
+
+.production-hr-configuration-link:focus-visible {
+  border-radius: 2px;
+  outline: 2px solid rgba(102, 211, 232, 0.7);
+  outline-offset: 3px;
 }
 
 .production-hr-form {
@@ -5498,6 +5588,13 @@ input {
 .production-maintenance-register-form {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
   gap: 12px;
+}
+
+.production-machine-asset-note {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #8ea1b4;
+  font-size: 12px;
 }
 
 .production-machine-register-grid {
@@ -7994,10 +8091,10 @@ input {
   }
 
   .production-nav-item {
-    min-height: 36px;
-    gap: 7px;
-    padding: 0 9px;
-    font-size: 10px;
+    min-height: 42px;
+    gap: 9px;
+    padding: 0 10px;
+    font-size: 12px;
   }
 
   .production-nav-icon,
@@ -8005,11 +8102,6 @@ input {
     width: 19px;
     height: 19px;
     font-size: 9px;
-  }
-
-  .production-nav-count {
-    min-width: auto;
-    margin-left: 0;
   }
 
   .production-dashboard-main {
@@ -8507,8 +8599,7 @@ input {
 :root[data-theme="light"] .production-nav-group-toggle,
 :root[data-theme="light"] .production-nav-label,
 :root[data-theme="light"] .production-nav-workflow-label,
-:root[data-theme="light"] .production-nav-group-count,
-:root[data-theme="light"] .production-nav-count,
+:root[data-theme="light"] .production-machine-asset-note,
 :root[data-theme="light"] .production-breadcrumb,
 :root[data-theme="light"] .production-breadcrumb span,
 :root[data-theme="light"] .production-page-intro p,
@@ -8697,6 +8788,39 @@ input {
   border-color: #cfdae4;
   background: #f8fbfd;
   color: #60758a;
+}
+
+:root[data-theme="light"] .production-hr-employee-number-preview {
+  border-color: #c9e2ef;
+  background: linear-gradient(140deg, #edf7fb, #f8fbfd);
+}
+
+:root[data-theme="light"] .production-hr-employee-number-preview > span {
+  color: #60758a;
+}
+
+:root[data-theme="light"] .production-hr-employee-number-preview strong {
+  color: #176b91;
+}
+
+:root[data-theme="light"] .production-hr-employee-number-preview small {
+  color: #70869a;
+}
+
+:root[data-theme="light"] .production-hr-configuration-warning {
+  border-color: #edd9b8;
+  background: #fffaf1;
+  color: #805c27;
+}
+
+:root[data-theme="light"] .production-hr-configuration-link {
+  color: #176b9f;
+}
+
+:root[data-theme="light"] .company-employee-number-setting strong {
+  border-color: #c9e2ef;
+  background: #eaf5fa;
+  color: #176b91;
 }
 
 :root[data-theme="light"] .production-hr-incident-closure {
@@ -9161,6 +9285,94 @@ input {
   color: #203449;
 }
 
+:root[data-theme="light"] .admin-content .access-control-dashboard-note,
+:root[data-theme="light"] .admin-content .admin-panel-note {
+  color: #526579;
+}
+
+:root[data-theme="light"] .admin-content .access-control-panel .admin-access-permission-group {
+  border-color: #b8cbd9;
+  background: #edf3f8;
+}
+
+:root[data-theme="light"] .admin-content .access-control-panel .admin-access-permission-group legend {
+  color: #203449;
+  font-size: 13px;
+}
+
+:root[data-theme="light"] .admin-content .access-control-panel .admin-access-permission {
+  color: #344b61;
+  font-size: 12px;
+}
+
+:root[data-theme="light"] .admin-content .admin-access-role-chip {
+  border-color: #a9bfd0;
+  background: #e5eff6;
+  color: #203449;
+  font-size: 12px;
+}
+
+:root[data-theme="light"] .admin-content .admin-access-role-chip button {
+  color: #a33131;
+}
+
+:root[data-theme="light"] .admin-content .admin-table-wrap {
+  border-top-color: #d8e2ec;
+}
+
+:root[data-theme="light"] .admin-content .admin-table th {
+  border-bottom-color: #cbd8e4;
+  color: #526579;
+  font-size: 11px;
+}
+
+:root[data-theme="light"] .admin-content .admin-table td {
+  border-bottom-color: #e2e8ef;
+  color: #203449;
+  font-size: 12px;
+}
+
+:root[data-theme="light"] .admin-content .admin-table td small {
+  color: #526579;
+  font-size: 11px;
+}
+
+:root[data-theme="light"] .admin-content .admin-table tbody tr:nth-child(even) {
+  background: #f1f5f9;
+}
+
+:root[data-theme="light"] .admin-content .admin-table tbody tr:hover {
+  background: #e5eff6;
+}
+
+:root[data-theme="light"] .production-dashboard-shell .production-panel-kicker {
+  color: #40566b;
+  font-size: 10px;
+}
+
+:root[data-theme="light"] .production-dashboard-shell .production-panel-heading h2,
+:root[data-theme="light"] .production-dashboard-shell .access-control-section-heading h2 {
+  color: #172f46;
+  font-weight: 700;
+}
+
+:root[data-theme="light"] .production-dashboard-shell .access-control-section-heading .production-panel-kicker {
+  color: #40566b;
+}
+
+:root[data-theme="light"] .production-dashboard-shell .production-brand-lockup small,
+:root[data-theme="light"] .production-dashboard-shell .production-nav-label,
+:root[data-theme="light"] .production-dashboard-shell .production-nav-workflow-label,
+:root[data-theme="light"] .production-dashboard-shell .production-nav-group-toggle {
+  color: #40566b;
+}
+
+:root[data-theme="light"] .production-dashboard-shell .production-nav-group-toggle:hover {
+  border-color: #d3e0ea;
+  background: #edf4fa;
+  color: #1d4565;
+}
+
 :root[data-theme="light"] .admin-content .admin-status.is-success {
   color: #16704f;
 }
@@ -9171,6 +9383,10 @@ input {
 
 @media (max-width: 720px) {
   .account-page-embedded .account-profile-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .company-hr-settings-form {
     grid-template-columns: minmax(0, 1fr);
   }
 

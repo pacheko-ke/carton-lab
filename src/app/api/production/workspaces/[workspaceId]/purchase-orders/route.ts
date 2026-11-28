@@ -19,7 +19,7 @@ const purchaseOrderSelection = {
   expectedAt: true,
   notes: true,
   createdAt: true,
-  supplier: { select: { id: true, code: true, name: true } },
+  supplier: { select: { id: true, code: true, name: true, email: true } },
   lines: {
     orderBy: { material: { name: "asc" } },
     select: {
@@ -102,24 +102,30 @@ export async function POST(request: Request, { params }: RouteContext) {
   const date = new Date();
   const orderNo = `PO-${date.toISOString().slice(0, 10).replaceAll("-", "")}-${randomUUID().replaceAll("-", "").slice(0, 12).toUpperCase()}`;
   try {
-    const purchaseOrder = await prisma.productionPurchaseOrder.create({
-      data: {
-        workspaceId,
-        supplierId: supplier.id,
-        createdByUserId: user.id,
-        orderNo,
-        expectedAt: body.expectedAt
-          ? new Date(`${body.expectedAt}T00:00:00.000Z`)
-          : null,
-        notes: body.notes.trim(),
-        lines: {
-          create: body.lines.map((line) => ({
-            materialId: line.materialId,
-            orderedQty: new Prisma.Decimal(line.quantity),
-          })),
+    const purchaseOrder = await prisma.$transaction(async (transaction) => {
+      await transaction.productionSupplier.update({
+        where: { id: supplier.id },
+        data: { email: body.supplierEmail.trim().toLowerCase() },
+      });
+      return transaction.productionPurchaseOrder.create({
+        data: {
+          workspaceId,
+          supplierId: supplier.id,
+          createdByUserId: user.id,
+          orderNo,
+          expectedAt: body.expectedAt
+            ? new Date(`${body.expectedAt}T00:00:00.000Z`)
+            : null,
+          notes: body.notes.trim(),
+          lines: {
+            create: body.lines.map((line) => ({
+              materialId: line.materialId,
+              orderedQty: new Prisma.Decimal(line.quantity),
+            })),
+          },
         },
-      },
-      select: purchaseOrderSelection,
+        select: purchaseOrderSelection,
+      });
     });
     return NextResponse.json(
       { purchaseOrder },

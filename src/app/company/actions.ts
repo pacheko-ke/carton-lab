@@ -10,6 +10,7 @@ import { canManageCompany, getCompanyMembership } from "@/lib/company";
 import { assignDefaultAccessRole } from "@/lib/access-control";
 import { isValidEmail, normalizeEmail } from "@/lib/email-otp";
 import { sendResendEmail } from "@/lib/resend-email";
+import { parseProductionHrOptionList } from "@/lib/production-hr-data";
 
 const COMPANY_ACCESS_ROLE_IDS = [
   "access-role-production",
@@ -127,6 +128,9 @@ export async function createCompany(formData: FormData) {
       where: { id: user.id },
       data: { companyName: company.name },
     });
+  }, {
+    maxWait: 10_000,
+    timeout: 15_000,
   });
 
   revalidatePath("/app");
@@ -155,8 +159,53 @@ export async function updateCompanyDetails(formData: FormData) {
   revalidatePath("/company");
   revalidatePath("/app");
   revalidatePath("/production/admin");
-  if (formData.get("embeddedDashboard") === "true") return;
+  if (formData.get("embeddedDashboard") === "true") {
+    redirect("/production/admin?view=company&updated=1");
+  }
   redirect("/company?updated=1");
+}
+
+export async function updateCompanyHrSettings(formData: FormData) {
+  const user = await requireVerifiedUser();
+  const membership = await getCompanyMembership(user.id);
+  if (!membership || !canManageCompany(membership.role)) {
+    throw new Error("Only company owners and admins can update company HR settings.");
+  }
+
+  const employeeNumberNextValue = formData.get("employeeNumberNext");
+  const employeeNumberNext = typeof employeeNumberNextValue === "string" &&
+      /^[1-9]\d*$/.test(employeeNumberNextValue)
+    ? Number(employeeNumberNextValue)
+    : Number.NaN;
+  const hrDepartments = parseProductionHrOptionList(formData.get("hrDepartments"));
+  const hrJobTitles = parseProductionHrOptionList(formData.get("hrJobTitles"));
+  const hrWorkAreas = parseProductionHrOptionList(formData.get("hrWorkAreas"));
+  if (
+    !Number.isSafeInteger(employeeNumberNext) ||
+    employeeNumberNext > 2_147_483_646 ||
+    hrDepartments === null ||
+    hrJobTitles === null ||
+    hrWorkAreas === null
+  ) {
+    throw new Error("Check the next employee number and HR option lists. Lists allow up to 100 unique items of 80 characters each.");
+  }
+
+  await prisma.company.update({
+    where: { id: membership.companyId },
+    data: {
+      employeeNumberNext,
+      hrDepartments,
+      hrJobTitles,
+      hrWorkAreas,
+    },
+  });
+
+  revalidatePath("/company");
+  revalidatePath("/production/admin");
+  if (formData.get("embeddedDashboard") === "true") {
+    redirect("/production/admin?view=company&hrSettingsUpdated=1");
+  }
+  redirect("/company?hr-settings-updated=1");
 }
 
 export async function inviteCompanyMember(formData: FormData) {

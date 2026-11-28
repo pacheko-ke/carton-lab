@@ -5,7 +5,10 @@ import {
   isProductionAdmin,
 } from "@/lib/production-access";
 import { canEditProductionJobs } from "@/lib/production-data";
-import { validateProductionMachine } from "@/lib/production-maintenance-data";
+import {
+  formatProductionMachineAssetNumber,
+  validateProductionMachine,
+} from "@/lib/production-maintenance-data";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
@@ -72,34 +75,68 @@ export async function POST(request: Request, { params }: RouteContext) {
   }
 
   try {
-    const machine = await prisma.productionMachine.create({
-      data: {
-        workspaceId,
-        createdByUserId: user.id,
-        machineNo: body.machineNo.trim(),
-        name: body.name.trim(),
-        machineType: body.machineType.trim(),
-        workCenter: body.workCenter.trim(),
-        location: body.location.trim(),
-      },
-      select: {
-        id: true,
-        machineNo: true,
-        name: true,
-        machineType: true,
-        workCenter: true,
-        location: true,
-        status: true,
-      },
-    });
+    let machine;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        machine = await prisma.$transaction(async (transaction) => {
+          const sequence = await transaction.productionMachine.count({
+            where: { workspaceId },
+          }) + 1;
+          const machineNo = formatProductionMachineAssetNumber(
+            body.name.trim(),
+            body.machineType,
+            sequence,
+          );
+          return transaction.productionMachine.create({
+            data: {
+              workspaceId,
+              createdByUserId: user.id,
+              machineNo,
+              name: body.name.trim(),
+              machineType: body.machineType,
+              workCenter: body.workCenter,
+              location: body.location.trim(),
+            },
+            select: {
+              id: true,
+              machineNo: true,
+              name: true,
+              machineType: true,
+              workCenter: true,
+              location: true,
+              status: true,
+            },
+          });
+        }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+        break;
+      } catch (error) {
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          (error.code === "P2002" || error.code === "P2034") &&
+          attempt < 2
+        ) {
+          continue;
+        }
+        throw error;
+      }
+    }
+    if (!machine) {
+      return NextResponse.json(
+        { error: "Could not generate a unique machine asset number. Please retry." },
+        { status: 409 },
+      );
+    }
     return NextResponse.json(
       { machine },
       { status: 201, headers: { "Cache-Control": "private, no-store" } },
     );
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      (error.code === "P2002" || error.code === "P2034")
+    ) {
       return NextResponse.json(
-        { error: "A machine already uses that asset number in this workspace." },
+        { error: "Could not generate a unique machine asset number. Please retry." },
         { status: 409 },
       );
     }

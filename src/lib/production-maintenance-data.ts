@@ -37,6 +37,20 @@ function isPositiveDecimalString(value: unknown): value is string {
 }
 
 export const PRODUCTION_MACHINE_STATUSES = ["ACTIVE", "MAINTENANCE", "RETIRED"] as const;
+export const PRODUCTION_MACHINE_TYPES = [
+  "Printing",
+  "Corrugator",
+  "Stitching Machine",
+] as const;
+export const PRODUCTION_MACHINE_WORK_CENTERS = [
+  "Corrugating",
+  "Printing",
+  "Die Cutting",
+  "Folder Gluing",
+  "Stitching",
+  "Quality Control",
+  "Packing",
+] as const;
 export const PRODUCTION_MAINTENANCE_TICKET_TYPES = ["BREAKDOWN", "PREVENTIVE"] as const;
 export const PRODUCTION_MAINTENANCE_PRIORITIES = ["LOW", "MEDIUM", "HIGH", "CRITICAL"] as const;
 export const PRODUCTION_MAINTENANCE_TICKET_STATUSES = [
@@ -47,12 +61,56 @@ export const PRODUCTION_MAINTENANCE_TICKET_STATUSES = [
 ] as const;
 
 export type ProductionMachineInput = {
-  machineNo: string;
   name: string;
-  machineType: string;
-  workCenter: string;
+  machineType: typeof PRODUCTION_MACHINE_TYPES[number];
+  workCenter: typeof PRODUCTION_MACHINE_WORK_CENTERS[number];
   location: string;
 };
+
+export function formatProductionMachineAssetNumber(
+  name: string,
+  machineType: string,
+  sequence: number,
+): string {
+  if (!Number.isSafeInteger(sequence) || sequence < 1) {
+    throw new RangeError("Machine asset sequence must be a positive safe integer.");
+  }
+  const toAssetSegment = (value: string) => value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  const nameSegment = toAssetSegment(name) || "MACHINE";
+  const typeSegment = toAssetSegment(machineType) || "TYPE";
+  const suffix = String(sequence).padStart(3, "0");
+  const maxNameLength = Math.max(
+    1,
+    60 - typeSegment.length - suffix.length - 2,
+  );
+  const shortenedName = nameSegment.slice(0, maxNameLength).replace(/-+$/g, "") || "M";
+  return `${shortenedName}-${typeSegment}-${suffix}`;
+}
+
+export function isProductionMachineCompatibleWithOperation(
+  machineType: string,
+  workCenter: string,
+  operation: string,
+): boolean {
+  const normalize = (value: string) => value.trim().toUpperCase().replace(/[\s_-]+/g, " ");
+  const normalizedMachineType = normalize(machineType);
+  const normalizedWorkCenter = normalize(workCenter);
+  if (operation === "Printing") {
+    return normalizedMachineType === "PRINTING" && normalizedWorkCenter === "PRINTING";
+  }
+  if (operation === "Corrugating") {
+    return normalizedMachineType === "CORRUGATOR" && normalizedWorkCenter === "CORRUGATING";
+  }
+  if (operation === "Stitching") {
+    return normalizedMachineType === "STITCHING MACHINE" && normalizedWorkCenter === "STITCHING";
+  }
+  return normalizedWorkCenter === normalize(operation);
+}
 
 export type ProductionMachineUpdateInput = {
   status: "ACTIVE" | "RETIRED";
@@ -151,11 +209,10 @@ export function getProductionMachineMaintenanceWarnings(
 
 export function validateProductionMachine(value: unknown): value is ProductionMachineInput {
   return isRecord(value) &&
-    isNonEmptyString(value.machineNo, 60) &&
     isNonEmptyString(value.name, 120) &&
-    isNonEmptyString(value.machineType, 80) &&
-    isNonEmptyString(value.workCenter, 80) &&
-    isBoundedString(value.location, 120);
+    PRODUCTION_MACHINE_TYPES.some((machineType) => machineType === value.machineType) &&
+    PRODUCTION_MACHINE_WORK_CENTERS.some((workCenter) => workCenter === value.workCenter) &&
+    isNonEmptyString(value.location, 120);
 }
 
 export function validateProductionMachineUpdate(

@@ -7,6 +7,7 @@ import {
   PRODUCTION_WORKFLOW_STAGES,
   validateProductionOperationSchedule,
 } from "@/lib/production-data";
+import { isProductionMachineCompatibleWithOperation } from "@/lib/production-maintenance-data";
 import {
   getProductionWorkspaceMembership,
   getVerifiedProductionUser,
@@ -60,12 +61,22 @@ export async function POST(request: Request, { params }: RouteContext) {
       workspaceId,
       status: { not: "RETIRED" },
     },
-    select: { id: true, workCenter: true },
+    select: { id: true, machineType: true, workCenter: true },
   });
   if (!machine) {
     return NextResponse.json(
       { error: "Select a registered machine from this production workspace" },
       { status: 404 },
+    );
+  }
+  if (!isProductionMachineCompatibleWithOperation(
+    machine.machineType,
+    machine.workCenter,
+    body.operation,
+  )) {
+    return NextResponse.json(
+      { error: `The selected machine is not compatible with the ${body.operation} operation.` },
+      { status: 400 },
     );
   }
   if (job.flag && !job.flag.resolvedAt) {

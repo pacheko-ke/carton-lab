@@ -1,14 +1,19 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  formatProductionMachineAssetNumber,
   getProductionMachineMaintenanceWarnings,
+  isProductionMachineCompatibleWithOperation,
   isProductionMaintenanceTransitionAllowed,
+  PRODUCTION_MACHINE_TYPES,
+  PRODUCTION_MACHINE_WORK_CENTERS,
   validateProductionMachine,
   validateProductionMaintenancePart,
   validateProductionMaintenancePlan,
   validateProductionMaintenanceTicket,
   validateProductionMaintenanceTicketUpdate,
 } from "../src/lib/production-maintenance-data.ts";
+import { PRODUCTION_OPERATIONS } from "../src/lib/production-data.ts";
 
 test("warns when a scheduled machine has due preventive work or an open ticket", () => {
   const plans = [
@@ -67,19 +72,31 @@ test("warns when a scheduled machine has due preventive work or an open ticket",
 
 test("validates machine records and preventive maintenance cadence", () => {
   assert.equal(validateProductionMachine({
-    machineNo: "CORR-01",
     name: "Corrugator 1",
-    machineType: "CORRUGATOR",
+    machineType: "Corrugator",
     workCenter: "Corrugating",
     location: "Plant A",
   }), true);
   assert.equal(validateProductionMachine({
-    machineNo: "",
     name: "Corrugator 1",
-    machineType: "CORRUGATOR",
+    machineType: "Corrugator",
     workCenter: "Corrugating",
     location: "",
   }), false);
+  assert.equal(validateProductionMachine({
+    name: "Flexo printer",
+    machineType: "Flexo",
+    workCenter: "Printing",
+    location: "Plant A",
+  }), false);
+  assert.equal(validateProductionMachine({
+    name: "Printing press",
+    machineType: "Printing",
+    workCenter: "Finishing",
+    location: "Plant A",
+  }), false);
+  assert.deepEqual(PRODUCTION_MACHINE_TYPES, ["Printing", "Corrugator", "Stitching Machine"]);
+  assert.deepEqual(PRODUCTION_MACHINE_WORK_CENTERS, PRODUCTION_OPERATIONS);
 
   const plan = {
     machineId: "machine-1",
@@ -91,6 +108,30 @@ test("validates machine records and preventive maintenance cadence", () => {
   assert.equal(validateProductionMaintenancePlan(plan), true);
   assert.equal(validateProductionMaintenancePlan({ ...plan, intervalDays: "0" }), false);
   assert.equal(validateProductionMaintenancePlan({ ...plan, nextDueAt: "2026-02-30" }), false);
+});
+
+test("generates machine asset numbers from name, type, and sequence", () => {
+  assert.equal(
+    formatProductionMachineAssetNumber("Large Rotary Press", "Printing", 12),
+    "LARGE-ROTARY-PRESS-PRINTING-012",
+  );
+  assert.equal(
+    formatProductionMachineAssetNumber("Cutter", "Stitching Machine", 1),
+    "CUTTER-STITCHING-MACHINE-001",
+  );
+  assert.equal(
+    formatProductionMachineAssetNumber("x".repeat(120), "Printing", 3).length <= 60,
+    true,
+  );
+});
+
+test("matches planned operations to their machine type and work center", () => {
+  assert.equal(isProductionMachineCompatibleWithOperation("Printing", "Printing", "Printing"), true);
+  assert.equal(isProductionMachineCompatibleWithOperation("CORRUGATOR", "Corrugating", "Corrugating"), true);
+  assert.equal(isProductionMachineCompatibleWithOperation("Stitching Machine", "Stitching", "Stitching"), true);
+  assert.equal(isProductionMachineCompatibleWithOperation("Corrugator", "Corrugating", "Printing"), false);
+  assert.equal(isProductionMachineCompatibleWithOperation("Printing", "Die Cutting", "Printing"), false);
+  assert.equal(isProductionMachineCompatibleWithOperation("Any", "Packing", "Packing"), true);
 });
 
 test("requires preventive plans and valid job-linked maintenance tickets", () => {

@@ -51,11 +51,40 @@ export const PRODUCTION_SAFETY_INCIDENT_STATUSES = [
   "CLOSED",
 ] as const;
 
+export function formatProductionEmployeeNumber(companyName: string, sequence: number) {
+  if (!Number.isSafeInteger(sequence) || sequence < 1) {
+    throw new RangeError("Employee number sequence must be a positive safe integer.");
+  }
+  const prefix = companyName.match(/[A-Za-z]/g)?.slice(0, 3).join("").toUpperCase() || "EMP";
+  return `${prefix}-${String(sequence).padStart(3, "0")}`;
+}
+
+export function parseProductionHrOptionList(value: unknown): string[] | null {
+  if (typeof value !== "string") return null;
+  const options = value.split(/\r?\n/).map((option) => option.trim()).filter(Boolean);
+  const normalizedOptions = options.map((option) => option.toLocaleLowerCase());
+  if (
+    options.length > 100 ||
+    options.some((option) => option.length > 80) ||
+    new Set(normalizedOptions).size !== normalizedOptions.length
+  ) {
+    return null;
+  }
+  return options;
+}
+
 export type ProductionEmployeeInput = {
-  employeeNo: string;
   name: string;
+  nationalId: string;
+  dateOfBirth: string;
+  address: string;
+  nextOfKinName: string;
+  nextOfKinRelationship: string;
+  nextOfKinPhone: string;
   department: string;
   jobTitle: string;
+  machineId: string;
+  workArea: string;
   hiredAt: string;
 };
 
@@ -123,10 +152,18 @@ export type ProductionSafetyIncidentUpdateInput = {
 
 export function validateProductionEmployee(value: unknown): value is ProductionEmployeeInput {
   return isRecord(value) &&
-    isNonEmptyString(value.employeeNo, 60) &&
     isNonEmptyString(value.name, 120) &&
+    isNonEmptyString(value.nationalId, 50) &&
+    isValidDate(value.dateOfBirth) &&
+    value.dateOfBirth <= new Date().toISOString().slice(0, 10) &&
+    isNonEmptyString(value.address, 500) &&
+    isNonEmptyString(value.nextOfKinName, 120) &&
+    isNonEmptyString(value.nextOfKinRelationship, 80) &&
+    isNonEmptyString(value.nextOfKinPhone, 40) &&
     isNonEmptyString(value.department, 80) &&
     isNonEmptyString(value.jobTitle, 100) &&
+    (value.machineId === "" || isNonEmptyString(value.machineId, 100)) &&
+    isNonEmptyString(value.workArea, 100) &&
     isValidDate(value.hiredAt);
 }
 

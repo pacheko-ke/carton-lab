@@ -3,6 +3,8 @@ import test from "node:test";
 import {
   isProductionLeaveTransitionAllowed,
   isProductionSafetyIncidentTransitionAllowed,
+  formatProductionEmployeeNumber,
+  parseProductionHrOptionList,
   validateProductionAttendance,
   validateProductionAttendanceClose,
   validateProductionEmployee,
@@ -16,20 +18,29 @@ import {
 } from "../src/lib/production-hr-data.ts";
 
 test("validates employee records and scheduled shifts", () => {
-  assert.equal(validateProductionEmployee({
-    employeeNo: "EMP-012",
+  const employee = {
     name: "Alex Operator",
+    nationalId: "12345678",
+    dateOfBirth: "1990-04-03",
+    address: "10 Industrial Road",
+    nextOfKinName: "Sam Operator",
+    nextOfKinRelationship: "Sibling",
+    nextOfKinPhone: "+254700000000",
     department: "Converting",
     jobTitle: "Machine Operator",
+    machineId: "machine-1",
+    workArea: "Converting",
     hiredAt: "2025-03-04",
-  }), true);
-  assert.equal(validateProductionEmployee({
-    employeeNo: "EMP-012",
-    name: "Alex Operator",
-    department: "",
-    jobTitle: "Machine Operator",
-    hiredAt: "2025-03-04",
-  }), false);
+  };
+  assert.equal(validateProductionEmployee(employee), true);
+  assert.equal(validateProductionEmployee({ ...employee, nationalId: "" }), false);
+  assert.equal(validateProductionEmployee({ ...employee, dateOfBirth: "2099-01-01" }), false);
+  assert.equal(validateProductionEmployee({ ...employee, machineId: "" }), true);
+  assert.equal(formatProductionEmployeeNumber("Carton Lab", 1), "CAR-001");
+  assert.equal(formatProductionEmployeeNumber("Box Co.", 1000), "BOX-1000");
+  assert.deepEqual(parseProductionHrOptionList("Packing\nConverting\n"), ["Packing", "Converting"]);
+  assert.equal(parseProductionHrOptionList("Packing\n packing "), null);
+  assert.throws(() => formatProductionEmployeeNumber("Carton Lab", 0), RangeError);
   const shift = {
     employeeId: "employee-1",
     shiftName: "Day shift",

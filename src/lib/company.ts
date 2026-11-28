@@ -10,6 +10,10 @@ export const companyDetailsSelect = {
   timezone: true,
   currency: true,
   logoUrl: true,
+  employeeNumberNext: true,
+  hrDepartments: true,
+  hrJobTitles: true,
+  hrWorkAreas: true,
 } as const;
 
 export async function getCompanyMembership(userId: string) {

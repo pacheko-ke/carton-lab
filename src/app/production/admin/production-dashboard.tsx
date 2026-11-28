@@ -104,7 +104,10 @@ import {
 } from "@/lib/production-tooling-data";
 import {
   getProductionMachineMaintenanceWarnings,
+  isProductionMachineCompatibleWithOperation,
   isProductionMaintenanceTransitionAllowed,
+  PRODUCTION_MACHINE_WORK_CENTERS,
+  PRODUCTION_MACHINE_TYPES,
   PRODUCTION_MAINTENANCE_PRIORITIES,
   PRODUCTION_MAINTENANCE_TICKET_TYPES,
   PRODUCTION_MAINTENANCE_TICKET_STATUSES,
@@ -123,6 +126,7 @@ const ProductionArtworkPdfPreview = dynamic(
   },
 );
 import {
+  formatProductionEmployeeNumber,
   PRODUCTION_LEAVE_TYPES,
   PRODUCTION_SAFETY_INCIDENT_TYPES,
   PRODUCTION_SAFETY_SEVERITIES,
@@ -132,6 +136,10 @@ export type ProductionDashboardWorkspace = {
   id: string;
   name: string;
   role: string;
+  employeeNumberNext: number;
+  hrDepartments: string[];
+  hrJobTitles: string[];
+  hrWorkAreas: string[];
 };
 
 type ProductionDashboardCustomerSummary = Pick<ProductionDashboardCustomer, "id" | "name">;
@@ -319,7 +327,7 @@ export type ProductionDashboardPurchaseOrder = {
   expectedAt: string | null;
   notes: string;
   createdAt: string;
-  supplier: { id: string; code: string; name: string };
+  supplier: { id: string; code: string; name: string; email: string | null };
   lines: ProductionDashboardPurchaseOrderLine[];
 };
 
@@ -634,6 +642,9 @@ export type ProductionDashboardEmployee = {
   name: string;
   department: string;
   jobTitle: string;
+  machineId: string | null;
+  machineLabel: string;
+  workArea: string;
   status: string;
   hiredAt: string;
 };
@@ -724,7 +735,11 @@ type Props = {
   companyContent: ReactNode;
   accessControlContent: ReactNode;
   hasCompany: boolean;
+  companyWorkspaceId: string;
   openAccountOnLoad: boolean;
+  openCompanyOnLoad: boolean;
+  companyDetailsUpdated: boolean;
+  companyHrSettingsUpdated: boolean;
   openAccessControlOnLoad: boolean;
   accountName: string;
   profile: {
@@ -1735,7 +1750,14 @@ function BulkScheduleForm({
     return balance !== null && balance > 0;
   });
   const availableMachines = machines.filter(
-    (machine) => machine.workspaceId === workspaceId && machine.status !== "RETIRED",
+    (machine) =>
+      machine.workspaceId === workspaceId &&
+      machine.status !== "RETIRED" &&
+      isProductionMachineCompatibleWithOperation(
+        machine.machineType,
+        machine.workCenter,
+        operation,
+      ),
   );
   const entryJobIds = new Set(entries.map((entry) => entry.jobId));
 
@@ -1853,6 +1875,19 @@ function BulkScheduleForm({
               const nextOperation = event.currentTarget.value;
               if (!isProductionOperation(nextOperation)) return;
               setOperation(nextOperation);
+              const compatibleMachines = machines.filter(
+                (machine) =>
+                  machine.workspaceId === workspaceId &&
+                  machine.status !== "RETIRED" &&
+                  isProductionMachineCompatibleWithOperation(
+                    machine.machineType,
+                    machine.workCenter,
+                    nextOperation,
+                  ),
+              );
+              if (!compatibleMachines.some((machine) => machine.id === machineId)) {
+                setMachineId("");
+              }
               setEntries([]);
               setStatus("");
             }}
@@ -1874,7 +1909,13 @@ function BulkScheduleForm({
             value={machineId}
           >
             <option value="">
-              {availableMachines.length ? "Select a machine" : "Register a machine first"}
+              {availableMachines.length
+                ? "Select a machine"
+                : machines.some((machine) =>
+                    machine.workspaceId === workspaceId && machine.status !== "RETIRED",
+                  )
+                  ? "Register a compatible machine first"
+                  : "Register a machine first"}
             </option>
             {availableMachines.map((machine) => (
               <option key={machine.id} value={machine.id}>
@@ -2490,6 +2531,13 @@ function PlanningBoard({
       ? String(initialBalance)
       : "",
   }));
+  const availableMachines = workspaceMachines.filter((machine) =>
+    isProductionMachineCompatibleWithOperation(
+      machine.machineType,
+      machine.workCenter,
+      form.operation,
+    ),
+  );
   const [editingScheduleId, setEditingScheduleId] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [status, setStatus] = useState("");
@@ -2534,6 +2582,14 @@ function PlanningBoard({
 
   const editSchedule = (schedule: ProductionDashboardSchedule) => {
     const job = jobs.find((candidate) => candidate.id === schedule.jobId);
+    const compatibleMachine = workspaceMachines.find((machine) =>
+      machine.id === schedule.machineId &&
+      isProductionMachineCompatibleWithOperation(
+        machine.machineType,
+        machine.workCenter,
+        schedule.operation,
+      ),
+    );
     const balance = job ? getScheduleBalance(job, schedule) : null;
     const isReschedulingBalance =
       schedule.status === "COMPLETED" && balance !== null && balance > 0;
@@ -2541,7 +2597,7 @@ function PlanningBoard({
     setForm({
       jobId: schedule.jobId,
       operation: schedule.operation,
-      machineId: schedule.machineId ?? "",
+      machineId: compatibleMachine ? schedule.machineId ?? "" : "",
       scheduledStartAt: localDateTimeValue(new Date(schedule.scheduledStartAt)),
       scheduledEndAt: localDateTimeValue(new Date(schedule.scheduledEndAt)),
       plannedQty: isReschedulingBalance ? String(balance) : String(schedule.plannedQty),
@@ -2700,6 +2756,16 @@ function PlanningBoard({
                       ...current,
                       operation,
                       jobId: job?.id ?? "",
+                      machineId: workspaceMachines.some((machine) =>
+                        machine.id === current.machineId &&
+                        isProductionMachineCompatibleWithOperation(
+                          machine.machineType,
+                          machine.workCenter,
+                          operation,
+                        ),
+                      )
+                        ? current.machineId
+                        : "",
                       plannedQty: balance !== null && balance > 0
                         ? String(balance)
                         : current.plannedQty,
@@ -2718,15 +2784,22 @@ function PlanningBoard({
             <label className="production-order-booking-field">
               Machine
               <select
-                disabled={!workspaceMachines.length}
-                onChange={(event) => setForm((current) => ({ ...current, machineId: event.currentTarget.value }))}
+                disabled={!availableMachines.length}
+                onChange={(event) => {
+                  const machineId = event.currentTarget.value;
+                  setForm((current) => ({ ...current, machineId }));
+                }}
                 required
                 value={form.machineId}
               >
                 <option value="">
-                  {workspaceMachines.length ? "Select a machine" : "Register a machine first"}
+                  {availableMachines.length
+                    ? "Select a machine"
+                    : workspaceMachines.length
+                      ? "Register a compatible machine first"
+                      : "Register a machine first"}
                 </option>
-                {workspaceMachines.map((machine) => (
+                {availableMachines.map((machine) => (
                   <option key={machine.id} value={machine.id}>
                     {machine.machineNo} — {machine.name}
                   </option>
@@ -2821,7 +2894,7 @@ function PlanningBoard({
           <div className="production-order-booking-actions">
             <button
               className="production-primary-button"
-              disabled={isSaving || !workspaceJobs.length || !workspaceMachines.length}
+              disabled={isSaving || !workspaceJobs.length || !availableMachines.length}
               type="submit"
             >
               {isSaving ? "Saving…" : editingScheduleId ? "Update schedule" : "Schedule operation"}
@@ -2948,12 +3021,24 @@ function CorrugatorScheduleForm({
     existingSchedule?.status === "COMPLETED" &&
     remainingBalance !== null &&
     remainingBalance > 0;
+  const availableMachines = machines.filter(
+    (machine) =>
+      machine.workspaceId === job.workspaceId &&
+      machine.status !== "RETIRED" &&
+      isProductionMachineCompatibleWithOperation(
+        machine.machineType,
+        machine.workCenter,
+        "Corrugating",
+      ),
+  );
   const [form, setForm] = useState<ProductionScheduleForm>(() => {
     if (existingSchedule) {
       return {
         jobId: job.id,
         operation: "Corrugating",
-        machineId: existingSchedule.machineId ?? "",
+        machineId: availableMachines.some((machine) => machine.id === existingSchedule.machineId)
+          ? existingSchedule.machineId ?? ""
+          : "",
         scheduledStartAt: localDateTimeValue(new Date(existingSchedule.scheduledStartAt)),
         scheduledEndAt: localDateTimeValue(new Date(existingSchedule.scheduledEndAt)),
         plannedQty: isReschedulingBalance
@@ -2969,9 +3054,6 @@ function CorrugatorScheduleForm({
       plannedQty: job.orderQty === null ? "" : String(job.orderQty),
     };
   });
-  const availableMachines = machines.filter(
-    (machine) => machine.workspaceId === job.workspaceId && machine.status !== "RETIRED",
-  );
   const workspaceMaintenancePlans = maintenancePlans.filter(
     (plan) => plan.workspaceId === job.workspaceId,
   );
@@ -3029,12 +3111,17 @@ function CorrugatorScheduleForm({
           Machine
           <select
             disabled={!availableMachines.length}
-            onChange={(event) => setForm((current) => ({ ...current, machineId: event.currentTarget.value }))}
+            onChange={(event) => {
+              const machineId = event.currentTarget.value;
+              setForm((current) => ({ ...current, machineId }));
+            }}
             required
             value={form.machineId}
           >
             <option value="">
-              {availableMachines.length ? "Select a machine" : "Register a machine first"}
+              {availableMachines.length
+                ? "Select a machine"
+                : "Register a corrugator first"}
             </option>
             {availableMachines.map((machine) => (
               <option key={machine.id} value={machine.id}>
@@ -4115,6 +4202,7 @@ function ProcurementBoard({
     address: "",
   });
   const [selectedSupplierId, setSelectedSupplierId] = useState("");
+  const [supplierEmail, setSupplierEmail] = useState("");
   const [expectedAt, setExpectedAt] = useState("");
   const [orderNotes, setOrderNotes] = useState("");
   const [orderLines, setOrderLines] = useState<Array<{ materialId: string; quantity: string }>>([
@@ -4123,12 +4211,19 @@ function ProcurementBoard({
   const [receivingOrderId, setReceivingOrderId] = useState("");
   const [receiptQuantities, setReceiptQuantities] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [sendingOrderId, setSendingOrderId] = useState("");
+  const [purchaseOrderEmailStatus, setPurchaseOrderEmailStatus] = useState<{
+    orderId: string;
+    message: string;
+    isError: boolean;
+  } | null>(null);
   const [status, setStatus] = useState("");
   const [hasError, setHasError] = useState(false);
 
   const changeWorkspace = (nextWorkspaceId: string) => {
     setWorkspaceId(nextWorkspaceId);
     setSelectedSupplierId("");
+    setSupplierEmail("");
     setOrderLines([{ materialId: "", quantity: "" }]);
     setReceivingOrderId("");
     setReceiptQuantities({});
@@ -4195,6 +4290,7 @@ function ProcurementBoard({
           method: "POST",
           body: JSON.stringify({
             supplierId: selectedSupplierId,
+            supplierEmail,
             expectedAt,
             notes: orderNotes,
             lines: orderLines,
@@ -4205,6 +4301,7 @@ function ProcurementBoard({
         throw new Error("The server returned an invalid purchase order.");
       }
       setSelectedSupplierId("");
+      setSupplierEmail("");
       setExpectedAt("");
       setOrderNotes("");
       setOrderLines([{ materialId: activeMaterials[0]?.id ?? "", quantity: "" }]);
@@ -4215,6 +4312,37 @@ function ProcurementBoard({
       setHasError(true);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const sendPurchaseOrderEmail = async (
+    purchaseOrder: ProductionDashboardPurchaseOrder,
+  ) => {
+    setSendingOrderId(purchaseOrder.id);
+    setPurchaseOrderEmailStatus(null);
+    try {
+      const response = await requestProductionJson(
+        `/api/production/workspaces/${encodeURIComponent(workspaceId)}/purchase-orders/${encodeURIComponent(purchaseOrder.id)}/send`,
+        { method: "POST" },
+      );
+      if (typeof response.sentTo !== "string") {
+        throw new Error("The server did not confirm the supplier email.");
+      }
+      const message = `Purchase order emailed to ${response.sentTo}.`;
+      setPurchaseOrderEmailStatus({
+        orderId: purchaseOrder.id,
+        message,
+        isError: false,
+      });
+      notifyToast(message);
+    } catch (error) {
+      setPurchaseOrderEmailStatus({
+        orderId: purchaseOrder.id,
+        message: error instanceof Error ? error.message : String(error),
+        isError: true,
+      });
+    } finally {
+      setSendingOrderId("");
     }
   };
 
@@ -4378,10 +4506,32 @@ function ProcurementBoard({
           <div className="production-order-booking-row">
             <label className="production-order-booking-field">
               Supplier
-              <select onChange={(event) => setSelectedSupplierId(event.target.value)} required value={selectedSupplierId}>
+              <select
+                onChange={(event) => {
+                  const supplierId = event.target.value;
+                  setSelectedSupplierId(supplierId);
+                  setSupplierEmail(
+                    activeSuppliers.find((supplier) => supplier.id === supplierId)?.email ?? "",
+                  );
+                }}
+                required
+                value={selectedSupplierId}
+              >
                 <option value="">Select a supplier</option>
                 {activeSuppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.code} — {supplier.name}</option>)}
               </select>
+            </label>
+            <label className="production-order-booking-field">
+              Supplier email for this order
+              <input
+                autoComplete="email"
+                maxLength={254}
+                onChange={(event) => setSupplierEmail(event.target.value)}
+                required
+                type="email"
+                value={supplierEmail}
+              />
+              <small>Saved to the supplier record and used for the email action.</small>
             </label>
             <label className="production-order-booking-field">
               Expected delivery
@@ -4450,11 +4600,53 @@ function ProcurementBoard({
                       <td><span className={`production-schedule-status status-${purchaseOrder.status.toLowerCase()}`}>{purchaseOrder.status.replaceAll("_", " ")}</span></td>
                       <td>{purchaseOrder.expectedAt ? formatDate(purchaseOrder.expectedAt.slice(0, 10)) : "—"}</td>
                       <td>
-                        {purchaseOrder.status !== "RECEIVED" && purchaseOrder.status !== "CANCELLED" ? (
-                          <button className="production-table-action" onClick={() => openReceipt(purchaseOrder)} type="button">
-                            {purchaseOrder.status === "OPEN" ? "Receive goods" : "Receive more"}
+                        <div className="production-purchase-order-actions">
+                          <a
+                            className="production-table-action"
+                            download={`${purchaseOrder.orderNo}.pdf`}
+                            href={`/api/production/workspaces/${encodeURIComponent(workspaceId)}/purchase-orders/${encodeURIComponent(purchaseOrder.id)}/pdf`}
+                          >
+                            Download PDF
+                          </a>
+                          <button
+                            className="production-table-action"
+                            disabled={
+                              !purchaseOrder.supplier.email ||
+                              purchaseOrder.status === "CANCELLED" ||
+                              sendingOrderId === purchaseOrder.id
+                            }
+                            onClick={() => void sendPurchaseOrderEmail(purchaseOrder)}
+                            type="button"
+                          >
+                            {sendingOrderId === purchaseOrder.id
+                              ? "Sending…"
+                              : purchaseOrder.status === "CANCELLED"
+                                ? "Cancelled order"
+                                : purchaseOrder.supplier.email
+                                ? "Email supplier"
+                                : "Supplier email required"}
                           </button>
-                        ) : "—"}
+                          {purchaseOrder.status !== "RECEIVED" && purchaseOrder.status !== "CANCELLED" && (
+                            <button
+                              className="production-table-action"
+                              onClick={() => openReceipt(purchaseOrder)}
+                              type="button"
+                            >
+                              {purchaseOrder.status === "OPEN" ? "Receive goods" : "Receive more"}
+                            </button>
+                          )}
+                        </div>
+                        {purchaseOrderEmailStatus?.orderId === purchaseOrder.id && (
+                          <small
+                            aria-live="polite"
+                            className={purchaseOrderEmailStatus.isError
+                              ? "production-order-booking-error"
+                              : "production-order-booking-status"}
+                            role={purchaseOrderEmailStatus.isError ? "alert" : "status"}
+                          >
+                            {purchaseOrderEmailStatus.message}
+                          </small>
+                        )}
                       </td>
                     </tr>
                     {receivingOrderId === purchaseOrder.id && (
@@ -7818,6 +8010,11 @@ function MaintenanceBoard({
 }) {
   const [workspaceId, setWorkspaceId] = useState(preferredWorkspaceId);
   const orgMachines = machines.filter((machine) => machine.workspaceId === workspaceId);
+  const machineLocations = [...new Set(
+    orgMachines.map((machine) => machine.location.trim()).filter(Boolean),
+  )].sort((left, right) => left.localeCompare(right));
+  const [machineLocationChoice, setMachineLocationChoice] = useState("");
+  const [newMachineLocation, setNewMachineLocation] = useState("");
   const orgPlans = maintenancePlans.filter((plan) => plan.workspaceId === workspaceId);
   const orgTickets = maintenanceTickets.filter((ticket) => ticket.workspaceId === workspaceId);
   const orgMaterials = materials.filter(
@@ -7843,21 +8040,26 @@ function MaintenanceBoard({
     event.preventDefault();
     const form = event.currentTarget;
     const data = new FormData(form);
+    const locationChoice = String(data.get("locationChoice") ?? "");
+    const location = locationChoice === "__new_location__"
+      ? String(data.get("newLocation") ?? "")
+      : locationChoice;
     try {
       await requestProductionJson(
         `/api/production/workspaces/${encodeURIComponent(workspaceId)}/maintenance/assets`,
         {
           method: "POST",
           body: JSON.stringify({
-            machineNo: String(data.get("machineNo") ?? ""),
             name: String(data.get("name") ?? ""),
             machineType: String(data.get("machineType") ?? ""),
             workCenter: String(data.get("workCenter") ?? ""),
-            location: String(data.get("location") ?? ""),
+            location,
           }),
         },
       );
       form.reset();
+      setMachineLocationChoice("");
+      setNewMachineLocation("");
       notifyToast("Machine registered.");
       onSaved();
     } catch (error) {
@@ -8013,14 +8215,16 @@ function MaintenanceBoard({
             <h2>Maintenance control center</h2>
             <p>Manage equipment, preventive care, breakdowns, downtime, and spare parts.</p>
           </div>
-          <label>
-            <span className="sr-only">Production workspace</span>
-            <select value={workspaceId} onChange={(event) => setWorkspaceId(event.target.value)}>
-              {workspaces.map((workspace) => (
-                <option key={workspace.id} value={workspace.id}>{workspace.name}</option>
-              ))}
-            </select>
-          </label>
+          {workspaces.length > 1 && (
+            <label>
+              <span className="sr-only">Production workspace</span>
+              <select value={workspaceId} onChange={(event) => setWorkspaceId(event.target.value)}>
+                {workspaces.map((workspace) => (
+                  <option key={workspace.id} value={workspace.id}>{workspace.name}</option>
+                ))}
+              </select>
+            </label>
+          )}
         </div>
         <div className="production-kpi-grid">
           <article className="production-kpi-card"><span>Registered machines</span><strong>{orgMachines.length}</strong></article>
@@ -8033,11 +8237,60 @@ function MaintenanceBoard({
           className="production-reel-form production-maintenance-form production-maintenance-register-form"
           onSubmit={createMachine}
         >
-          <label><span>Asset number</span><input name="machineNo" required maxLength={60} /></label>
           <label><span>Machine name</span><input name="name" required maxLength={120} /></label>
-          <label><span>Machine type</span><input name="machineType" placeholder="Corrugator, flexo, die-cutter…" required maxLength={80} /></label>
-          <label><span>Work center</span><input name="workCenter" placeholder="Match the production schedule work center" required maxLength={80} /></label>
-          <label><span>Plant / location</span><input name="location" maxLength={120} /></label>
+          <label>
+            <span>Machine type</span>
+            <select name="machineType" defaultValue="" required>
+              <option value="" disabled>Select machine type</option>
+              {PRODUCTION_MACHINE_TYPES.map((machineType) => (
+                <option key={machineType} value={machineType}>{machineType}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>Work center</span>
+            <select name="workCenter" defaultValue="" required>
+              <option value="" disabled>Select work center</option>
+              {PRODUCTION_MACHINE_WORK_CENTERS.map((workCenter) => (
+                <option key={workCenter} value={workCenter}>{workCenter}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>Plant / location</span>
+            <select
+              name="locationChoice"
+              onChange={(event) => {
+                const choice = event.currentTarget.value;
+                setMachineLocationChoice(choice);
+                if (choice !== "__new_location__") setNewMachineLocation("");
+              }}
+              required
+              value={machineLocationChoice}
+            >
+              <option value="">Select plant location</option>
+              {machineLocations.map((location) => (
+                <option key={location} value={location}>{location}</option>
+              ))}
+              <option value="__new_location__">Add a new location…</option>
+            </select>
+          </label>
+          {machineLocationChoice === "__new_location__" && (
+            <label>
+              <span>New plant location</span>
+              <input
+                maxLength={120}
+                name="newLocation"
+                onChange={(event) => setNewMachineLocation(event.currentTarget.value)}
+                placeholder="Enter plant location"
+                required
+                value={newMachineLocation}
+              />
+            </label>
+          )}
+          <p className="production-machine-asset-note">
+            Asset number is generated automatically from the machine name and type.
+          </p>
           <button className="production-primary-button" disabled={!workspaceId} type="submit">Register machine</button>
         </form>
 
@@ -8385,14 +8638,16 @@ function ToolingManagementBoard({
             <span className="production-panel-kicker">DIES · PLATES · CYLINDERS · ANILOX</span>
             <h2>Tooling register</h2>
           </div>
-          <label>
-            <span className="sr-only">Production workspace</span>
-            <select value={workspaceId} onChange={(event) => setWorkspaceId(event.target.value)}>
-              {workspaces.map((workspace) => (
-                <option key={workspace.id} value={workspace.id}>{workspace.name}</option>
-              ))}
-            </select>
-          </label>
+          {workspaces.length > 1 && (
+            <label>
+              <span className="sr-only">Production workspace</span>
+              <select value={workspaceId} onChange={(event) => setWorkspaceId(event.target.value)}>
+                {workspaces.map((workspace) => (
+                  <option key={workspace.id} value={workspace.id}>{workspace.name}</option>
+                ))}
+              </select>
+            </label>
+          )}
         </div>
         <form className="production-reel-form production-tooling-entry-form" onSubmit={createTool}>
           <label><span>Tool number</span><input name="toolNo" required maxLength={60} /></label>
@@ -9864,7 +10119,11 @@ export default function ProductionDashboard({
   companyContent,
   accessControlContent,
   hasCompany,
+  companyWorkspaceId,
   openAccountOnLoad,
+  openCompanyOnLoad,
+  companyDetailsUpdated,
+  companyHrSettingsUpdated,
   openAccessControlOnLoad,
   cartonTypes,
   workspaces,
@@ -9906,9 +10165,23 @@ export default function ProductionDashboard({
       hasProductionRole(workspace.role, "ORDER_BOOKER"),
     );
   const router = useRouter();
+  const companyUpdateToastShown = useRef(false);
+  useEffect(() => {
+    if (!companyDetailsUpdated && !companyHrSettingsUpdated) {
+      companyUpdateToastShown.current = false;
+      return;
+    }
+    if (companyUpdateToastShown.current) return;
+    companyUpdateToastShown.current = true;
+    if (companyDetailsUpdated) notifyToast("Company details updated.");
+    if (companyHrSettingsUpdated) notifyToast("Company HR settings updated.");
+    router.replace("/production/admin?view=company", { scroll: false });
+  }, [companyDetailsUpdated, companyHrSettingsUpdated, router]);
   const [view, setView] = useState<DashboardView>(
     openAccessControlOnLoad
       ? "access-control"
+      : openCompanyOnLoad
+      ? "company"
       : openAccountOnLoad
       ? "account"
       : hasDesignerRole
@@ -10638,7 +10911,6 @@ export default function ProductionDashboard({
                   type="button"
                 >
                   <span>{group.label}</span>
-                  <span className="production-nav-group-count">{groupItems.length}</span>
                   <FiChevronDown className={isExpanded ? "is-expanded" : ""} aria-hidden="true" />
                 </button>
                 {isExpanded && (
@@ -10653,8 +10925,6 @@ export default function ProductionDashboard({
                       >
                         <span className="production-nav-icon" aria-hidden="true"><item.icon /></span>
                         {item.label}
-                        {item.id === "jobs" && <span className="production-nav-count">{allJobs.length}</span>}
-                        {item.id === "origination" && <span className="production-nav-count">{originationJobs.length}</span>}
                       </button>
                     ))}
                   </div>
@@ -10746,25 +11016,27 @@ export default function ProductionDashboard({
                 Back to account
               </button>
             )}
-            <label className="production-workspace-filter">
-              <span>Workspace</span>
-              <select
-                aria-label="Filter dashboard by workspace"
-                onChange={(event) => {
-                  setWorkspaceFilter(event.target.value);
-                  setSelectedJob(null);
-                  setEditingOriginationJob(null);
-                  setProductCreationStatus("");
-                  setCustomerCreationStatus("");
-                }}
-                value={workspaceFilter}
-              >
-                <option value="all">All workspaces</option>
-                {workspaceFilterOptions.map((workspace) => (
-                  <option key={workspace.id} value={workspace.id}>{workspace.name}</option>
-                ))}
-              </select>
-            </label>
+            {workspaceFilterOptions.length > 1 && (
+              <label className="production-workspace-filter">
+                <span>Workspace</span>
+                <select
+                  aria-label="Filter dashboard by workspace"
+                  onChange={(event) => {
+                    setWorkspaceFilter(event.target.value);
+                    setSelectedJob(null);
+                    setEditingOriginationJob(null);
+                    setProductCreationStatus("");
+                    setCustomerCreationStatus("");
+                  }}
+                  value={workspaceFilter}
+                >
+                  <option value="all">All workspaces</option>
+                  {workspaceFilterOptions.map((workspace) => (
+                    <option key={workspace.id} value={workspace.id}>{workspace.name}</option>
+                  ))}
+                </select>
+              </label>
+            )}
             <button
               aria-label="Refresh dashboard data"
               className="production-refresh-button"
@@ -10786,7 +11058,28 @@ export default function ProductionDashboard({
           {view === "account" ? (
             <div className="production-page-content">{accountContent}</div>
           ) : view === "company" ? (
-            <div className="production-page-content">{companyContent}</div>
+            <div className="production-page-content">
+              {companyContent ?? (
+                <section className="production-panel">
+                  <div className="production-panel-heading">
+                    <div>
+                      <span className="production-panel-kicker">COMPANY WORKSPACE</span>
+                      <h2>Company settings unavailable</h2>
+                    </div>
+                  </div>
+                  <p className="production-reel-explainer">
+                    This account is not linked to a company workspace. Open Account to create or connect a company.
+                  </p>
+                  <button
+                    className="production-primary-button"
+                    onClick={() => navigateTo("account")}
+                    type="button"
+                  >
+                    Open Account
+                  </button>
+                </section>
+              )}
+            </div>
           ) : view === "access-control" ? (
             <div className="production-page-content">{accessControlContent}</div>
           ) : view === "order-detail" ? (
@@ -11914,13 +12207,16 @@ export default function ProductionDashboard({
               ) : view === "hr" ? (
                 <ProductionHrBoard
                   canManagePayroll={canManagePayroll}
+                  companyWorkspaceId={companyWorkspaceId}
                   employees={employees}
                   leaveRequests={leaveRequests}
+                  machines={machines}
+                  onOpenCompanySettings={() => navigateTo("company")}
                   onSaved={() => router.refresh()}
                   workspaces={workspaces.filter((workspace) =>
                     productionWorkspaceIds.has(workspace.id),
                   )}
-                  preferredWorkspaceId={planningWorkspaceId}
+                  preferredWorkspaceId={companyWorkspaceId || planningWorkspaceId}
                   rosterShifts={rosterShifts}
                   safetyTrainings={safetyTrainings}
                   safetyIncidents={safetyIncidents}
@@ -12441,8 +12737,11 @@ function ProductionPayrollPanel({
 
 function ProductionHrBoard({
   canManagePayroll,
+  companyWorkspaceId,
   workspaces,
   preferredWorkspaceId,
+  machines,
+  onOpenCompanySettings,
   employees,
   rosterShifts,
   leaveRequests,
@@ -12451,8 +12750,11 @@ function ProductionHrBoard({
   onSaved,
 }: {
   canManagePayroll: boolean;
+  companyWorkspaceId: string;
   workspaces: ProductionDashboardWorkspace[];
   preferredWorkspaceId: string;
+  machines: ProductionDashboardMachine[];
+  onOpenCompanySettings: () => void;
   employees: ProductionDashboardEmployee[];
   rosterShifts: ProductionDashboardShift[];
   leaveRequests: ProductionDashboardLeaveRequest[];
@@ -12465,6 +12767,13 @@ function ProductionHrBoard({
       ? preferredWorkspaceId
       : workspaces[0]?.id ?? "",
   );
+  const workspace = workspaces.find((candidate) => candidate.id === workspaceId);
+  const employeeMachines = machines.filter(
+    (machine) => machine.workspaceId === workspaceId && machine.status === "ACTIVE",
+  );
+  const employeeNumberPreview = workspace
+    ? formatProductionEmployeeNumber(workspace.name, workspace.employeeNumberNext)
+    : "";
   const [message, setMessage] = useState("");
   const [hasError, setHasError] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -12526,10 +12835,17 @@ function ProductionHrBoard({
       event,
       `/api/production/workspaces/${encodeURIComponent(workspaceId)}/hr/employees`,
       {
-        employeeNo: String(data.get("employeeNo") ?? ""),
         name: String(data.get("name") ?? ""),
+      nationalId: String(data.get("nationalId") ?? ""),
+      dateOfBirth: String(data.get("dateOfBirth") ?? ""),
+      address: String(data.get("address") ?? ""),
+      nextOfKinName: String(data.get("nextOfKinName") ?? ""),
+      nextOfKinRelationship: String(data.get("nextOfKinRelationship") ?? ""),
+      nextOfKinPhone: String(data.get("nextOfKinPhone") ?? ""),
         department: String(data.get("department") ?? ""),
         jobTitle: String(data.get("jobTitle") ?? ""),
+      machineId: String(data.get("machineId") ?? ""),
+      workArea: String(data.get("workArea") ?? ""),
         hiredAt: String(data.get("hiredAt") ?? ""),
       },
       "Employee added to the register.",
@@ -12753,18 +13069,25 @@ function ProductionHrBoard({
               A live view of workforce activity, compliance, and safety follow-up.
             </p>
           </div>
-          <label className="production-hr-workspace">
-            <span>Production workspace</span>
-            <select
-              aria-label="Production workspace"
-              onChange={(event) => setWorkspaceId(event.target.value)}
-              value={workspaceId}
-            >
-              {workspaces.map((workspace) => (
-                <option key={workspace.id} value={workspace.id}>{workspace.name}</option>
-              ))}
-            </select>
-          </label>
+          {companyWorkspaceId || workspaces.length === 1 ? (
+            <div className="production-hr-workspace">
+              <span>{companyWorkspaceId ? "Company workspace" : "Production workspace"}</span>
+              <strong>{workspace?.name ?? "Company workspace"}</strong>
+            </div>
+          ) : workspaces.length > 1 ? (
+            <label className="production-hr-workspace">
+              <span>Production workspace</span>
+              <select
+                aria-label="Production workspace"
+                onChange={(event) => setWorkspaceId(event.target.value)}
+                value={workspaceId}
+              >
+                {workspaces.map((workspace) => (
+                  <option key={workspace.id} value={workspace.id}>{workspace.name}</option>
+                ))}
+              </select>
+            </label>
+            ) : null}
         </div>
         {message && (
           <p className={hasError ? "production-order-booking-error" : "production-order-booking-status"} role={hasError ? "alert" : "status"}>
@@ -12828,17 +13151,83 @@ function ProductionHrBoard({
           </label>
         </div>
         <form className="production-reel-form production-hr-form" onSubmit={addEmployee}>
-          <label><span>Employee number</span><input name="employeeNo" required maxLength={60} /></label>
-          <label><span>Full name</span><input name="name" required maxLength={120} /></label>
-          <label><span>Department</span><input name="department" required maxLength={80} /></label>
-          <label><span>Job title</span><input name="jobTitle" required maxLength={100} /></label>
+          <div className="production-hr-employee-number-preview">
+            <span>Employee number (automatic)</span>
+            <strong>{employeeNumberPreview}</strong>
+            <small>Generated from the company name and configured sequence.</small>
+          </div>
+          {workspace && (!workspace.hrDepartments.length || !workspace.hrJobTitles.length || !workspace.hrWorkAreas.length) && (
+            <p className="production-hr-configuration-warning">
+              Configure department, job title, and work area options in{" "}
+              <button
+                className="production-hr-configuration-link"
+                onClick={onOpenCompanySettings}
+                type="button"
+              >
+                Company settings
+              </button>{" "}
+              before adding employees.
+            </p>
+          )}
+          <label><span>Full name</span><input name="name" required maxLength={120} autoComplete="name" /></label>
+          <label><span>National ID</span><input name="nationalId" required maxLength={50} autoComplete="off" /></label>
+          <label><span>Date of birth</span><input name="dateOfBirth" type="date" required autoComplete="bday" /></label>
+          <label className="production-hr-wide"><span>Residential address</span><textarea name="address" required maxLength={500} rows={2} autoComplete="street-address" /></label>
+          <label><span>Next of kin name</span><input name="nextOfKinName" required maxLength={120} /></label>
+          <label><span>Next of kin relationship</span><input name="nextOfKinRelationship" required maxLength={80} /></label>
+          <label><span>Next of kin phone</span><input name="nextOfKinPhone" required maxLength={40} type="tel" autoComplete="tel" /></label>
+          <label>
+            <span>Department</span>
+            <select name="department" required defaultValue="" disabled={!workspace?.hrDepartments.length}>
+              <option value="" disabled>{workspace?.hrDepartments.length ? "Select department" : "Configure departments first"}</option>
+              {workspace?.hrDepartments.map((department) => <option key={department} value={department}>{department}</option>)}
+            </select>
+          </label>
+          <label>
+            <span>Job title</span>
+            <select name="jobTitle" required defaultValue="" disabled={!workspace?.hrJobTitles.length}>
+              <option value="" disabled>{workspace?.hrJobTitles.length ? "Select job title" : "Configure job titles first"}</option>
+              {workspace?.hrJobTitles.map((jobTitle) => <option key={jobTitle} value={jobTitle}>{jobTitle}</option>)}
+            </select>
+          </label>
+          <label>
+            <span>Machine assignment</span>
+            <select name="machineId" defaultValue="">
+              <option value="">No machine assigned</option>
+              {employeeMachines.map((machine) => (
+                <option key={machine.id} value={machine.id}>{machine.machineNo} · {machine.name}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>Work area</span>
+            <select name="workArea" required defaultValue="" disabled={!workspace?.hrWorkAreas.length}>
+              <option value="" disabled>{workspace?.hrWorkAreas.length ? "Select work area" : "Configure work areas first"}</option>
+              {workspace?.hrWorkAreas.map((workArea) => <option key={workArea} value={workArea}>{workArea}</option>)}
+            </select>
+          </label>
           <label><span>Hire date</span><input name="hiredAt" type="date" required /></label>
-          <button className="production-primary-button" disabled={!workspaceId || isSaving} type="submit">Add employee</button>
+          <button
+            className="production-primary-button"
+            disabled={
+              !workspaceId ||
+              isSaving ||
+              !workspace?.hrDepartments.length ||
+              !workspace.hrJobTitles.length ||
+              !workspace.hrWorkAreas.length
+            }
+            type="submit"
+          >
+            Add employee
+          </button>
         </form>
         {visibleEmployees.length ? (
           <div className="production-table-scroll production-hr-employee-table-scroll">
-            <table aria-label="Employees in selected workspace" className="production-hr-employee-table">
-              <thead><tr><th>Employee</th><th>Department</th><th>Position</th><th>Hire date</th><th>Status</th><th>Action</th></tr></thead>
+            <table
+              aria-label={companyWorkspaceId ? "Employees in company workspace" : "Employees in selected workspace"}
+              className="production-hr-employee-table"
+            >
+              <thead><tr><th>Employee</th><th>Department</th><th>Position</th><th>Machine</th><th>Work area</th><th>Hire date</th><th>Status</th><th>Action</th></tr></thead>
               <tbody>{visibleEmployees.map((employee) => (
                 <tr key={employee.id}>
                   <td>
@@ -12854,6 +13243,8 @@ function ProductionHrBoard({
                   </td>
                   <td>{employee.department}</td>
                   <td>{employee.jobTitle}</td>
+                  <td>{employee.machineLabel || "—"}</td>
+                  <td>{employee.workArea}</td>
                   <td>{dateOnlyLabel(employee.hiredAt)}</td>
                   <td>
                     <span className={`production-hr-employee-status is-${employee.status.toLowerCase()}`}>
@@ -12877,7 +13268,9 @@ function ProductionHrBoard({
           </div>
         ) : <p className="production-hr-employee-empty">{orgEmployees.length
           ? `No ${employeeStatusFilter === "ALL" ? "" : `${employeeStatusFilter.toLowerCase()} `}employees to show.`
-          : "No employees in this workspace yet."}</p>}
+          : companyWorkspaceId
+            ? "No employees in this company workspace yet."
+            : "No employees in this workspace yet."}</p>}
       </section>
 
       {canManagePayroll && workspaceId && (

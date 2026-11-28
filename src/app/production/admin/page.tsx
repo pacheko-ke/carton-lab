@@ -113,6 +113,8 @@ type ProductionAdminPageProps = {
     view?: string | string[];
     billing?: string | string[];
     marketing?: string | string[];
+    updated?: string | string[];
+    hrSettingsUpdated?: string | string[];
   }>;
 };
 
@@ -141,6 +143,7 @@ async function AuthenticatedProductionAdminPage({
     searchParams,
   ]);
   const openAccountOnLoad = params.view === "account";
+  const openCompanyOnLoad = params.view === "company";
   const openAccessControlOnLoad = params.view === "access-control";
   const [isAdmin, productionRoles, canManagePayroll] = await Promise.all([
     isSuperAdminUser(user.id),
@@ -157,16 +160,37 @@ async function AuthenticatedProductionAdminPage({
   const role = productionRoles.join("|");
   const companies = isAdmin
     ? await prisma.company.findMany({
-      select: { id: true, name: true },
-      orderBy: { name: "asc" },
+        select: {
+          id: true,
+          name: true,
+          employeeNumberNext: true,
+          hrDepartments: true,
+          hrJobTitles: true,
+          hrWorkAreas: true,
+        },
+        orderBy: { name: "asc" },
       })
     : user.companyMembership
-      ? [user.companyMembership.company]
+      ? await prisma.company.findMany({
+          where: { id: user.companyMembership.company.id },
+          select: {
+            id: true,
+            name: true,
+            employeeNumberNext: true,
+            hrDepartments: true,
+            hrJobTitles: true,
+            hrWorkAreas: true,
+          },
+        })
       : [];
   const workspaces: ProductionDashboardWorkspace[] = companies.map((company) => ({
     id: company.id,
     name: company.name,
     role,
+    employeeNumberNext: company.employeeNumberNext,
+    hrDepartments: company.hrDepartments,
+    hrJobTitles: company.hrJobTitles,
+    hrWorkAreas: company.hrWorkAreas,
   }));
   const hasDesignerRole = !isAdmin &&
     productionRoles.includes("DESIGNER");
@@ -587,7 +611,7 @@ async function AuthenticatedProductionAdminPage({
           expectedAt: true,
           notes: true,
           createdAt: true,
-          supplier: { select: { id: true, code: true, name: true } },
+          supplier: { select: { id: true, code: true, name: true, email: true } },
           lines: {
             orderBy: { material: { name: "asc" } },
             select: {
@@ -920,8 +944,13 @@ async function AuthenticatedProductionAdminPage({
               name: true,
               department: true,
               jobTitle: true,
+              machineId: true,
+              workArea: true,
               status: true,
               hiredAt: true,
+              machine: {
+                select: { machineNo: true, name: true },
+              },
             },
           }),
           prisma.productionRosterShift.findMany({
@@ -1014,7 +1043,18 @@ async function AuthenticatedProductionAdminPage({
         ])
       : [[], [], [], [], []];
   const dashboardEmployees: ProductionDashboardEmployee[] = employeeRows.map((employee) => ({
-    ...employee,
+    id: employee.id,
+    workspaceId: employee.workspaceId,
+    employeeNo: employee.employeeNo,
+    name: employee.name,
+    department: employee.department,
+    jobTitle: employee.jobTitle,
+    machineId: employee.machineId,
+    machineLabel: employee.machine
+      ? `${employee.machine.machineNo} · ${employee.machine.name}`
+      : "",
+    workArea: employee.workArea,
+    status: employee.status,
     hiredAt: employee.hiredAt.toISOString(),
   }));
   const dashboardRosterShifts: ProductionDashboardShift[] = rosterShiftRows.map((shift) => ({
@@ -1357,7 +1397,11 @@ async function AuthenticatedProductionAdminPage({
         isAdmin ? <AccessControlContent /> : null
       }
       hasCompany={Boolean(user.companyMembership)}
+      companyWorkspaceId={user.companyMembership?.company.id ?? ""}
       openAccountOnLoad={openAccountOnLoad}
+      openCompanyOnLoad={openCompanyOnLoad}
+      companyDetailsUpdated={params.updated === "1"}
+      companyHrSettingsUpdated={params.hrSettingsUpdated === "1"}
       openAccessControlOnLoad={openAccessControlOnLoad}
       accountName={
         user.name ||

@@ -37,6 +37,7 @@ test("validates supplier contacts", () => {
 test("validates purchase orders and rejects duplicate material lines", () => {
   const order = {
     supplierId: "supplier-1",
+    supplierEmail: "orders@example.com",
     expectedAt: "2026-12-10",
     notes: "",
     lines: [
@@ -45,6 +46,14 @@ test("validates purchase orders and rejects duplicate material lines", () => {
     ],
   };
   assert.equal(validateProductionPurchaseOrder(order), true);
+  assert.equal(
+    validateProductionPurchaseOrder({ ...order, supplierEmail: "" }),
+    false,
+  );
+  assert.equal(
+    validateProductionPurchaseOrder({ ...order, supplierEmail: "not-an-email" }),
+    false,
+  );
   assert.equal(
     validateProductionPurchaseOrder({
       ...order,
