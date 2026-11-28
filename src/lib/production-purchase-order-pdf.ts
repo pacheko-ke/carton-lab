@@ -1,10 +1,20 @@
-import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
+import QRCode from "qrcode";
+import {
+  PDFDocument,
+  StandardFonts,
+  rgb,
+  type PDFFont,
+  type PDFImage,
+  type PDFPage,
+} from "pdf-lib";
 
 export type ProductionPurchaseOrderPdfData = {
   orderNo: string;
   status: string;
   createdAt: Date | string;
   expectedAt: Date | string | null;
+  deliveryTerms: string;
+  createdByName: string;
   notes: string;
   company: {
     name: string;
@@ -113,6 +123,7 @@ function drawFirstPageHeader(
   data: ProductionPurchaseOrderPdfData,
   regularFont: PDFFont,
   boldFont: PDFFont,
+  qrImage: PDFImage,
 ) {
   drawText(page, "PURCHASE ORDER", MARGIN, 785, boldFont, 22, ACCENT);
   const orderNo = pdfText(data.orderNo);
@@ -163,7 +174,7 @@ function drawFirstPageHeader(
 
   drawText(page, "ORDERED BY", 320, 699, boldFont, 8, MUTED);
   let companyY = 680;
-  companyY = drawWrappedText(page, data.company.name, 320, companyY, 230, boldFont, 11);
+  companyY = drawWrappedText(page, data.company.name, 320, companyY, 150, boldFont, 11);
   companyY = drawWrappedText(
     page,
     [data.company.address, data.company.country, data.company.contactPhone, data.company.contactEmail]
@@ -171,13 +182,40 @@ function drawFirstPageHeader(
       .join("\n"),
     320,
     companyY - 2,
-    230,
+    150,
     regularFont,
     9,
     MUTED,
   );
+  drawText(page, "CREATED BY", 320, companyY - 5, boldFont, 8, MUTED);
+  companyY = drawWrappedText(
+    page,
+    data.createdByName,
+    320,
+    companyY - 20,
+    150,
+    regularFont,
+    9,
+  );
 
-  return Math.min(supplierY, companyY) - 22;
+  const qrSize = 60;
+  const qrX = PAGE_WIDTH - MARGIN - qrSize;
+  const qrY = 658;
+  page.drawImage(qrImage, { x: qrX, y: qrY, width: qrSize, height: qrSize });
+  drawText(page, "PO REFERENCE", qrX + 5, qrY - 12, boldFont, 7, MUTED);
+
+  const termsY = Math.min(supplierY, companyY) - 18;
+  drawText(page, "DELIVERY TERMS", MARGIN, termsY, boldFont, 8, ACCENT);
+  const termsEnd = drawWrappedText(
+    page,
+    data.deliveryTerms.trim() || "Not specified",
+    MARGIN,
+    termsY - 15,
+    PAGE_WIDTH - MARGIN * 2,
+    regularFont,
+    9,
+  );
+  return termsEnd - 14;
 }
 
 function drawContinuationHeader(page: PDFPage, orderNo: string, boldFont: PDFFont) {
@@ -221,24 +259,51 @@ export async function generateProductionPurchaseOrderPdf(
   document.setAuthor(data.company.name || "PackStudio");
   const regularFont = await document.embedFont(StandardFonts.Helvetica);
   const boldFont = await document.embedFont(StandardFonts.HelveticaBold);
+  const qrBytes = await QRCode.toBuffer(`PACKSTUDIO:PO:${data.orderNo}`, {
+    type: "png",
+    errorCorrectionLevel: "M",
+    margin: 1,
+    width: 144,
+  });
+  const qrImage = await document.embedPng(qrBytes);
   const linesPerPage = 25;
-  const pageCount = Math.max(1, Math.ceil(data.lines.length / linesPerPage));
-  let finalPage: PDFPage | undefined;
+  const firstPage = document.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+  const firstPageTableY = drawFirstPageHeader(
+    firstPage,
+    data,
+    regularFont,
+    boldFont,
+    qrImage,
+  );
+  const firstPageLinesPerPage = Math.max(
+    1,
+    Math.floor((firstPageTableY - 28 - 48) / 20) + 1,
+  );
+  const pageCount = 1 + Math.ceil(
+    Math.max(0, data.lines.length - firstPageLinesPerPage) / linesPerPage,
+  );
+  let finalPage: PDFPage = firstPage;
   let finalY = 0;
 
   for (let pageIndex = 0; pageIndex < pageCount; pageIndex += 1) {
-    const page = document.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+    const page = pageIndex === 0
+      ? firstPage
+      : document.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
     finalPage = page;
     let tableY = pageIndex === 0
-      ? drawFirstPageHeader(page, data, regularFont, boldFont)
+      ? firstPageTableY
       : 748;
     if (pageIndex > 0) drawContinuationHeader(page, data.orderNo, boldFont);
     drawTableHeader(page, tableY, boldFont);
     tableY -= 28;
 
+    const lineStart = pageIndex === 0
+      ? 0
+      : firstPageLinesPerPage + (pageIndex - 1) * linesPerPage;
+    const pageLineCount = pageIndex === 0 ? firstPageLinesPerPage : linesPerPage;
     const pageLines = data.lines.slice(
-      pageIndex * linesPerPage,
-      (pageIndex + 1) * linesPerPage,
+      lineStart,
+      lineStart + pageLineCount,
     );
     pageLines.forEach((line, lineIndex) => {
       const rowY = tableY - lineIndex * 20;

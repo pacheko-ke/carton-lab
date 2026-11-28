@@ -9,6 +9,8 @@ test("generates a valid multi-page purchase order PDF", async () => {
     status: "OPEN",
     createdAt: "2026-11-28T09:00:00.000Z",
     expectedAt: "2026-12-10T00:00:00.000Z",
+    deliveryTerms: "Delivered to company warehouse",
+    createdByName: "A. Buyer",
     notes: "Deliver during business hours.",
     company: {
       name: "PackStudio Manufacturing",
@@ -37,6 +39,7 @@ test("generates a valid multi-page purchase order PDF", async () => {
   const document = await PDFDocument.load(bytes);
   assert.equal(document.getPageCount(), 2);
   assert.equal(new TextDecoder().decode(bytes.slice(0, 5)), "%PDF-");
+  assert.match(Buffer.from(bytes).toString("latin1"), /\/Subtype\s*\/Image/);
 });
 
 test("moves lengthy notes to a separate page when the order table is long", async () => {
@@ -45,6 +48,8 @@ test("moves lengthy notes to a separate page when the order table is long", asyn
     status: "OPEN",
     createdAt: "2026-11-28T09:00:00.000Z",
     expectedAt: null,
+    deliveryTerms: "Collect from supplier warehouse",
+    createdByName: "A. Buyer",
     notes: "Delivery instructions ".repeat(45),
     company: {
       name: "PackStudio Manufacturing",

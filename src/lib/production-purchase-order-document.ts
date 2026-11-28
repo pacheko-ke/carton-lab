@@ -6,8 +6,10 @@ const purchaseOrderDocumentSelection = {
   orderNo: true,
   status: true,
   expectedAt: true,
+  deliveryTerms: true,
   notes: true,
   createdAt: true,
+  createdBy: { select: { name: true, email: true } },
   supplier: {
     select: {
       code: true,
@@ -53,6 +55,10 @@ export async function getProductionPurchaseOrderDocument(
     status: purchaseOrder.status,
     createdAt: purchaseOrder.createdAt,
     expectedAt: purchaseOrder.expectedAt,
+    deliveryTerms: purchaseOrder.deliveryTerms,
+    createdByName: purchaseOrder.createdBy?.name?.trim() ||
+      purchaseOrder.createdBy?.email ||
+      "Production user",
     notes: purchaseOrder.notes,
     company,
     supplier: purchaseOrder.supplier,

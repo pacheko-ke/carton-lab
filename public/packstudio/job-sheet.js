@@ -584,7 +584,7 @@ function initializeJobSheet(getContext) {
   const status = document.getElementById("jobSheetStatus");
   const accountKey = typeof accountId === "string" && accountId ? accountId : "offline";
   const storageKey = `${JOB_SHEET_STORAGE_KEY}.${encodeURIComponent(accountKey)}`;
-  const workspaceSelect = document.getElementById("productionWorkspaceSelect");
+  const workspaceName = document.getElementById("productionWorkspaceName");
   const jobSelect = document.getElementById("productionJobSelect");
   const workspaceRoleBadge = document.getElementById("productionWorkspaceRole");
   const loadSharedJobButton = document.getElementById("productionLoadJob");
@@ -601,7 +601,7 @@ function initializeJobSheet(getContext) {
   let sharedJobDirty = false;
   let savedSharedJobData = null;
   let availableOrganizations = [];
-  let lastSelectedWorkspaceId = "";
+  let activeWorkspaceId = "";
   let context = getContext();
 
   const showStatus = (message, isError = false) => {
@@ -768,7 +768,7 @@ function initializeJobSheet(getContext) {
     return responseBody;
   };
   const selectedWorkspace = () =>
-    availableOrganizations.find((workspace) => workspace.id === workspaceSelect.value) || null;
+    availableOrganizations.find((workspace) => workspace.id === activeWorkspaceId) || null;
   const updateEditorPermissions = () => {
     const readOnly = printingOnly || (Boolean(activeSharedJobId) && activeProductionRole !== "PRODUCTION");
     fields.forEach((field) => { field.disabled = readOnly; });
@@ -780,7 +780,7 @@ function initializeJobSheet(getContext) {
     workspaceRoleBadge.textContent = activeSharedJobId
       ? activeProductionRole === "DESIGNER" ? "Designer" : "Production"
       : workspace?.role === "DESIGNER" ? "Designer" : workspace?.role === "PRODUCTION" ? "Production" : "";
-    workspaceSelect.disabled = availableOrganizations.length === 0;
+    workspaceName.textContent = workspace?.name || "No company workspace linked";
     jobSelect.disabled = availableOrganizations.length === 0 || jobSelect.options.length < 2;
     loadSharedJobButton.disabled = !jobSelect.value;
     createSharedJobButton.disabled =
@@ -844,38 +844,21 @@ function initializeJobSheet(getContext) {
     try {
       const result = await requestJson("/api/production/workspaces");
       availableOrganizations = Array.isArray(result.workspaces) ? result.workspaces : [];
-      workspaceSelect.replaceChildren();
       if (!availableOrganizations.length) {
-        const option = document.createElement("option");
-        option.value = "";
-        option.textContent = "No workspace assigned";
-        workspaceSelect.append(option);
+        activeWorkspaceId = "";
         jobSelect.replaceChildren();
         const jobOption = document.createElement("option");
-        jobOption.textContent = "Select an workspace first";
+        jobOption.textContent = "No company workspace linked";
         jobSelect.append(jobOption);
         updateEditorPermissions();
-        showStatus("No production workspace is assigned to this account. Ask a system admin to add you; your local draft remains available.");
+        showStatus("No company workspace is linked. Create one from Company setup in the dashboard; your local draft remains available.");
         return;
       }
-      availableOrganizations.forEach((workspace) => {
-        const option = document.createElement("option");
-        option.value = workspace.id;
-        option.textContent = workspace.name;
-        workspaceSelect.append(option);
-      });
-      const requestedWorkspaceId =
-        new URLSearchParams(window.location.search).get("workspace");
+      activeWorkspaceId = availableOrganizations[0].id;
       const requestedJobId = new URLSearchParams(window.location.search).get("job");
-      workspaceSelect.value = availableOrganizations.some(
-        (workspace) => workspace.id === requestedWorkspaceId,
-      )
-        ? requestedWorkspaceId
-        : availableOrganizations[0].id;
-      lastSelectedWorkspaceId = workspaceSelect.value;
       activeProductionRole = selectedWorkspace()?.role || null;
       updateEditorPermissions();
-      await loadWorkspaceJobs(workspaceSelect.value, requestedJobId || "");
+      await loadWorkspaceJobs(activeWorkspaceId, requestedJobId || "");
       if (requestedJobId && jobSelect.value === requestedJobId) {
         await loadSelectedSharedJob();
       }
@@ -1164,29 +1147,6 @@ function initializeJobSheet(getContext) {
     } catch (error) {
       console.error("Could not prepare the production job sheet for printing:", error);
       showStatus(`Could not prepare the print view: ${error.message || error}`, true);
-    }
-  });
-  workspaceSelect.addEventListener("change", async () => {
-    if (sharedJobDirty && !window.confirm("Discard unsaved changes to this shared job?")) {
-      workspaceSelect.value = lastSelectedWorkspaceId;
-      return;
-    }
-    if (sharedJobDirty && savedSharedJobData) writeData(savedSharedJobData);
-    activeSharedJobId = null;
-    activeSharedJobWorkspaceId = null;
-    savedSharedJobData = null;
-    sharedJobDirty = false;
-    artworkStatus.textContent = "";
-    artworkStatus.dataset.error = "false";
-    renderAttachments([]);
-    lastSelectedWorkspaceId = workspaceSelect.value;
-    activeProductionRole = selectedWorkspace()?.role || null;
-    updateEditorPermissions();
-    try {
-      await loadWorkspaceJobs(workspaceSelect.value);
-    } catch (error) {
-      console.error("Could not load production workspace jobs:", error);
-      showStatus(`Could not load workspace jobs: ${error.message || error}`, true);
     }
   });
   jobSelect.addEventListener("change", updateEditorPermissions);

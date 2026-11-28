@@ -40,6 +40,7 @@ export type ProductionPurchaseOrderInput = {
   supplierId: string;
   supplierEmail: string;
   expectedAt: string;
+  deliveryTerms?: string;
   notes: string;
   lines: Array<{ materialId: string; quantity: string }>;
 };
@@ -117,6 +118,7 @@ export function validateProductionPurchaseOrder(
       !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.supplierEmail) ||
       !isBoundedString(value.expectedAt, 10) ||
       (value.expectedAt !== "" && !isIsoDate(value.expectedAt)) ||
+      (value.deliveryTerms !== undefined && !isBoundedString(value.deliveryTerms, 500)) ||
       !isBoundedString(value.notes, 1000) ||
       !Array.isArray(value.lines) ||
       value.lines.length < 1 ||

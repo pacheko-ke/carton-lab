@@ -39,6 +39,7 @@ test("validates purchase orders and rejects duplicate material lines", () => {
     supplierId: "supplier-1",
     supplierEmail: "orders@example.com",
     expectedAt: "2026-12-10",
+    deliveryTerms: "Delivered to company warehouse",
     notes: "",
     lines: [
       { materialId: "material-1", quantity: "100.25" },
@@ -46,6 +47,13 @@ test("validates purchase orders and rejects duplicate material lines", () => {
     ],
   };
   assert.equal(validateProductionPurchaseOrder(order), true);
+  const legacyOrder = { ...order };
+  delete legacyOrder.deliveryTerms;
+  assert.equal(validateProductionPurchaseOrder(legacyOrder), true);
+  assert.equal(
+    validateProductionPurchaseOrder({ ...order, deliveryTerms: "x".repeat(501) }),
+    false,
+  );
   assert.equal(
     validateProductionPurchaseOrder({ ...order, supplierEmail: "" }),
     false,

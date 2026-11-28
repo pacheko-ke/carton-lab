@@ -8,8 +8,6 @@ import { getProductionPurchaseOrderDocument } from "@/lib/production-purchase-or
 import { sendResendEmail } from "@/lib/resend-email";
 import { NextResponse } from "next/server";
 
-export const runtime = "nodejs";
-
 type RouteContext = {
   params: Promise<{ workspaceId: string; orderId: string }>;
 };
@@ -60,6 +58,16 @@ export async function POST(_request: Request, { params }: RouteContext) {
           value: document.purchaseOrder.expectedAt?.toLocaleDateString("en-GB", {
             timeZone: "UTC",
           }) ?? "To be confirmed",
+        },
+        {
+          label: "Delivery terms",
+          value: document.purchaseOrder.deliveryTerms.trim() || "Not specified",
+        },
+        {
+          label: "Created by",
+          value: document.purchaseOrder.createdBy?.name?.trim() ||
+            document.purchaseOrder.createdBy?.email ||
+            "Production user",
         },
       ],
       attachments: [{

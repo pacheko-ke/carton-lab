@@ -153,13 +153,18 @@ async function AuthenticatedProductionAdminPage({
   if (params.view === "access-control" && !isAdmin) {
     redirect("/production/admin");
   }
-  if (!isAdmin && !user.companyMembership && params.view !== "account") {
+  if (
+    !user.companyMembership &&
+    params.view !== "account" &&
+    !(isAdmin && params.view === "access-control")
+  ) {
     redirect("/production/admin?view=account");
   }
   if (!isAdmin && !productionRoles.length && params.view !== "account") redirect("/app");
   const role = productionRoles.join("|");
-  const companies = isAdmin
+  const companies = user.companyMembership
     ? await prisma.company.findMany({
+        where: { id: user.companyMembership.company.id },
         select: {
           id: true,
           name: true,
@@ -168,21 +173,8 @@ async function AuthenticatedProductionAdminPage({
           hrJobTitles: true,
           hrWorkAreas: true,
         },
-        orderBy: { name: "asc" },
       })
-    : user.companyMembership
-      ? await prisma.company.findMany({
-          where: { id: user.companyMembership.company.id },
-          select: {
-            id: true,
-            name: true,
-            employeeNumberNext: true,
-            hrDepartments: true,
-            hrJobTitles: true,
-            hrWorkAreas: true,
-          },
-        })
-      : [];
+    : [];
   const workspaces: ProductionDashboardWorkspace[] = companies.map((company) => ({
     id: company.id,
     name: company.name,
@@ -609,8 +601,10 @@ async function AuthenticatedProductionAdminPage({
           orderNo: true,
           status: true,
           expectedAt: true,
+          deliveryTerms: true,
           notes: true,
           createdAt: true,
+          createdBy: { select: { name: true, email: true } },
           supplier: { select: { id: true, code: true, name: true, email: true } },
           lines: {
             orderBy: { material: { name: "asc" } },
@@ -658,16 +652,18 @@ async function AuthenticatedProductionAdminPage({
     onHand: balanceByMaterial.get(`${material.workspaceId}:${material.id}`) ?? "0",
   }));
   const dashboardSuppliers: ProductionDashboardSupplier[] = supplierRows;
-  const dashboardPurchaseOrders: ProductionDashboardPurchaseOrder[] = purchaseOrderRows.map((order) => ({
-    ...order,
-    expectedAt: order.expectedAt?.toISOString() ?? null,
-    createdAt: order.createdAt.toISOString(),
-    lines: order.lines.map((line) => ({
-      ...line,
-      orderedQty: line.orderedQty.toString(),
-      receivedQty: line.receivedQty.toString(),
-    })),
-  }));
+  const dashboardPurchaseOrders: ProductionDashboardPurchaseOrder[] =
+    purchaseOrderRows.map(({ createdBy, ...order }) => ({
+      ...order,
+      createdByName: createdBy?.name?.trim() || createdBy?.email || "Production user",
+      expectedAt: order.expectedAt?.toISOString() ?? null,
+      createdAt: order.createdAt.toISOString(),
+      lines: order.lines.map((line) => ({
+        ...line,
+        orderedQty: line.orderedQty.toString(),
+        receivedQty: line.receivedQty.toString(),
+      })),
+    }));
   const dashboardStockMovements: ProductionDashboardStockMovement[] = stockMovementRows.map((movement) => ({
     ...movement,
     quantity: movement.quantity.toString(),

@@ -876,6 +876,7 @@ model ProductionPurchaseOrder {
   orderNo         String
   status          String                        @default("OPEN")
   expectedAt      DateTime?
+  deliveryTerms   String                        @default("")
   notes           String                        @default("")
   createdAt       DateTime                      @default(now())
   updatedAt       DateTime                      @updatedAt

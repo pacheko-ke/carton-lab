@@ -7,8 +7,6 @@ import { canEditProductionJobs } from "@/lib/production-data";
 import { getProductionPurchaseOrderDocument } from "@/lib/production-purchase-order-document";
 import { NextResponse } from "next/server";
 
-export const runtime = "nodejs";
-
 type RouteContext = {
   params: Promise<{ workspaceId: string; orderId: string }>;
 };

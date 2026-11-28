@@ -17,8 +17,10 @@ const purchaseOrderSelection = {
   orderNo: true,
   status: true,
   expectedAt: true,
+  deliveryTerms: true,
   notes: true,
   createdAt: true,
+  createdBy: { select: { name: true, email: true } },
   supplier: { select: { id: true, code: true, name: true, email: true } },
   lines: {
     orderBy: { material: { name: "asc" } },
@@ -116,6 +118,7 @@ export async function POST(request: Request, { params }: RouteContext) {
           expectedAt: body.expectedAt
             ? new Date(`${body.expectedAt}T00:00:00.000Z`)
             : null,
+          deliveryTerms: (body.deliveryTerms ?? "").trim(),
           notes: body.notes.trim(),
           lines: {
             create: body.lines.map((line) => ({

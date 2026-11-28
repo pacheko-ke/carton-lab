@@ -34,6 +34,7 @@ import {
   FiGrid,
   FiLayers,
   FiLoader,
+  FiLogOut,
   FiMenu,
   FiPackage,
   FiPaperclip,
@@ -113,6 +114,7 @@ import {
   PRODUCTION_MAINTENANCE_TICKET_STATUSES,
 } from "@/lib/production-maintenance-data";
 import { notifyToast } from "@/app/toast-provider";
+import { signOutOfPackStudio } from "@/app/auth-actions";
 
 const ProductionArtworkPdfPreview = dynamic(
   () => import("./production-artwork-pdf-preview"),
@@ -325,8 +327,10 @@ export type ProductionDashboardPurchaseOrder = {
   orderNo: string;
   status: string;
   expectedAt: string | null;
+  deliveryTerms: string;
   notes: string;
   createdAt: string;
+  createdByName: string;
   supplier: { id: string; code: string; name: string; email: string | null };
   lines: ProductionDashboardPurchaseOrderLine[];
 };
@@ -4204,6 +4208,7 @@ function ProcurementBoard({
   const [selectedSupplierId, setSelectedSupplierId] = useState("");
   const [supplierEmail, setSupplierEmail] = useState("");
   const [expectedAt, setExpectedAt] = useState("");
+  const [deliveryTerms, setDeliveryTerms] = useState("");
   const [orderNotes, setOrderNotes] = useState("");
   const [orderLines, setOrderLines] = useState<Array<{ materialId: string; quantity: string }>>([
     { materialId: "", quantity: "" },
@@ -4292,6 +4297,7 @@ function ProcurementBoard({
             supplierId: selectedSupplierId,
             supplierEmail,
             expectedAt,
+            deliveryTerms,
             notes: orderNotes,
             lines: orderLines,
           }),
@@ -4303,6 +4309,7 @@ function ProcurementBoard({
       setSelectedSupplierId("");
       setSupplierEmail("");
       setExpectedAt("");
+      setDeliveryTerms("");
       setOrderNotes("");
       setOrderLines([{ materialId: activeMaterials[0]?.id ?? "", quantity: "" }]);
       notifyToast(`Purchase order ${response.purchaseOrder.orderNo} created.`);
@@ -4568,6 +4575,16 @@ function ProcurementBoard({
             </button>
           </div>
           <label className="production-order-booking-field">
+            Delivery terms
+            <textarea
+              maxLength={500}
+              onChange={(event) => setDeliveryTerms(event.target.value)}
+              placeholder="e.g. Delivered to company warehouse"
+              rows={2}
+              value={deliveryTerms}
+            />
+          </label>
+          <label className="production-order-booking-field">
             Notes
             <input maxLength={1000} onChange={(event) => setOrderNotes(event.target.value)} value={orderNotes} />
           </label>
@@ -4589,16 +4606,22 @@ function ProcurementBoard({
         {workspaceOrders.length ? (
           <div className="production-table-scroll">
             <table className="production-jobs-table">
-              <thead><tr><th scope="col">Order</th><th scope="col">Supplier</th><th scope="col">Materials</th><th scope="col">Status</th><th scope="col">Expected</th><th scope="col">Action</th></tr></thead>
+              <thead><tr><th scope="col">Order / Created by</th><th scope="col">Supplier</th><th scope="col">Materials</th><th scope="col">Status</th><th scope="col">Delivery</th><th scope="col">Action</th></tr></thead>
               <tbody>
                 {workspaceOrders.map((purchaseOrder) => (
                   <Fragment key={purchaseOrder.id}>
                     <tr>
-                      <td><strong>{purchaseOrder.orderNo}</strong></td>
+                      <td>
+                        <strong>{purchaseOrder.orderNo}</strong>
+                        <small>Created by {purchaseOrder.createdByName}</small>
+                      </td>
                       <td>{purchaseOrder.supplier.name}</td>
                       <td className="production-schedule-notes">{purchaseOrder.lines.map((line) => `${line.material.name}: ${formatSupplyQuantity(line.receivedQty)}/${formatSupplyQuantity(line.orderedQty)} ${line.material.unit}`).join("; ")}</td>
                       <td><span className={`production-schedule-status status-${purchaseOrder.status.toLowerCase()}`}>{purchaseOrder.status.replaceAll("_", " ")}</span></td>
-                      <td>{purchaseOrder.expectedAt ? formatDate(purchaseOrder.expectedAt.slice(0, 10)) : "—"}</td>
+                      <td>
+                        {purchaseOrder.expectedAt ? formatDate(purchaseOrder.expectedAt.slice(0, 10)) : "—"}
+                        {purchaseOrder.deliveryTerms && <small>{purchaseOrder.deliveryTerms}</small>}
+                      </td>
                       <td>
                         <div className="production-purchase-order-actions">
                           <a
@@ -11016,6 +11039,12 @@ export default function ProductionDashboard({
                 Back to account
               </button>
             )}
+            <form action={signOutOfPackStudio} className="account-signout-form">
+              <button className="production-refresh-button" type="submit">
+                <FiLogOut aria-hidden="true" />
+                Sign out
+              </button>
+            </form>
             {workspaceFilterOptions.length > 1 && (
               <label className="production-workspace-filter">
                 <span>Workspace</span>

@@ -289,14 +289,14 @@
     <section class="card job-sheet-card production-shared-panel" aria-labelledby="productionSharedTitle">
       <div class="production-shared-heading">
         <div>
-          <h3 id="productionSharedTitle" class="card-title">Workspace production jobs</h3>
-          <p>Shared jobs are visible to verified members of their assigned workspace.</p>
+          <h3 id="productionSharedTitle" class="card-title">Company production jobs</h3>
+          <p>Shared jobs are visible to verified members of your company.</p>
         </div>
         <span id="productionWorkspaceRole" class="production-role-badge"></span>
       </div>
       <div class="job-sheet-fields">
-        <label class="field">Production workspace<select id="productionWorkspaceSelect" class="input"><option>Loading workspaces…</option></select></label>
-        <label class="field">Shared job<select id="productionJobSelect" class="input" disabled><option>Select an workspace first</option></select></label>
+        <div class="field"><span>Company</span><strong id="productionWorkspaceName">Loading company…</strong></div>
+        <label class="field">Shared job<select id="productionJobSelect" class="input" disabled><option>Select a company first</option></select></label>
       </div>
       <div class="production-shared-actions">
         <button id="productionLoadJob" type="button" class="btn btn-secondary" disabled>Open shared job</button>
